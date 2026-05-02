@@ -1,5 +1,6 @@
 ---
 title: My First Game Analysis
+description: My first chess post on ChessBadger.
 pubDate: 2026-05-02
 ---
 
