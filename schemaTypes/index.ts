@@ -1,4 +1,4 @@
-import {articleType} from './articleType'
+    import {articleType} from './articleType'
 import {homePageType} from './homePageType'
 
 export const schemaTypes = [
