@@ -13,22 +13,25 @@ const {
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="bg-stone-50 text-stone-950">
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
     <meta name="viewport" content="width=device-width" />
     <title>{title}</title>
   </head>
-  <body>
-    <header class="site-header">
-      <div class="container nav">
-        <a class="brand" href="/">ChessBadger</a>
 
-        <nav>
-          <a href="/">Home</a>
-          <a href="/articles">Articles</a>
-          <a href="/admin">Admin</a>
+  <body class="min-h-screen antialiased">
+    <header class="border-b border-stone-200 bg-white/85 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+        <a href="/" class="text-xl font-black tracking-tight text-stone-950">
+          ChessBadger
+        </a>
+
+        <nav class="flex items-center gap-6 text-sm font-semibold text-stone-700">
+          <a class="hover:text-stone-950" href="/">Home</a>
+          <a class="hover:text-stone-950" href="/articles">Articles</a>
+          <a class="hover:text-stone-950" href="/admin">Admin</a>
         </nav>
       </div>
     </header>
@@ -37,9 +40,9 @@ const {
       <slot />
     </main>
 
-    <footer class="site-footer">
-      <div class="container">
-        <p>© {new Date().getFullYear()} ChessBadger</p>
+    <footer class="mt-20 border-t border-stone-200 bg-white">
+      <div class="mx-auto max-w-6xl px-6 py-8 text-sm text-stone-500">
+        © {new Date().getFullYear()} ChessBadger
       </div>
     </footer>
   </body>

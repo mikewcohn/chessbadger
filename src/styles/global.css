@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   --bg: #f7f1e8;
   --panel: #fffaf2;
@@ -165,3 +167,56 @@ h2 {
   padding: 2rem 0;
   margin-top: 4rem;
 }
+
+.article-prose {
+  color: #292524;
+  font-size: 1.125rem;
+  line-height: 1.85;
+}
+
+.article-prose > * + * {
+  margin-top: 1.25rem;
+}
+
+.article-prose h2 {
+  margin-top: 2.5rem;
+  font-size: 2rem;
+  line-height: 1.15;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: #0c0a09;
+}
+
+.article-prose h3 {
+  margin-top: 2rem;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 900;
+  color: #0c0a09;
+}
+
+.article-prose p {
+  margin: 0;
+}
+
+.article-prose ul,
+.article-prose ol {
+  padding-left: 1.5rem;
+}
+
+.article-prose li + li {
+  margin-top: 0.5rem;
+}
+
+.article-prose a {
+  color: #92400e;
+  font-weight: 700;
+}
+
+.article-prose blockquote {
+  border-left: 4px solid #f59e0b;
+  padding-left: 1.25rem;
+  color: #57534e;
+  font-style: italic;
+}
+

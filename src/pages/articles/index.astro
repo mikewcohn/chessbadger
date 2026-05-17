@@ -20,22 +20,49 @@ const articles = await sanityClient.fetch<Article[]>(`
 ---
 
 <BaseLayout title="Articles | ChessBadger">
-  <section class="section">
-    <div class="container">
-      <h1>Articles</h1>
+  <section class="bg-[#f7f0e5]">
+    <div class="mx-auto max-w-6xl px-6 py-20">
+      <p class="text-sm font-black uppercase tracking-[0.24em] text-amber-800">
+        ChessBadger Articles
+      </p>
 
+      <h1 class="mt-4 max-w-3xl text-5xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">
+        Practical chess ideas for real games.
+      </h1>
+
+      <p class="mt-6 max-w-2xl text-xl leading-8 text-stone-700">
+        Lessons, games, openings, and analysis without drowning in theory.
+      </p>
+    </div>
+  </section>
+
+  <section class="bg-stone-950 text-white">
+    <div class="mx-auto max-w-6xl px-6 py-20">
       {articles.length === 0 ? (
-        <p>No articles have been published yet.</p>
+        <p class="rounded-3xl border border-white/10 bg-white/5 p-6 text-stone-300">
+          No articles have been published yet.
+        </p>
       ) : (
-        <ul class="card-list">
+        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {articles.map((article) => (
-            <li>
-              <a class="article-card" href={`/articles/${article.slug.current}`}>
+            <a
+              href={`/articles/${article.slug.current}`}
+              class="group rounded-3xl border border-white/10 bg-white p-7 text-stone-950 shadow-xl transition hover:-translate-y-1 hover:bg-amber-100"
+            >
+              <p class="text-sm font-black uppercase tracking-[0.2em] text-amber-800">
+                Article
+              </p>
+
+              <h2 class="mt-5 text-2xl font-black leading-tight tracking-tight">
                 {article.title}
-              </a>
-            </li>
+              </h2>
+
+              <p class="mt-8 text-sm font-bold text-stone-600 group-hover:text-stone-950">
+                Read article →
+              </p>
+            </a>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   </section>
