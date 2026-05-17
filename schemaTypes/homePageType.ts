@@ -24,6 +24,23 @@ export const homePageType = defineType({
       rows: 3,
     }),
     defineField({
+      name: 'heroImage',
+      title: 'Hero Image',
+      type: 'image',
+      options: {
+        hotspot: true,
+      },
+      fields: [
+        defineField({
+          name: 'alt',
+          title: 'Alt Text',
+          type: 'string',
+          description: 'Describe the image for accessibility.',
+        }),
+      ],
+    }),
+
+    defineField({
       name: 'body',
       title: 'Body',
       type: 'array',
