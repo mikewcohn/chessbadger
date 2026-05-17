@@ -1,49 +1,81 @@
 ---
-import BaseHead from '../components/BaseHead.astro';
-import Footer from '../components/Footer.astro';
-import Header from '../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import {sanityClient} from 'sanity:client'
+import {PortableText} from 'astro-portabletext'
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+type HomePage = {
+  eyebrow?: string
+  heroTitle?: string
+  intro?: string
+  body?: unknown[]
+}
+
+type Article = {
+  _id: string
+  title: string
+  slug: {
+    current: string
+  }
+}
+
+const homePage = await sanityClient.fetch<HomePage>(`
+  *[_type == "homePage"][0] {
+    eyebrow,
+    heroTitle,
+    intro,
+    body
+  }
+`)
+
+const articles = await sanityClient.fetch<Article[]>(`
+  *[_type == "article" && defined(slug.current)] | order(_createdAt desc)[0...3] {
+    _id,
+    title,
+    slug
+  }
+`)
 ---
 
-<!doctype html>
-<html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
-		<main>
-			<h1>🧑‍🚀 Hello, Astronaut!</h1>
-			<p>
-				Welcome to the official <a href="https://astro.build/">Astro</a> blog starter template. This template
-				serves as a lightweight, minimally-styled starting point for anyone looking to build a personal
-				website, blog, or portfolio with Astro.
-			</p>
-			<p>
-				This template comes with a few integrations already configured in your
-				<code>astro.config.mjs</code> file. You can customize your setup with
-				<a href="https://astro.build/integrations">Astro Integrations</a> to add tools like Tailwind,
-				React, or Vue to your project.
-			</p>
-			<p>Here are a few ideas on how to get started with the template:</p>
-			<ul>
-				<li>Edit this page in <code>src/pages/index.astro</code></li>
-				<li>Edit the site header items in <code>src/components/Header.astro</code></li>
-				<li>Add your name to the footer in <code>src/components/Footer.astro</code></li>
-				<li>Check out the included blog posts in <code>src/content/blog/</code></li>
-				<li>Customize the blog post page layout in <code>src/layouts/BlogPost.astro</code></li>
-			</ul>
-			<p>
-				Have fun! If you get stuck, remember to
-				<a href="https://docs.astro.build/">read the docs</a>
-				or <a href="https://astro.build/chat">join us on Discord</a> to ask questions.
-			</p>
-			<p>
-				Looking for a blog template with a bit more personality? Check out
-				<a href="https://github.com/Charca/astro-blog-template">astro-blog-template</a>
-				by <a href="https://twitter.com/Charca">Maxi Ferreira</a>.
-			</p>
-		</main>
-		<Footer />
-	</body>
-</html>
+<BaseLayout title="ChessBadger">
+  <section class="hero">
+    <div class="container">
+      <div class="hero-card">
+        <p class="eyebrow">{homePage?.eyebrow ?? 'Welcome to ChessBadger'}</p>
+
+        <h1>{homePage?.heroTitle ?? 'Practical Chess Improvement'}</h1>
+
+        <p class="lede">
+          {homePage?.intro ?? 'Edit this homepage in Sanity Studio by creating a Home Page document.'}
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {Array.isArray(homePage?.body) && homePage.body.length > 0 && (
+    <section class="section">
+      <div class="container prose">
+        <PortableText value={homePage.body} />
+      </div>
+    </section>
+  )}
+
+  <section class="section">
+    <div class="container">
+      <h2>Latest Articles</h2>
+
+      {articles.length === 0 ? (
+        <p>No articles have been published yet.</p>
+      ) : (
+        <ul class="card-list">
+          {articles.map((article) => (
+            <li>
+              <a class="article-card" href={`/articles/${article.slug.current}`}>
+                {article.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </section>
+</BaseLayout>

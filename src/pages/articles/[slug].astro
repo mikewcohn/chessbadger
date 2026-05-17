@@ -1,6 +1,7 @@
 ---
 import {sanityClient} from 'sanity:client'
 import {PortableText} from 'astro-portabletext'
+import BaseLayout from '../../layouts/BaseLayout.astro'
 
 type Article = {
   title: string
@@ -34,25 +35,20 @@ const article = await sanityClient.fetch<Article>(
 )
 ---
 
-<html lang="en">
-  <head>
-    <title>{article?.title ?? 'Article'} | ChessBadger</title>
-  </head>
-  <body>
-    <main>
-      <p><a href="/articles">← Back to articles</a></p>
+<BaseLayout title={`${article?.title ?? 'Article'} | ChessBadger`}>
+  <article class="prose">
+    <p><a href="/articles">← Back to articles</a></p>
 
-      {article ? (
-        <>
-          <h1>{article.title}</h1>
+    {article ? (
+      <>
+        <h1>{article.title}</h1>
 
-          {Array.isArray(article.body) && (
-            <PortableText value={article.body} />
-          )}
-        </>
-      ) : (
-        <p>Article not found.</p>
-      )}
-    </main>
-  </body>
-</html>
+        {Array.isArray(article.body) && (
+          <PortableText value={article.body} />
+        )}
+      </>
+    ) : (
+      <p>Article not found.</p>
+    )}
+  </article>
+</BaseLayout>
