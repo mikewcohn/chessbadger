@@ -1,0 +1,46 @@
+---
+import '../styles/global.css'
+
+type Props = {
+  title?: string
+  description?: string
+}
+
+const {
+  title = 'ChessBadger',
+  description = 'Chess improvement, games, openings, and practical lessons.',
+} = Astro.props
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container nav">
+        <a class="brand" href="/">ChessBadger</a>
+
+        <nav>
+          <a href="/">Home</a>
+          <a href="/articles">Articles</a>
+          <a href="/admin">Admin</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>© {new Date().getFullYear()} ChessBadger</p>
+      </div>
+    </footer>
+  </body>
+</html>

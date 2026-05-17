@@ -1,5 +1,6 @@
 ---
 import {sanityClient} from 'sanity:client'
+import BaseLayout from '../../layouts/BaseLayout.astro'
 
 type Article = {
   _id: string
@@ -18,27 +19,24 @@ const articles = await sanityClient.fetch<Article[]>(`
 `)
 ---
 
-<html lang="en">
-  <head>
-    <title>Articles | ChessBadger</title>
-  </head>
-  <body>
-    <main>
+<BaseLayout title="Articles | ChessBadger">
+  <section class="section">
+    <div class="container">
       <h1>Articles</h1>
 
       {articles.length === 0 ? (
         <p>No articles have been published yet.</p>
       ) : (
-        <ul>
+        <ul class="card-list">
           {articles.map((article) => (
             <li>
-              <a href={`/articles/${article.slug.current}`}>
+              <a class="article-card" href={`/articles/${article.slug.current}`}>
                 {article.title}
               </a>
             </li>
           ))}
         </ul>
       )}
-    </main>
-  </body>
-</html>
+    </div>
+  </section>
+</BaseLayout>
