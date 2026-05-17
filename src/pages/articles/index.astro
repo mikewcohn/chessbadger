@@ -1,0 +1,44 @@
+---
+import {sanityClient} from 'sanity:client'
+
+type Article = {
+  _id: string
+  title: string
+  slug: {
+    current: string
+  }
+}
+
+const articles = await sanityClient.fetch<Article[]>(`
+  *[_type == "article" && defined(slug.current)] | order(_createdAt desc) {
+    _id,
+    title,
+    slug
+  }
+`)
+---
+
+<html lang="en">
+  <head>
+    <title>Articles | ChessBadger</title>
+  </head>
+  <body>
+    <main>
+      <h1>Articles</h1>
+
+      {articles.length === 0 ? (
+        <p>No articles have been published yet.</p>
+      ) : (
+        <ul>
+          {articles.map((article) => (
+            <li>
+              <a href={`/articles/${article.slug.current}`}>
+                {article.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  </body>
+</html>

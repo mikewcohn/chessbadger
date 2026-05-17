@@ -1,0 +1,58 @@
+---
+import {sanityClient} from 'sanity:client'
+import {PortableText} from 'astro-portabletext'
+
+type Article = {
+  title: string
+  body?: unknown[]
+}
+
+export async function getStaticPaths() {
+  const articles = await sanityClient.fetch<{slug: string}[]>(`
+    *[_type == "article" && defined(slug.current)] {
+      "slug": slug.current
+    }
+  `)
+
+  return articles.map((article) => ({
+    params: {
+      slug: article.slug,
+    },
+  }))
+}
+
+const {slug} = Astro.params
+
+const article = await sanityClient.fetch<Article>(
+  `
+    *[_type == "article" && slug.current == $slug][0] {
+      title,
+      body
+    }
+  `,
+  {slug}
+)
+---
+
+<html lang="en">
+  <head>
+    <title>{article?.title ?? 'Article'} | ChessBadger</title>
+  </head>
+  <body>
+    <main>
+      <p><a href="/articles">← Back to articles</a></p>
+
+      {article ? (
+        <>
+          <h1>{article.title}</h1>
+
+          {Array.isArray(article.body) && (
+            <PortableText value={article.body} />
+          )}
+        </>
+      ) : (
+        <p>Article not found.</p>
+      )}
+    </main>
+  </body>
+</html>
