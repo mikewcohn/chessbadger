@@ -18,14 +18,18 @@ type Article = {
   }
 }
 
+
 const homePage = await sanityClient.fetch<HomePage>(`
-  *[_type == "homePage"][0] {
+  *[_id == "homePage"][0] {
     eyebrow,
     heroTitle,
     intro,
     body
   }
 `)
+
+
+
 
 const articles = await sanityClient.fetch<Article[]>(`
   *[_type == "article" && defined(slug.current)] | order(_createdAt desc)[0...3] {
