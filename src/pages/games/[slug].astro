@@ -1,0 +1,88 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import PgnViewer from '../../components/PgnViewer'
+import { sanityClient } from '../../lib/sanity'
+
+export async function getStaticPaths() {
+  const games = await sanityClient.fetch(`
+    *[_type == "game" && defined(slug.current)] {
+      "slug": slug.current
+    }
+  `)
+
+  return games.map((game) => ({
+    params: {
+      slug: game.slug,
+    },
+  }))
+}
+
+const { slug } = Astro.params
+
+const game = await sanityClient.fetch(
+  `
+    *[_type == "game" && slug.current == $slug][0] {
+      title,
+      white,
+      black,
+      playedOn,
+      event,
+      result,
+      pgn
+    }
+  `,
+  { slug }
+)
+
+if (!game) {
+  return Astro.redirect('/games')
+}
+---
+
+<BaseLayout
+  title={game.title}
+  description={`${game.white || 'White'} vs. ${game.black || 'Black'}`}
+>
+  <article class="game-page">
+    <p class="breadcrumb">
+      <a href="/games">Games</a> / {game.title}
+    </p>
+
+    <h1>{game.title}</h1>
+
+    <div class="game-meta">
+      <p>
+        {game.white || 'White'} vs. {game.black || 'Black'}
+        {game.result ? ` - ${game.result}` : ''}
+      </p>
+
+      {game.event && <p>{game.event}</p>}
+      {game.playedOn && <p>{game.playedOn}</p>}
+    </div>
+
+    <PgnViewer client:only="react" pgn={game.pgn}>
+      <p slot="fallback">Loading board...</p>
+    </PgnViewer>
+  </article>
+</BaseLayout>
+
+<style>
+  .game-page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+
+  .breadcrumb {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .game-meta {
+    margin-bottom: 1.5rem;
+  }
+
+  .game-meta p {
+    margin: 0.25rem 0;
+  }
+</style>

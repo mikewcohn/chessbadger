@@ -220,3 +220,57 @@ h2 {
   font-style: italic;
 }
 
+.pgn-viewer {
+  display: grid;
+  gap: 1rem;
+  max-width: 720px;
+}
+
+.pgn-board {
+  width: min(100%, 480px);
+  aspect-ratio: 1 / 1;
+}
+
+.pgn-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pgn-controls button,
+.pgn-moves button {
+  cursor: pointer;
+}
+
+.pgn-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pgn-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  list-style: none;
+  padding: 0;
+}
+
+.pgn-moves button {
+  border: 0;
+  background: transparent;
+  padding: 0.15rem 0.25rem;
+}
+
+.pgn-moves button.active {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.pgn-error {
+  border: 1px solid #cc3333;
+  background: #fff4f4;
+  color: #8a1111;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}

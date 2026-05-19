@@ -1,0 +1,77 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { sanityClient } from '../../lib/sanity'
+
+const games = await sanityClient.fetch(`
+  *[_type == "game" && defined(slug.current)] | order(playedOn desc, title asc) {
+    title,
+    "slug": slug.current,
+    white,
+    black,
+    playedOn,
+    event,
+    result
+  }
+`)
+---
+
+<BaseLayout title="Games" description="Chess games on ChessBadger">
+  <section class="games-page">
+    <h1>Games</h1>
+
+    {games.length === 0 ? (
+      <p>No games have been published yet.</p>
+    ) : (
+      <ul class="games-list">
+        {games.map((game) => (
+          <li class="game-card">
+            <h2>
+              <a href={`/games/${game.slug}/`}>
+                {game.title}
+              </a>
+            </h2>
+
+            <p>
+              {game.white || 'White'} vs. {game.black || 'Black'}
+              {game.result ? ` - ${game.result}` : ''}
+            </p>
+
+            {game.event && <p>{game.event}</p>}
+            {game.playedOn && <p>{game.playedOn}</p>}
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+</BaseLayout>
+
+<style>
+  .games-page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+
+  .games-list {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+  }
+
+  .game-card {
+    border: 1px solid #ddd;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    background: white;
+  }
+
+  .game-card h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.25rem;
+  }
+
+  .game-card p {
+    margin: 0.25rem 0;
+  }
+</style>
