@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f7f1e8;
+  --bg: #eef6ff;
   --panel: #fffaf2;
   --text: #1f2933;
   --muted: #667085;
@@ -26,7 +26,7 @@ body {
   line-height: 1.6;
 }
 
-a {
+a:not([class]) {
   color: var(--accent-dark);
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.18em;
