@@ -17,54 +17,33 @@ const body = aboutPage?.body || []
 ---
 
 <BaseLayout title={title} description={description}>
-	<main class="about-page">
-		<h1>{title}</h1>
+	<section class="bg-[#eef6ff]">
+		<div class="mx-auto max-w-4xl px-6 py-16 sm:py-20">
+			<p class="text-sm font-black uppercase tracking-[0.24em] text-amber-800">
+				About
+			</p>
 
-		{body.length > 0 ? (
-			<div class="about-content">
-				<PortableText value={body} />
-			</div>
-		) : (
-			<p>This page is coming soon.</p>
-		)}
-	</main>
+			<h1 class="mt-4 text-5xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">
+				{title}
+			</h1>
+
+			<p class="mt-6 max-w-2xl text-xl leading-8 text-stone-700">
+				{description}
+			</p>
+		</div>
+	</section>
+
+	<section class="bg-white">
+		<div class="mx-auto max-w-4xl px-6 py-16">
+			<article class="rounded-3xl border border-stone-200 bg-white p-8 shadow-sm sm:p-12">
+				{body.length > 0 ? (
+					<div class="article-prose">
+						<PortableText value={body} />
+					</div>
+				) : (
+					<p class="text-lg text-stone-700">This page is coming soon.</p>
+				)}
+			</article>
+		</div>
+	</section>
 </BaseLayout>
-
-<style>
-	.about-page {
-		max-width: 760px;
-		margin: 0 auto;
-		padding: 2rem 1rem;
-	}
-
-	.about-page h1 {
-		margin-bottom: 1rem;
-	}
-
-	.about-content {
-		line-height: 1.6;
-	}
-
-	.about-content p,
-	.about-content ul,
-	.about-content ol,
-	.about-content blockquote {
-		margin-bottom: 1rem;
-	}
-
-	.about-content h2 {
-		margin-top: 2rem;
-		margin-bottom: 0.75rem;
-	}
-
-	.about-content h3 {
-		margin-top: 1.5rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.about-content blockquote {
-		border-left: 4px solid var(--accent);
-		padding-left: 1rem;
-		font-style: italic;
-	}
-</style>

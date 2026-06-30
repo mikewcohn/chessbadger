@@ -1,10 +1,21 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import FormattedDate from '../../components/FormattedDate.astro'
 import PgnViewer from '../../components/PgnViewer'
 import { sanityClient } from '../../lib/sanity'
 
+type Game = {
+  title: string
+  white?: string
+  black?: string
+  playedOn?: string
+  event?: string
+  result?: string
+  pgn: string
+}
+
 export async function getStaticPaths() {
-  const games = await sanityClient.fetch(`
+  const games = await sanityClient.fetch<{ slug: string }[]>(`
     *[_type == "game" && defined(slug.current)] {
       "slug": slug.current
     }
@@ -19,7 +30,7 @@ export async function getStaticPaths() {
 
 const { slug } = Astro.params
 
-const game = await sanityClient.fetch(
+const game = await sanityClient.fetch<Game | null>(
   `
     *[_type == "game" && slug.current == $slug][0] {
       title,
@@ -40,49 +51,58 @@ if (!game) {
 ---
 
 <BaseLayout
-  title={game.title}
+  title={`${game.title} | ChessBadger`}
   description={`${game.white || 'White'} vs. ${game.black || 'Black'}`}
 >
-  <article class="game-page">
-    <p class="breadcrumb">
-      <a href="/games">Games</a> / {game.title}
-    </p>
-
-    <h1>{game.title}</h1>
-
-    <div class="game-meta">
+  <section class="bg-[#eef6ff]">
+    <div class="mx-auto max-w-4xl px-6 py-16 sm:py-20">
       <p>
-        {game.white || 'White'} vs. {game.black || 'Black'}
-        {game.result ? ` - ${game.result}` : ''}
+        <a href="/games" class="text-sm font-bold text-amber-800 hover:text-stone-950">
+          Back to games
+        </a>
       </p>
 
-      {game.event && <p>{game.event}</p>}
-      {game.playedOn && <p>{game.playedOn}</p>}
+      <p class="mt-10 text-sm font-black uppercase tracking-[0.24em] text-amber-800">
+        ChessBadger Game
+      </p>
+
+      <h1 class="mt-4 text-5xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">
+        {game.title}
+      </h1>
+
+      <div class="mt-8 flex flex-wrap gap-3 text-sm font-semibold text-stone-700">
+        <span class="rounded-full border border-stone-300 bg-white px-4 py-2">
+          {game.white || 'White'} vs. {game.black || 'Black'}
+        </span>
+
+        {game.result && (
+          <span class="rounded-full border border-stone-300 bg-white px-4 py-2">
+            {game.result}
+          </span>
+        )}
+
+        {game.event && (
+          <span class="rounded-full border border-stone-300 bg-white px-4 py-2">
+            {game.event}
+          </span>
+        )}
+
+        {game.playedOn && (
+          <span class="rounded-full border border-stone-300 bg-white px-4 py-2">
+            <FormattedDate date={game.playedOn} />
+          </span>
+        )}
+      </div>
     </div>
+  </section>
 
-    <PgnViewer client:only="react" pgn={game.pgn}>
-      <p slot="fallback">Loading board...</p>
-    </PgnViewer>
-  </article>
+  <section class="bg-white">
+    <div class="mx-auto max-w-4xl px-6 py-16">
+      <article class="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm sm:p-10">
+        <PgnViewer client:only="react" pgn={game.pgn}>
+          <p slot="fallback" class="text-stone-700">Loading board...</p>
+        </PgnViewer>
+      </article>
+    </div>
+  </section>
 </BaseLayout>
-
-<style>
-  .game-page {
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-  }
-
-  .breadcrumb {
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-  }
-
-  .game-meta {
-    margin-bottom: 1.5rem;
-  }
-
-  .game-meta p {
-    margin: 0.25rem 0;
-  }
-</style>

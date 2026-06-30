@@ -1,17 +1,46 @@
 ---
 interface Props {
-	date: Date;
+	date: Date | string;
 }
 
 const { date } = Astro.props;
+
+const parseDate = (value: Date | string) => {
+	if (value instanceof Date) {
+		return value;
+	}
+
+	const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+	if (dateOnlyMatch) {
+		const [, year, month, day] = dateOnlyMatch;
+		return new Date(Number(year), Number(month) - 1, Number(day));
+	}
+
+	return new Date(value);
+};
+
+const parsedDate = parseDate(date);
+const isValidDate = !Number.isNaN(parsedDate.valueOf());
+const isDateOnlyString =
+	typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date);
+const datetime = isValidDate
+	? isDateOnlyString
+		? date
+		: parsedDate.toISOString()
+	: String(date);
 ---
 
-<time datetime={date.toISOString()}>
-	{
-		date.toLocaleDateString('en-us', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-		})
-	}
-</time>
+{isValidDate ? (
+	<time datetime={datetime}>
+		{
+			parsedDate.toLocaleDateString('en-us', {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric',
+			})
+		}
+	</time>
+) : (
+	<span>{String(date)}</span>
+)}
