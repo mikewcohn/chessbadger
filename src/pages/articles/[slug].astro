@@ -1,11 +1,12 @@
 ---
 import {sanityClient} from 'sanity:client'
 import {PortableText} from 'astro-portabletext'
+import type {PortableTextBlock} from '@portabletext/types'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
 type Article = {
   title: string
-  body?: unknown[]
+  body?: PortableTextBlock[]
 }
 
 export async function getStaticPaths() {

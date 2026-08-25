@@ -1,6 +1,7 @@
 ---
 import {sanityClient} from 'sanity:client'
 import {PortableText} from 'astro-portabletext'
+import type {PortableTextBlock} from '@portabletext/types'
 import BaseLayout from '../layouts/BaseLayout.astro'
 
 type HomePage = {
@@ -13,7 +14,7 @@ type HomePage = {
     }
     alt?: string
   }
-  body?: unknown[]
+  body?: PortableTextBlock[]
 }
 
 type Article = {
@@ -46,6 +47,9 @@ const articles = await sanityClient.fetch<Article[]>(`
     slug
   }
 `)
+
+const heroTitle = homePage?.heroTitle ?? 'Practical chess improvement for real games.'
+const punctuatedHeroTitle = heroTitle.endsWith('.') ? heroTitle : `${heroTitle}.`
 ---
 
 <BaseLayout title="ChessBadger">
@@ -57,7 +61,7 @@ const articles = await sanityClient.fetch<Article[]>(`
         </p>
 
         <h1 class="max-w-4xl text-5xl font-black leading-[0.95] tracking-tight text-stone-950 sm:text-6xl lg:text-7xl">
-          {homePage?.heroTitle ?? 'Practical chess improvement for real games.'}
+          {punctuatedHeroTitle}
         </h1>
 
         <p class="mt-7 max-w-2xl text-xl leading-8 text-stone-700">
