@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Chess, type Square } from 'chess.js'
 import { Chessboard } from 'react-chessboard'
 import type { Puzzle } from '../data/puzzles'
@@ -8,6 +8,17 @@ type PuzzleTrainerProps = {
 }
 
 type Result = 'correct' | 'incorrect' | null
+
+type Attempt = {
+  move: string
+  result: Exclude<Result, null>
+  checkedAt?: string
+}
+
+type SharedPractice = {
+  studentId: string
+  practiceKey: string
+}
 
 const LIGHT_SQUARE_STYLE = {
   backgroundColor: '#d3d1c8',
@@ -33,10 +44,66 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
   const [result, setResult] = useState<Result>(null)
   const [answerVisible, setAnswerVisible] = useState(false)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
+  const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
+  const [sharedPractice, setSharedPractice] = useState<SharedPractice | null>(null)
+  const [studentName, setStudentName] = useState('')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle')
 
   const puzzle = puzzles[puzzleIndex]
+  const puzzleAttempts = attemptHistory[puzzle.id] ?? []
   const startingGame = new Chess(puzzle.fen)
   const sideToMove = startingGame.turn() === 'w' ? 'White' : 'Black'
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const studentId = params.get('student') ?? ''
+    const practiceKey = params.get('key') ?? ''
+    if (!studentId || !practiceKey) return
+
+    const controller = new AbortController()
+    setSharedPractice({ studentId, practiceKey })
+    setSaveStatus('loading')
+
+    void fetch(
+      `/api/practice/attempts?student=${encodeURIComponent(studentId)}&key=${encodeURIComponent(practiceKey)}`,
+      { signal: controller.signal },
+    )
+      .then(async (response) => {
+        const data = await response.json() as {
+          student?: {
+            name: string
+            attempts: Array<Attempt & { puzzleId: string }>
+          }
+          error?: string
+        }
+        if (!response.ok || !data.student) throw new Error(data.error ?? 'Could not load practice history.')
+
+        const history = data.student.attempts.reduce<Record<string, Attempt[]>>(
+          (grouped, attempt) => {
+            grouped[attempt.puzzleId] = [
+              ...(grouped[attempt.puzzleId] ?? []),
+              {
+                move: attempt.move,
+                result: attempt.result,
+                checkedAt: attempt.checkedAt,
+              },
+            ]
+            return grouped
+          },
+          {},
+        )
+
+        setStudentName(data.student.name)
+        setAttemptHistory(history)
+        setSaveStatus('saved')
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        setSaveStatus('error')
+      })
+
+    return () => controller.abort()
+  }, [])
 
   const resetPuzzle = (nextIndex = puzzleIndex) => {
     setPuzzleIndex(nextIndex)
@@ -84,12 +151,46 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
   }
 
   const checkAnswer = () => {
-    if (!attemptedMove) return
+    if (!attemptedMove || result !== null) return
 
     const acceptedAnswers = new Set(puzzle.answers.map(normalizeSan))
     const isCorrect = acceptedAnswers.has(normalizeSan(attemptedMove))
-    setResult(isCorrect ? 'correct' : 'incorrect')
+    const nextResult = isCorrect ? 'correct' : 'incorrect'
+    const checkedAt = new Date().toISOString()
+
+    setAttemptHistory((history) => ({
+      ...history,
+      [puzzle.id]: [
+        ...(history[puzzle.id] ?? []),
+        { move: attemptedMove, result: nextResult, checkedAt },
+      ],
+    }))
+    setResult(nextResult)
     setAnswerVisible(!isCorrect)
+
+    if (sharedPractice) {
+      setSaveStatus('saving')
+      void fetch('/api/practice/attempts', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          studentId: sharedPractice.studentId,
+          practiceKey: sharedPractice.practiceKey,
+          puzzleId: puzzle.id,
+          puzzleTitle: puzzle.title,
+          move: attemptedMove,
+          result: nextResult,
+        }),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const data = await response.json() as { error?: string }
+            throw new Error(data.error ?? 'Could not save attempt.')
+          }
+          setSaveStatus('saved')
+        })
+        .catch(() => setSaveStatus('error'))
+    }
   }
 
   const squareStyles = selectedSquare
@@ -131,11 +232,23 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
         </h2>
         <p className="mt-3 text-lg font-bold text-stone-700">{sideToMove} to move</p>
 
+        {sharedPractice ? (
+          <p className={saveStatus === 'error' ? 'mt-2 text-sm font-bold text-rose-800' : 'mt-2 text-sm font-bold text-emerald-800'}>
+            {saveStatus === 'loading'
+              ? 'Loading shared practice…'
+              : saveStatus === 'saving'
+                ? 'Saving attempt…'
+                : saveStatus === 'error'
+                  ? 'This attempt could not be saved for your coach.'
+                  : `${studentName || 'Student'} · Shared with coach`}
+          </p>
+        ) : null}
+
         <div className="mt-6 min-h-20 rounded-2xl border border-stone-200 bg-stone-50 p-4" aria-live="polite">
           {result === 'correct' ? (
             <p className="font-bold text-emerald-800">Correct.</p>
           ) : result === 'incorrect' ? (
-            <p className="font-bold text-rose-800">Not the book answer.</p>
+            <p className="font-bold text-rose-800">Try again, fool!</p>
           ) : attemptedMove ? (
             <p className="text-stone-700">You played <strong>{attemptedMove}</strong>. Check it when you’re ready.</p>
           ) : (
@@ -175,6 +288,29 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
             Try again
           </button>
         </div>
+
+        {puzzleAttempts.length > 0 ? (
+          <section className="mt-7 border-t border-stone-200 pt-6" aria-labelledby="attempt-history-heading">
+            <h3 id="attempt-history-heading" className="text-lg font-black text-stone-950">
+              Attempt history
+            </h3>
+            <ol className="mt-3 grid gap-2">
+              {puzzleAttempts.map((attempt, index) => (
+                <li
+                  key={`${attempt.move}-${index}`}
+                  className="flex items-center justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3 text-sm"
+                >
+                  <span className="font-bold text-stone-900">
+                    {index + 1}. {attempt.move}
+                  </span>
+                  <span className={attempt.result === 'correct' ? 'font-bold text-emerald-800' : 'font-bold text-rose-800'}>
+                    {attempt.result === 'correct' ? 'Correct' : 'Try again, fool!'}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
 
         <div className="mt-8 flex items-center justify-between gap-4 border-t border-stone-200 pt-6">
           <button

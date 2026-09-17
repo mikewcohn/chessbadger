@@ -38,8 +38,31 @@ All commands are run from the root of the project:
 | `npm run build`           | Builds the production site to `./dist/`          |
 | `npm run verify`          | Runs type checks and the production build        |
 | `npm run preview`         | Previews the production build locally            |
+| `npm run preview:pages`   | Builds and runs Pages Functions with local KV     |
 | `npm run astro ...`       | Runs Astro CLI commands                          |
 | `npm run astro -- --help` | Shows Astro CLI help                              |
+
+## Shared puzzle practice
+
+Student puzzle attempts are stored by a Cloudflare Pages Function in a Workers KV
+namespace bound as `PUZZLE_ATTEMPTS`. The coach dashboard is protected by a long,
+unguessable `COACH_ACCESS_TOKEN` environment secret.
+
+For local development, copy `.dev.vars.example` to `.dev.vars`, replace the sample
+token, then run:
+
+```bash
+npm run preview:pages
+```
+
+Open `/coach?token=YOUR_TOKEN` to create separate private practice links for each
+student. Checked moves are saved to that student's record and appear on the coach
+dashboard after a refresh.
+
+In Cloudflare Pages, create a Workers KV namespace, bind it to both production and
+preview as `PUZZLE_ATTEMPTS`, add `COACH_ACCESS_TOKEN` as an encrypted secret for
+both environments, and redeploy. Keep coach and student links private because their
+unguessable tokens provide access in this first version.
 
 ## Learn more
 

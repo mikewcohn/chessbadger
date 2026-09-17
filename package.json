@@ -12,6 +12,7 @@
     "build": "astro build",
     "verify": "npm run check && npm run build",
     "preview": "astro preview",
+    "preview:pages": "npm run build && wrangler pages dev dist --kv=PUZZLE_ATTEMPTS",
     "astro": "astro"
   },
   "dependencies": {
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "wrangler": "^4.134.0"
   }
 }

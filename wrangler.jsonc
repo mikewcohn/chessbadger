@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "chessbadger",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-09-17",
+  "kv_namespaces": [
+    {
+      "binding": "PUZZLE_ATTEMPTS",
+      "id": "366c836507c14c47a4af5ea805fcd590"
+    }
+  ]
+}
