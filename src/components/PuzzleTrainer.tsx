@@ -114,6 +114,47 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
     setSelectedSquare(null)
   }
 
+  const checkMove = (moveSan: string) => {
+    const acceptedAnswers = new Set(puzzle.answers.map(normalizeSan))
+    const isCorrect = acceptedAnswers.has(normalizeSan(moveSan))
+    const nextResult = isCorrect ? 'correct' : 'incorrect'
+    const checkedAt = new Date().toISOString()
+
+    setAttemptHistory((history) => ({
+      ...history,
+      [puzzle.id]: [
+        ...(history[puzzle.id] ?? []),
+        { move: moveSan, result: nextResult, checkedAt },
+      ],
+    }))
+    setResult(nextResult)
+    setAnswerVisible(!isCorrect)
+
+    if (sharedPractice) {
+      setSaveStatus('saving')
+      void fetch('/api/practice/attempts', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          studentId: sharedPractice.studentId,
+          practiceKey: sharedPractice.practiceKey,
+          puzzleId: puzzle.id,
+          puzzleTitle: puzzle.title,
+          move: moveSan,
+          result: nextResult,
+        }),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const data = await response.json() as { error?: string }
+            throw new Error(data.error ?? 'Could not save attempt.')
+          }
+          setSaveStatus('saved')
+        })
+        .catch(() => setSaveStatus('error'))
+    }
+  }
+
   const tryMove = (sourceSquare: string, targetSquare: string | null) => {
     if (!targetSquare || attemptedMove) return false
 
@@ -129,6 +170,7 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
       setPosition(game.fen())
       setAttemptedMove(move.san)
       setSelectedSquare(null)
+      checkMove(move.san)
       return true
     } catch {
       return false
@@ -148,49 +190,6 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
 
     const piece = game.get(clickedSquare)
     if (piece?.color === game.turn()) setSelectedSquare(clickedSquare)
-  }
-
-  const checkAnswer = () => {
-    if (!attemptedMove || result !== null) return
-
-    const acceptedAnswers = new Set(puzzle.answers.map(normalizeSan))
-    const isCorrect = acceptedAnswers.has(normalizeSan(attemptedMove))
-    const nextResult = isCorrect ? 'correct' : 'incorrect'
-    const checkedAt = new Date().toISOString()
-
-    setAttemptHistory((history) => ({
-      ...history,
-      [puzzle.id]: [
-        ...(history[puzzle.id] ?? []),
-        { move: attemptedMove, result: nextResult, checkedAt },
-      ],
-    }))
-    setResult(nextResult)
-    setAnswerVisible(!isCorrect)
-
-    if (sharedPractice) {
-      setSaveStatus('saving')
-      void fetch('/api/practice/attempts', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          studentId: sharedPractice.studentId,
-          practiceKey: sharedPractice.practiceKey,
-          puzzleId: puzzle.id,
-          puzzleTitle: puzzle.title,
-          move: attemptedMove,
-          result: nextResult,
-        }),
-      })
-        .then(async (response) => {
-          if (!response.ok) {
-            const data = await response.json() as { error?: string }
-            throw new Error(data.error ?? 'Could not save attempt.')
-          }
-          setSaveStatus('saved')
-        })
-        .catch(() => setSaveStatus('error'))
-    }
   }
 
   const squareStyles = selectedSquare
@@ -249,10 +248,8 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
             <p className="font-bold text-emerald-800">Correct.</p>
           ) : result === 'incorrect' ? (
             <p className="font-bold text-rose-800">Try again, fool!</p>
-          ) : attemptedMove ? (
-            <p className="text-stone-700">You played <strong>{attemptedMove}</strong>. Check it when you’re ready.</p>
           ) : (
-            <p className="text-stone-600">Make one legal move on the board.</p>
+            <p className="text-stone-600">Make one legal move on the board. It will be checked automatically.</p>
           )}
 
           {answerVisible ? (
@@ -263,14 +260,6 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={checkAnswer}
-            disabled={!attemptedMove || result !== null}
-            className="cursor-pointer rounded-full bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Check answer
-          </button>
           <button
             type="button"
             onClick={() => setAnswerVisible(true)}
