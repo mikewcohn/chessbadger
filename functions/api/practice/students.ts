@@ -54,6 +54,6 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
   const origin = new URL(request.url).origin
   return json({
     student,
-    practiceUrl: `${origin}/puzzles?student=${encodeURIComponent(student.id)}&key=${encodeURIComponent(student.practiceKey)}`,
+    practiceUrl: `${origin}/puzzles/steps-2-workbook?student=${encodeURIComponent(student.id)}&key=${encodeURIComponent(student.practiceKey)}`,
   }, 201)
 }

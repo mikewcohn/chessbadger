@@ -75,7 +75,7 @@ export default function CoachDashboard() {
   }
 
   const practiceUrl = (student: Student) =>
-    `${window.location.origin}/puzzles?student=${encodeURIComponent(student.id)}&key=${encodeURIComponent(student.practiceKey)}`
+    `${window.location.origin}/puzzles/steps-2-workbook?student=${encodeURIComponent(student.id)}&key=${encodeURIComponent(student.practiceKey)}`
 
   return (
     <div className="grid gap-8">
@@ -128,7 +128,7 @@ export default function CoachDashboard() {
                 href={practiceUrl(student)}
                 className="rounded-full bg-stone-950 px-4 py-2 text-sm font-bold text-white hover:bg-stone-800"
               >
-                Open puzzles
+                Open collection
               </a>
             </div>
           </div>

@@ -1,10 +1,12 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Chess, type Square } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import { Chessboard, type Arrow } from 'react-chessboard'
 import type { Puzzle } from '../data/puzzles'
 
 type PuzzleTrainerProps = {
   puzzles: Puzzle[]
+  collectionName: string
+  collectionSlug: string
 }
 
 type Result = 'correct' | 'incorrect' | null
@@ -37,7 +39,23 @@ const DARK_SQUARE_STYLE = {
 const normalizeSan = (san: string) =>
   san.trim().replaceAll('0', 'O').replace(/[!?]+$/g, '')
 
-export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
+const createAnswerArrows = (fen: string, answers: string[]): Arrow[] =>
+  answers.flatMap((answer) => {
+    const game = new Chess(fen)
+
+    try {
+      const move = game.move(normalizeSan(answer))
+      return [{
+        startSquare: move.from,
+        endSquare: move.to,
+        color: 'rgba(217, 119, 6, 0.9)',
+      }]
+    } catch {
+      return []
+    }
+  })
+
+export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug }: PuzzleTrainerProps) {
   const [puzzleIndex, setPuzzleIndex] = useState(0)
   const [position, setPosition] = useState(puzzles[0].fen)
   const [attemptedMove, setAttemptedMove] = useState<string | null>(null)
@@ -53,9 +71,19 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
   const puzzleAttempts = attemptHistory[puzzle.id] ?? []
   const startingGame = new Chess(puzzle.fen)
   const sideToMove = startingGame.turn() === 'w' ? 'White' : 'Black'
+  const answerArrows = useMemo(
+    () => answerVisible ? createAnswerArrows(puzzle.fen, puzzle.answers) : [],
+    [answerVisible, puzzle.answers, puzzle.fen],
+  )
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const requestedPuzzle = Number(params.get('puzzle'))
+    if (Number.isInteger(requestedPuzzle) && requestedPuzzle >= 1 && requestedPuzzle <= puzzles.length) {
+      setPuzzleIndex(requestedPuzzle - 1)
+      setPosition(puzzles[requestedPuzzle - 1].fen)
+    }
+
     const studentId = params.get('student') ?? ''
     const practiceKey = params.get('key') ?? ''
     if (!studentId || !practiceKey) return
@@ -114,6 +142,12 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
     setSelectedSquare(null)
   }
 
+  const showAnswer = () => {
+    setPosition(puzzle.fen)
+    setSelectedSquare(null)
+    setAnswerVisible(true)
+  }
+
   const checkMove = (moveSan: string) => {
     const acceptedAnswers = new Set(puzzle.answers.map(normalizeSan))
     const isCorrect = acceptedAnswers.has(normalizeSan(moveSan))
@@ -128,7 +162,7 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
       ],
     }))
     setResult(nextResult)
-    setAnswerVisible(!isCorrect)
+    setAnswerVisible(false)
 
     if (sharedPractice) {
       setSaveStatus('saving')
@@ -200,32 +234,119 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
       }
     : {}
 
+  const collectionHref = sharedPractice
+    ? `/puzzles/${collectionSlug}?student=${encodeURIComponent(sharedPractice.studentId)}&key=${encodeURIComponent(sharedPractice.practiceKey)}`
+    : `/puzzles/${collectionSlug}`
+
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] lg:items-start">
-      <div className="w-full max-w-[560px] overflow-hidden rounded-2xl border border-stone-300 bg-white p-2 shadow-xl shadow-stone-900/10 sm:p-3">
-        <Chessboard
-          options={{
-            id: `puzzle-board-${puzzle.id}`,
-            position,
-            boardOrientation: 'white',
-            showNotation: true,
-            allowDragging: attemptedMove === null,
-            squareStyles,
-            lightSquareStyle: LIGHT_SQUARE_STYLE,
-            darkSquareStyle: DARK_SQUARE_STYLE,
-            lightSquareNotationStyle: { color: '#3f6651' },
-            darkSquareNotationStyle: { color: 'rgba(246, 246, 239, 0.88)' },
-            onPieceDrop: ({ sourceSquare, targetSquare }) =>
-              tryMove(sourceSquare, targetSquare),
-            onSquareClick: ({ square }) => handleSquareClick(square),
-          }}
-        />
+      <div className="relative w-full max-w-[560px] overflow-hidden rounded-2xl border border-stone-300 bg-white p-2 shadow-xl shadow-stone-900/10 sm:p-3">
+        <div className="overflow-hidden rounded-xl">
+          <Chessboard
+            options={{
+              id: `puzzle-board-${puzzle.id}`,
+              position,
+              boardOrientation: 'white',
+              showNotation: true,
+              allowDragging: attemptedMove === null,
+              allowDrawingArrows: false,
+              arrows: answerArrows,
+              clearArrowsOnClick: false,
+              clearArrowsOnPositionChange: false,
+              squareStyles,
+              lightSquareStyle: LIGHT_SQUARE_STYLE,
+              darkSquareStyle: DARK_SQUARE_STYLE,
+              lightSquareNotationStyle: { color: '#3f6651' },
+              darkSquareNotationStyle: { color: 'rgba(246, 246, 239, 0.88)' },
+              onPieceDrop: ({ sourceSquare, targetSquare }) =>
+                tryMove(sourceSquare, targetSquare),
+              onSquareClick: ({ square }) => handleSquareClick(square),
+            }}
+          />
+        </div>
+
+        {result ? (
+          <div
+            className={`absolute inset-x-5 bottom-5 rounded-2xl border p-4 shadow-2xl backdrop-blur-md sm:inset-x-8 sm:bottom-8 sm:p-5 ${
+              result === 'correct'
+                ? 'border-emerald-200/70 bg-emerald-950/94 text-white'
+                : 'border-rose-200/70 bg-rose-950/94 text-white'
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            {result === 'correct' ? (
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">Nice work</p>
+                  <p className="mt-1 text-2xl font-black sm:text-3xl">Correct!</p>
+                </div>
+                {puzzleIndex < puzzles.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => resetPuzzle(puzzleIndex + 1)}
+                    className="grid size-12 shrink-0 cursor-pointer place-items-center rounded-full bg-white text-emerald-950 shadow-lg transition hover:scale-105 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:size-14"
+                    aria-label="Next puzzle"
+                    title="Next puzzle"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6 fill-current sm:size-7">
+                      <path d="M8 5.4v13.2c0 .78.86 1.26 1.53.85l10.2-6.6a1 1 0 0 0 0-1.7l-10.2-6.6A1 1 0 0 0 8 5.4Z" />
+                    </svg>
+                  </button>
+                ) : (
+                  <p className="text-sm font-bold text-emerald-100">All puzzles complete.</p>
+                )}
+              </div>
+            ) : (
+              <div>
+                <p className="text-2xl font-black sm:text-3xl">Try again, fool!</p>
+                {answerVisible ? (
+                  <p className="mt-2 text-sm text-rose-100">
+                    Answer: <strong>{puzzle.answers.join(', ')}</strong>
+                  </p>
+                ) : null}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={showAnswer}
+                    disabled={answerVisible}
+                    className="cursor-pointer rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Show answer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => resetPuzzle()}
+                    className="cursor-pointer rounded-full bg-white px-4 py-2 text-sm font-bold text-rose-950 hover:bg-rose-50"
+                  >
+                    Try again
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => resetPuzzle(puzzleIndex + 1)}
+                    disabled={puzzleIndex === puzzles.length - 1}
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Advance
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-current">
+                      <path d="M8 5.4v13.2c0 .78.86 1.26 1.53.85l10.2-6.6a1 1 0 0 0 0-1.7l-10.2-6.6A1 1 0 0 0 8 5.4Z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-lg shadow-stone-900/5 sm:p-8">
-        <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-800">
-          Puzzle {puzzleIndex + 1} of {puzzles.length}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-black text-amber-800">
+          <a href={collectionHref} className="underline decoration-amber-300 underline-offset-4 hover:text-amber-700">
+            {collectionName}
+          </a>
+          <span aria-hidden="true">·</span>
+          <span className="uppercase tracking-[0.16em]">Puzzle {puzzleIndex + 1} of {puzzles.length}</span>
+        </div>
         <h2 className="mt-3 text-3xl font-black tracking-tight text-stone-950">
           {puzzle.title}
         </h2>
@@ -243,40 +364,34 @@ export default function PuzzleTrainer({ puzzles }: PuzzleTrainerProps) {
           </p>
         ) : null}
 
-        <div className="mt-6 min-h-20 rounded-2xl border border-stone-200 bg-stone-50 p-4" aria-live="polite">
-          {result === 'correct' ? (
-            <p className="font-bold text-emerald-800">Correct.</p>
-          ) : result === 'incorrect' ? (
-            <p className="font-bold text-rose-800">Try again, fool!</p>
-          ) : (
-            <p className="text-stone-600">Make one legal move on the board. It will be checked automatically.</p>
-          )}
-
-          {answerVisible ? (
-            <p className="mt-2 text-stone-800">
-              Book {puzzle.answers.length === 1 ? 'answer' : 'answers'}: <strong>{puzzle.answers.join(', ')}</strong>
+        {result === null && answerVisible ? (
+          <div className="mt-6 rounded-2xl border border-stone-200 bg-stone-50 p-4" aria-live="polite">
+            <p className="text-stone-800">
+              Answer: <strong>{puzzle.answers.join(', ')}</strong>
             </p>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setAnswerVisible(true)}
-            disabled={answerVisible}
-            className="cursor-pointer rounded-full border border-stone-300 bg-white px-5 py-2.5 text-sm font-bold text-stone-900 hover:border-stone-950 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Show answer
-          </button>
-          <button
-            type="button"
-            onClick={() => resetPuzzle()}
-            disabled={!attemptedMove && !answerVisible}
-            className="cursor-pointer rounded-full border border-stone-300 bg-white px-5 py-2.5 text-sm font-bold text-stone-900 hover:border-stone-950 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Try again
-          </button>
-        </div>
+        {result === null ? (
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={showAnswer}
+              disabled={answerVisible}
+              className="cursor-pointer rounded-full border border-stone-300 bg-white px-5 py-2.5 text-sm font-bold text-stone-900 hover:border-stone-950 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Show answer
+            </button>
+            <button
+              type="button"
+              onClick={() => resetPuzzle()}
+              disabled={!attemptedMove && !answerVisible}
+              className="cursor-pointer rounded-full border border-stone-300 bg-white px-5 py-2.5 text-sm font-bold text-stone-900 hover:border-stone-950 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Try again
+            </button>
+          </div>
+        ) : null}
 
         {puzzleAttempts.length > 0 ? (
           <section className="mt-7 border-t border-stone-200 pt-6" aria-labelledby="attempt-history-heading">
