@@ -1,10 +1,21 @@
-export type Puzzle = {
+type PuzzleBase = {
   id: string
   title: string
   fen: string
   answers: string[]
+}
+
+type MovePuzzle = PuzzleBase & {
+  type?: 'move'
   solutionLines?: string[][]
 }
+
+export type PlacementPuzzle = PuzzleBase & {
+  type: 'placement'
+  piece: 'wQ' | 'bQ'
+}
+
+export type Puzzle = MovePuzzle | PlacementPuzzle
 
 export const puzzles: Puzzle[] = [
   {
@@ -81,5 +92,101 @@ export const puzzles: Puzzle[] = [
     fen: '4r1k1/5ppp/2b5/8/p7/1B4P1/P5PP/5RK1 w - - 0 1',
     answers: ['Bxf7+'],
     solutionLines: [['Bxf7+', 'Rxf7', 'axb3']],
+  },
+  {
+    id: 'page-6-puzzle-01',
+    title: 'Page 6, Puzzle 01',
+    type: 'placement',
+    piece: 'wQ',
+    fen: '8/1k6/4r3/8/8/8/8/8 w - - 0 1',
+    answers: ['d7', 'f7'],
+  },
+  {
+    id: 'page-6-puzzle-02',
+    title: 'Page 6, Puzzle 02',
+    type: 'placement',
+    piece: 'wQ',
+    fen: '7k/8/8/4r3/8/8/8/8 w - - 0 1',
+    answers: ['b8', 'f6', 'h2'],
+  },
+  {
+    id: 'page-6-puzzle-03',
+    title: 'Page 6, Puzzle 03',
+    type: 'placement',
+    piece: 'wQ',
+    fen: '2n5/8/8/3k4/8/8/8/8 w - - 0 1',
+    answers: ['a8', 'b7', 'f5', 'g8'],
+  },
+  {
+    id: 'page-6-puzzle-04',
+    title: 'Page 6, Puzzle 04',
+    type: 'placement',
+    piece: 'bQ',
+    fen: '8/8/8/8/K2N4/8/8/8 b - - 0 1',
+    answers: ['a1', 'a7', 'c4'],
+  },
+  {
+    id: 'page-6-puzzle-05',
+    title: 'Page 6, Puzzle 05',
+    type: 'placement',
+    piece: 'bQ',
+    fen: '8/8/8/8/2K3B1/8/8/8 b - - 0 1',
+    answers: ['e4', 'f4', 'g8'],
+  },
+  {
+    id: 'page-6-puzzle-06',
+    title: 'Page 6, Puzzle 06',
+    type: 'placement',
+    piece: 'bQ',
+    fen: '8/8/8/6B1/8/8/3K4/8 b - - 0 1',
+    answers: ['a5', 'd5', 'g2'],
+  },
+  {
+    id: 'page-6-puzzle-07',
+    title: 'Page 6, Puzzle 07',
+    type: 'placement',
+    piece: 'wQ',
+    fen: '6k1/8/8/n7/8/8/8/8 w - - 0 1',
+    answers: ['a2', 'a8', 'd5', 'd8', 'g5'],
+  },
+  {
+    id: 'page-6-puzzle-08',
+    title: 'Page 6, Puzzle 08',
+    type: 'placement',
+    piece: 'bQ',
+    fen: '8/8/8/8/8/R7/8/6K1 b - - 0 1',
+    answers: ['c1', 'c5'],
+  },
+  {
+    id: 'page-6-puzzle-09',
+    title: 'Page 6, Puzzle 09',
+    type: 'placement',
+    piece: 'wQ',
+    fen: '8/8/8/5k2/8/8/1b6/8 w - - 0 1',
+    answers: ['b1', 'c2', 'f2'],
+  },
+  {
+    id: 'page-6-puzzle-10',
+    title: 'Page 6, Puzzle 10',
+    type: 'placement',
+    piece: 'wQ',
+    fen: '8/8/1k4b1/8/8/8/8/8 w - - 0 1',
+    answers: ['d6', 'e6', 'f6', 'g1'],
+  },
+  {
+    id: 'page-6-puzzle-11',
+    title: 'Page 6, Puzzle 11',
+    type: 'placement',
+    piece: 'wQ',
+    fen: '8/8/8/3k4/5n2/8/3b4/8 w - - 0 1',
+    answers: ['a2'],
+  },
+  {
+    id: 'page-6-puzzle-12',
+    title: 'Page 6, Puzzle 12',
+    type: 'placement',
+    piece: 'bQ',
+    fen: '8/2R5/5N2/8/3K4/8/8/8 b - - 0 1',
+    answers: ['b6', 'f4'],
   },
 ]
