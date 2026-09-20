@@ -49,6 +49,26 @@ const DARK_SQUARE_STYLE = {
 const normalizeSan = (san: string) =>
   san.trim().replaceAll('0', 'O').replace(/[!?]+$/g, '')
 
+const moveWithExpectedPromotion = (
+  game: Chess,
+  sourceSquare: string,
+  targetSquare: string,
+  expectedSans: string[],
+) => {
+  const acceptedMoves = new Set(expectedSans.map(normalizeSan))
+  const expectedMove = game.moves({ verbose: true }).find((candidate) =>
+    candidate.from === sourceSquare
+    && candidate.to === targetSquare
+    && acceptedMoves.has(normalizeSan(candidate.san)),
+  )
+
+  return game.move({
+    from: sourceSquare,
+    to: targetSquare,
+    promotion: expectedMove?.promotion ?? 'q',
+  })
+}
+
 const pieceNames = {
   wQ: 'white queen',
   bQ: 'black queen',
@@ -139,6 +159,7 @@ export default function PuzzleTrainer({
   const [selectedCompositionPiece, setSelectedCompositionPiece] = useState<PlaceablePiece | null>(null)
   const [compositionPlacements, setCompositionPlacements] = useState<Record<string, PlaceablePiece>>({})
   const [activeSolutionLine, setActiveSolutionLine] = useState<string[] | null>(null)
+  const [nextSolutionPly, setNextSolutionPly] = useState(0)
   const [opponentReply, setOpponentReply] = useState('')
   const [isResponding, setIsResponding] = useState(false)
   const [boardRevision, setBoardRevision] = useState(0)
@@ -267,6 +288,7 @@ export default function PuzzleTrainer({
     setSelectedCompositionPiece(null)
     setCompositionPlacements({})
     setActiveSolutionLine(null)
+    setNextSolutionPly(0)
     setOpponentReply('')
     setIsResponding(false)
     setBoardRevision((revision) => revision + 1)
@@ -299,6 +321,7 @@ export default function PuzzleTrainer({
         : {},
     )
     setActiveSolutionLine(null)
+    setNextSolutionPly(0)
     setOpponentReply('')
     setIsResponding(false)
     setAnswerVisible(true)
@@ -354,6 +377,24 @@ export default function PuzzleTrainer({
     checkMoveAttempt('No')
   }
 
+  const continueSolutionLine = (game: Chess, line: string[], replyPly: number) => {
+    const replySan = line[replyPly]
+    if (!replySan) return false
+
+    setPosition(game.fen())
+    setOpponentReply('')
+    setIsResponding(true)
+    replyTimerRef.current = window.setTimeout(() => {
+      const reply = game.move(replySan)
+      setPosition(game.fen())
+      setOpponentReply(reply.san)
+      setNextSolutionPly(replyPly + 1)
+      setIsResponding(false)
+      replyTimerRef.current = null
+    }, 450)
+    return true
+  }
+
   const tryMove = (sourceSquare: string, targetSquare: string | null) => {
     if (
       puzzle.type === 'placement'
@@ -367,20 +408,26 @@ export default function PuzzleTrainer({
       const game = new Chess(position)
 
       try {
-        const move = game.move({
-          from: sourceSquare,
-          to: targetSquare,
-          promotion: 'q',
-        })
+        const expectedMoves = activeSolutionLine
+          ? [activeSolutionLine[nextSolutionPly]].filter((move): move is string => Boolean(move))
+          : puzzle.solutionLines.map((line) => line[0])
+        if (expectedMoves.length === 0) return false
+        const move = moveWithExpectedPromotion(game, sourceSquare, targetSquare, expectedMoves)
 
         setSelectedSquare(null)
 
         if (activeSolutionLine) {
-          const isCorrect = normalizeSan(move.san) === normalizeSan(activeSolutionLine[2])
-          const attemptLabel = [...activeSolutionLine.slice(0, 2), move.san].join(' ')
-          setPosition(game.fen())
-          setAttemptedMove(attemptLabel)
-          recordAttempt(attemptLabel, isCorrect)
+          const isCorrect = normalizeSan(move.san) === normalizeSan(activeSolutionLine[nextSolutionPly])
+          const attemptLabel = [...activeSolutionLine.slice(0, nextSolutionPly), move.san].join(' ')
+
+          if (!isCorrect || nextSolutionPly === activeSolutionLine.length - 1) {
+            setPosition(game.fen())
+            setAttemptedMove(attemptLabel)
+            recordAttempt(attemptLabel, isCorrect)
+            return true
+          }
+
+          continueSolutionLine(game, activeSolutionLine, nextSolutionPly + 1)
           return true
         }
 
@@ -395,17 +442,9 @@ export default function PuzzleTrainer({
           return true
         }
 
-        setPosition(game.fen())
         setActiveSolutionLine(matchingLine)
-        setOpponentReply('')
-        setIsResponding(true)
-        replyTimerRef.current = window.setTimeout(() => {
-          const reply = game.move(matchingLine[1])
-          setPosition(game.fen())
-          setOpponentReply(reply.san)
-          setIsResponding(false)
-          replyTimerRef.current = null
-        }, 450)
+        setNextSolutionPly(2)
+        continueSolutionLine(game, matchingLine, 1)
         return true
       } catch {
         return false
@@ -441,11 +480,7 @@ export default function PuzzleTrainer({
     const game = new Chess(position)
 
     try {
-      const move = game.move({
-        from: sourceSquare,
-        to: targetSquare,
-        promotion: 'q',
-      })
+      const move = moveWithExpectedPromotion(game, sourceSquare, targetSquare, puzzle.answers)
 
       setPosition(game.fen())
       setAttemptedMove(move.san)
@@ -850,8 +885,10 @@ export default function PuzzleTrainer({
             {isResponding
               ? 'Opponent is replying…'
               : opponentReply
-                ? `${sideToMove === 'White' ? 'Black' : 'White'} replied ${opponentReply}. Find mate.`
-                : 'Find the first move. After the reply, finish the mate.'}
+                ? `${sideToMove === 'White' ? 'Black' : 'White'} replied ${opponentReply}. ${activeSolutionLine && nextSolutionPly === activeSolutionLine.length - 1 ? 'Finish the mate.' : 'Continue the combination.'}`
+                : puzzle.solutionLines?.some((line) => line.length > 3)
+                  ? 'Find the first move. Play the combination through to mate.'
+                  : 'Find the first move. After the reply, finish the mate.'}
           </p>
         ) : null}
 
