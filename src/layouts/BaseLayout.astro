@@ -22,13 +22,13 @@ const {
   </head>
 
   <body class="min-h-screen antialiased">
-    <header class="border-b border-stone-200 bg-white/85 backdrop-blur">
-      <div class="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <header class="border-b border-stone-200 bg-white/95 backdrop-blur">
+      <div class="mx-auto flex min-h-18 max-w-7xl items-center justify-between px-5 py-4 sm:px-6">
         <a href="/" class="text-xl font-black tracking-tight text-stone-950">
           ChessBadger
         </a>
 
-        <nav class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-stone-700 sm:justify-end">
+        <nav class="hidden items-center gap-6 text-sm font-semibold text-stone-700 sm:flex">
           <a class="hover:text-stone-950" href="/">Home</a>
           <a class="hover:text-stone-950" href="/articles">Articles</a>
           <a class="hover:text-stone-950" href="/games">Games</a>
@@ -36,6 +36,22 @@ const {
           <a class="hover:text-stone-950" href="/about">About</a>
           <a class="hover:text-stone-950" href="/admin">Admin</a>
         </nav>
+
+        <details class="relative sm:hidden">
+          <summary class="grid size-11 cursor-pointer list-none place-items-center rounded-lg border border-stone-300 bg-white text-stone-900 transition hover:border-stone-500 [&::-webkit-details-marker]:hidden" aria-label="Open navigation menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="size-6 fill-none stroke-current" stroke-width="2" stroke-linecap="round">
+              <path d="M4 7h16M4 12h16M4 17h16"></path>
+            </svg>
+          </summary>
+          <nav class="absolute right-0 z-30 mt-2 grid min-w-48 overflow-hidden rounded-xl border border-stone-200 bg-white py-2 text-sm font-semibold text-stone-800 shadow-xl shadow-stone-900/10">
+            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/">Home</a>
+            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/articles">Articles</a>
+            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/games">Games</a>
+            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/puzzles">Puzzles</a>
+            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/about">About</a>
+            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/admin">Admin</a>
+          </nav>
+        </details>
       </div>
     </header>
 

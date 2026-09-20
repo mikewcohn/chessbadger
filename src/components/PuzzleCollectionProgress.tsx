@@ -87,6 +87,7 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
 
   const availableCount = collection.sections.filter((section) => section.puzzles.length > 0).length
   const solvedCount = sectionProgress.reduce((total, progress) => total + progress.solved, 0)
+  const totalPuzzleCount = collection.puzzles.length
 
   const withPracticeParams = (href: string) => {
     if (!studentId || !practiceKey) return href
@@ -95,37 +96,37 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
   }
 
   return (
-    <div className="grid gap-7">
-      <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-lg shadow-stone-900/5 sm:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="grid gap-6">
+      <section className="border-y border-stone-200 bg-white px-1 py-5 sm:px-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-black text-amber-900">
+            <div className="min-h-6">
               {loading
-                ? 'Loading progress…'
+                ? <span className="block h-5 w-44 animate-pulse rounded bg-stone-200"><span className="sr-only">Loading progress</span></span>
                 : studentName
-                  ? `${studentName} · Shared with coach`
-                  : 'Choose a section to begin'}
-            </p>
-            {error ? <p className="mt-2 text-sm font-bold text-rose-800">{error}</p> : null}
+                  ? <p className="font-bold text-amber-900">{studentName} · Shared with coach</p>
+                  : <p className="font-bold text-amber-900">Choose a section to begin</p>}
+            </div>
+            {error ? <p className="mt-1 text-sm font-semibold text-rose-800">{error}</p> : null}
           </div>
-          <dl className="grid grid-cols-3 gap-5 sm:gap-10">
+          <dl className="grid grid-cols-3 gap-5 sm:gap-9">
             <div>
-              <dd className="text-3xl font-black text-stone-950">{collection.sections.length}</dd>
-              <dt className="text-sm font-bold text-stone-500">sections</dt>
+              <dd className="text-2xl font-bold text-stone-950">{availableCount}</dd>
+              <dt className="text-sm font-medium text-stone-500">sections</dt>
             </div>
             <div>
-              <dd className="text-3xl font-black text-stone-950">{availableCount}</dd>
-              <dt className="text-sm font-bold text-stone-500">available</dt>
+              <dd className="text-2xl font-bold text-stone-950">{totalPuzzleCount}</dd>
+              <dt className="text-sm font-medium text-stone-500">puzzles</dt>
             </div>
             <div>
-              <dd className="text-3xl font-black text-emerald-800">{solvedCount}</dd>
-              <dt className="text-sm font-bold text-stone-500">solved</dt>
+              <dd className="text-2xl font-bold text-emerald-800">{solvedCount}</dd>
+              <dt className="text-sm font-medium text-stone-500">solved</dt>
             </div>
           </dl>
         </div>
       </section>
 
-      <ol className="grid gap-4 md:grid-cols-2">
+      <ol className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm divide-y divide-stone-200">
         {sectionProgress.map(({ section, statuses, solved, continueIndex }, index) => {
           const isAvailable = section.puzzles.length > 0
           const sectionHref = `/puzzles/${collection.slug}/${section.slug}`
@@ -136,44 +137,40 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
           const attempted = statuses.filter((status) => status !== 'not-attempted').length
 
           return (
-            <li key={section.slug} className="flex">
-              <article className={`flex w-full flex-col rounded-3xl border p-6 shadow-sm sm:p-7 ${isAvailable ? 'border-stone-200 bg-white' : 'border-stone-200 bg-stone-50'}`}>
-                <div className="flex items-start gap-4">
-                  <span className={`grid size-10 shrink-0 place-items-center rounded-full text-sm font-black ${isAvailable ? 'bg-amber-100 text-amber-900' : 'bg-stone-200 text-stone-500'}`}>
+            <li key={section.slug}>
+              <article className={`relative grid gap-4 p-5 transition sm:p-6 lg:grid-cols-[3rem_minmax(0,1fr)_9rem_auto] lg:items-center ${isAvailable ? 'bg-white hover:bg-amber-50/40' : 'bg-stone-50/70'}`}>
+                {isAvailable ? (
+                  <a href={withPracticeParams(sectionHref)} className="absolute inset-0 z-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-800" aria-label={`View ${section.title}`} />
+                ) : null}
+                <div className="flex items-start gap-4 lg:contents">
+                  <span className={`grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold ${isAvailable ? 'bg-amber-100 text-amber-900' : 'bg-stone-200 text-stone-500'}`}>
                     {index + 1}
                   </span>
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-[0.13em] text-stone-500">{section.workbookPages}</p>
-                    <h2 className="mt-1 text-2xl font-black tracking-tight text-stone-950">{section.title}</h2>
-                  </div>
-                </div>
-                <p className="mt-4 text-stone-600">{section.description}</p>
-
-                <div className="mt-auto pt-6">
-                  {isAvailable ? (
-                    <>
-                      <div className="mb-4 flex items-center justify-between gap-4 text-sm font-bold text-stone-600">
-                        <span>{section.puzzles.length} puzzles</span>
-                        <span>{solved} solved</span>
-                      </div>
-                      <div className="mb-5 h-2 overflow-hidden rounded-full bg-stone-200" aria-label={`${solved} of ${section.puzzles.length} puzzles solved`}>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-[0.11em] text-stone-500">{section.workbookPages}</p>
+                    <h2 className={`mt-1 text-xl font-bold tracking-[-0.015em] ${isAvailable ? 'text-stone-950' : 'text-stone-600'}`}>{section.title}</h2>
+                    <p className="mt-1 text-sm leading-relaxed text-stone-600">{section.description}</p>
+                    {isAvailable ? (
+                      <div className="mt-3 h-1.5 max-w-xl overflow-hidden rounded-full bg-stone-200" aria-label={`${solved} of ${section.puzzles.length} puzzles solved`}>
                         <div className="h-full rounded-full bg-emerald-700" style={{ width: `${section.puzzles.length ? (solved / section.puzzles.length) * 100 : 0}%` }} />
                       </div>
-                      <div className="flex flex-wrap gap-3">
-                        <a href={withPracticeParams(sectionHref)} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-black text-stone-800 transition hover:border-stone-500 hover:bg-stone-50">
-                          View section
-                        </a>
-                        <a href={withPracticeParams(continueHref)} className="rounded-xl bg-amber-800 px-4 py-2.5 text-sm font-black text-white transition hover:bg-amber-700">
-                          {attempted === 0 ? 'Start' : solved === section.puzzles.length ? 'Review' : 'Continue'}
-                        </a>
-                      </div>
-                    </>
-                  ) : (
-                    <span className="inline-flex rounded-full bg-stone-200 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-stone-600">
-                      Coming soon
-                    </span>
-                  )}
+                    ) : null}
+                  </div>
                 </div>
+                {isAvailable ? (
+                  <div className="z-10 flex gap-5 text-sm text-stone-600 lg:block lg:text-right">
+                    <p><strong className="font-semibold text-stone-900">{section.puzzles.length}</strong> puzzles</p>
+                    <p className="lg:mt-1"><strong className="font-semibold text-emerald-800">{solved}</strong> solved</p>
+                  </div>
+                ) : (
+                  <span className="text-sm font-semibold text-stone-500 lg:text-right">Coming soon</span>
+                )}
+                {isAvailable ? (
+                  <a href={withPracticeParams(continueHref)} className="z-10 inline-flex w-fit items-center gap-2 rounded-lg bg-amber-800 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">
+                    {attempted === 0 ? 'Start' : solved === section.puzzles.length ? 'Review' : 'Continue'}
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M6 12h12m-5-5 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </a>
+                ) : <span aria-hidden="true" />}
               </article>
             </li>
           )

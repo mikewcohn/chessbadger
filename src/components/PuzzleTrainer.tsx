@@ -678,8 +678,8 @@ export default function PuzzleTrainer({
     : `/puzzles/${collectionSlug}/${sectionSlug}`
 
   return (
-    <div className="grid gap-8 md:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] md:items-start">
-      <div className="relative flex w-full max-w-[560px] flex-col rounded-2xl border border-stone-300 bg-white p-2 shadow-xl shadow-stone-900/10 sm:p-3">
+    <div className="grid gap-6 md:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] md:items-start lg:gap-8">
+      <div className="relative flex w-full max-w-[560px] flex-col rounded-2xl border border-stone-300 bg-white p-2 shadow-sm sm:p-3">
         <ChessboardProvider
           key={`${puzzle.id}-${boardRevision}`}
           options={{
@@ -796,8 +796,8 @@ export default function PuzzleTrainer({
             {result === 'correct' ? (
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">Nice work</p>
-                  <p className="mt-1 text-2xl font-black sm:text-3xl">Correct!</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Nice work</p>
+                  <p className="mt-1 text-2xl font-bold sm:text-3xl">Correct!</p>
                 </div>
                 {puzzleIndex < puzzles.length - 1 ? (
                   <button
@@ -817,7 +817,7 @@ export default function PuzzleTrainer({
               </div>
             ) : (
               <div>
-                <p className="text-2xl font-black sm:text-3xl">Try again, fool!</p>
+                <p className="text-2xl font-bold sm:text-3xl">Not quite—try again.</p>
                 {answerVisible ? (
                   <p className="mt-2 text-sm text-rose-100">
                     Answer: <strong>{formatAnswers(puzzle)}</strong>
@@ -857,8 +857,8 @@ export default function PuzzleTrainer({
         ) : null}
       </div>
 
-      <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-lg shadow-stone-900/5 sm:p-8">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-black text-amber-800">
+      <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-amber-800">
           <a href={collectionHref} className="underline decoration-amber-300 underline-offset-4 hover:text-amber-700">
             {collectionName}
           </a>
@@ -867,12 +867,12 @@ export default function PuzzleTrainer({
             {sectionName}
           </a>
           <span aria-hidden="true">·</span>
-          <span className="uppercase tracking-[0.16em]">Puzzle {puzzleIndex + 1} of {puzzles.length}</span>
+          <span className="text-xs font-bold uppercase tracking-[0.12em] text-stone-500">Puzzle {puzzleIndex + 1} of {puzzles.length}</span>
         </div>
-        <h2 className="mt-3 text-3xl font-black tracking-tight text-stone-950">
+        <h1 className="mt-3 text-2xl font-bold tracking-[-0.015em] text-stone-950 sm:text-3xl">
           {puzzle.title}
-        </h2>
-        <p className="mt-3 text-lg font-bold text-stone-700">
+        </h1>
+        <p className="mt-3 text-lg font-semibold text-stone-700">
           {puzzle.type === 'placement'
             ? puzzle.instruction ?? 'Place the piece on all squares that make a double attack.'
             : puzzle.type === 'composition'
@@ -919,7 +919,7 @@ export default function PuzzleTrainer({
                 type="button"
                 onClick={checkPlacements}
                 disabled={placedSquares.length === 0}
-                className="cursor-pointer rounded-full bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-lg bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Check answer
               </button>
@@ -929,7 +929,7 @@ export default function PuzzleTrainer({
                 type="button"
                 onClick={checkComposition}
                 disabled={Object.keys(compositionPlacements).length !== puzzle.placements.length}
-                className="cursor-pointer rounded-full bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="cursor-pointer rounded-lg bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Check answer
               </button>
@@ -938,7 +938,7 @@ export default function PuzzleTrainer({
               <button
                 type="button"
                 onClick={answerNoDefense}
-                className="cursor-pointer rounded-full bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800"
+                className="cursor-pointer rounded-lg bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800"
               >
                 No — mate cannot be prevented
               </button>
@@ -947,7 +947,7 @@ export default function PuzzleTrainer({
               type="button"
               onClick={showAnswer}
               disabled={answerVisible}
-              className="cursor-pointer rounded-full border border-stone-300 bg-white px-5 py-2.5 text-sm font-bold text-stone-900 hover:border-stone-950 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Show answer
             </button>
@@ -955,7 +955,7 @@ export default function PuzzleTrainer({
               type="button"
               onClick={() => resetPuzzle()}
               disabled={!attemptedMove && !answerVisible && placedSquares.length === 0 && Object.keys(compositionPlacements).length === 0}
-              className="cursor-pointer rounded-full border border-stone-300 bg-white px-5 py-2.5 text-sm font-bold text-stone-900 hover:border-stone-950 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-bold text-stone-900 hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Try again
             </button>
@@ -964,7 +964,7 @@ export default function PuzzleTrainer({
 
         {puzzleAttempts.length > 0 ? (
           <section className="mt-7 border-t border-stone-200 pt-6" aria-labelledby="attempt-history-heading">
-            <h3 id="attempt-history-heading" className="text-lg font-black text-stone-950">
+            <h3 id="attempt-history-heading" className="text-lg font-bold text-stone-950">
               Attempt history
             </h3>
             <ol className="mt-3 grid gap-2">
@@ -977,7 +977,7 @@ export default function PuzzleTrainer({
                     {index + 1}. {attempt.move}
                   </span>
                   <span className={attempt.result === 'correct' ? 'font-bold text-emerald-800' : 'font-bold text-rose-800'}>
-                    {attempt.result === 'correct' ? 'Correct' : 'Try again, fool!'}
+                    {attempt.result === 'correct' ? 'Correct' : 'Not quite'}
                   </span>
                 </li>
               ))}
@@ -990,17 +990,19 @@ export default function PuzzleTrainer({
             type="button"
             onClick={() => resetPuzzle(puzzleIndex - 1)}
             disabled={puzzleIndex === 0}
-            className="cursor-pointer text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
+            className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
           >
-            ← Previous puzzle
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M18 12H6m5 5-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            Previous puzzle
           </button>
           <button
             type="button"
             onClick={() => resetPuzzle(puzzleIndex + 1)}
             disabled={puzzleIndex === puzzles.length - 1}
-            className="cursor-pointer text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
+            className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
           >
-            Next puzzle →
+            Next puzzle
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M6 12h12m-5-5 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
         </div>
       </div>

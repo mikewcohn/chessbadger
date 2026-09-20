@@ -61,22 +61,6 @@ a:not([class]) {
   text-decoration: none;
 }
 
-nav {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-nav a {
-  color: var(--text);
-  text-decoration: none;
-  font-weight: 700;
-}
-
-nav a:hover {
-  color: var(--accent);
-}
-
 .hero {
   padding: 5rem 0 4rem;
 }
@@ -98,17 +82,10 @@ nav a:hover {
   margin: 0 0 0.75rem;
 }
 
-h1 {
-  font-size: clamp(2.5rem, 7vw, 5rem);
-  line-height: 0.95;
-  letter-spacing: -0.05em;
+h1,
+h2,
+h3 {
   margin: 0;
-}
-
-h2 {
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-  line-height: 1.1;
-  letter-spacing: -0.03em;
 }
 
 .lede {
