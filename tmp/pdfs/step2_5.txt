@@ -1,0 +1,4299 @@
+Step 2
+3 Test / Mix (1st step): A
+ 1)	 1.
+	
+Qd5-a8#
+ 2)	 1.
+	
+Ne6-c7#
+ 3)	 1.
+	
+...
+	
+Be2
+	
+f3#
+ 4)	 1.
+	
+...
+	
+b7-b6
+ 5)	 1.
+	
+...
+	
+Rf8-f7
+ 6)	 1.
+	
+Bg2-f1
+ 7)	 1.
+	
+Be3-g1
+	
+(1.
+	
+Be3xc1
+	
+Rc8xc1#)
+ 8)	 1.
+	
+…
+	
+Kg8-h8
+	
+(1.
+	
+…
+	
+Kg8-g7?
+	
+2.
+	
+Qe6-f6#)
+ 9)	 1.
+	
+Kf1-g1
+	
+(1.
+	
+Kf1-e1?
+	
+Bf6-c3#)
+10)	 1.
+	
+Bg3xc7
+	
+or
+	
+1.
+	
+Nd5xc7
+11)	 1.
+	
+...
+	
+Nf6xe4
+	
+or
+	
+1.
+	
+...
+	
+Bb7xe4
+12)	 1.
+	
+Bb3xf7+;
+	
+1.
+	
+Rf1xf7?
+	
+a4xb3
+4 Test / Mix (1st step): B
+ 1)	 1.
+	
+...
+	
+Bc5xf2+
+ 2)	 Drawing
+ 3)	 Drawing
+ 4)	 1.
+	
+Bb2-g7#
+ 5)	 1.
+	
+...
+	
+Qh4-e1#
+ 6)	 1.
+	
+...
+	
+Qd4xb2#
+ 7)	 1.
+	
+...
+	
+Rh6-a6
+ 8)	 1.
+	
+...
+	
+Ne5-c6
+ 9)	 1.
+	
+Rc1xc2
+10)	 1.
+	
+Ne4-f6#
+11)	 1.
+	
+...
+	
+Rh3-f3#
+12)	 1.
+	
+...
+	
+Bf8xb4
+6 Double attack / Setting up a double attack: A
+ 1)	 Dd7,
+	
+Df7
+	 Wrong:
+	
+Db3
+	
+Re6-b6,
+	
+Dd5
+	
+Re6-c6
+ 2)	 Db8,
+	
+Df6,
+	
+Dh2
+ 3)	 Da8,
+	
+Db7,
+	
+Df5,
+	
+Dg8
+	 Wrong:
+	
+Dd8/Dd7
+	
+Nc8-d6
+ 4)	 Va1,
+	
+Va7,
+	
+Vc4
+	 Wrong:
+	
+Dd1
+	
+Nd4-b3,
+	
+Dd7
+	
+Nd4-b5
+ 5)	 Ve4,
+	
+Vf4,
+	
+Vg8
+ 6)	 Va5,
+	
+Vd5,
+	
+Vg2
+ 7)	 Da2,
+	
+Da8,
+	
+Dd5,
+	
+Dd8,
+	
+Dg5
+ 8)	 Vc1,
+	
+Vc5
+ 9)	 Db1,
+	
+Dc2,
+	
+Df2
+	 Wrong:
+	
+Db5
+	
+Bb2-e5
+10)	 Dd6,
+	
+De6,
+	
+Df6,
+	
+Dg1
+11)	 Da2
+	 Wrong:
+	
+Df5
+	
+Nf4
+	
+is
+	
+protected
+12)	 b6,f4
+	 Wrong:
+	
+Vd8/Vd6
+	
+Nf6-d5,
+	
+Vh4
+	
+Nf6-e4
+7 Double attack / Queen: A
+ 1)	 1.
+	
+Qe7-e1+
+ 2)	 1.
+	
+Qc2-c6+
+ 3)	 1.
+	
+Qg7-b2+
+ 4)	 1.
+	
+Qg4-d4+
+ 5)	 1.
+	
+Qc2-c7+
+ 6)	 1.
+	
+Qe2-b5+
+ 7)	 1.
+	
+Qd2-h6+
+ 8)	 1.
+	
+Qf3-d5+
+ 9)	 1.
+	
+Qe1xb4+
+10)	 1.
+	
+Qf1-c4+
+11)	 1.
+	
+Qd1-d6+
+12)	 1.
+	
+...
+	
+Qf6-c6+
+8 Double attack / Queen: B
+ 1)	 1.
+	
+Qc2-c7
+ 2)	 1.
+	
+Qe2-b5
+ 3)	 1.
+	
+Qd1-d6
+ 4)	 1.
+	
+Qf3xb7
+ 5)	 Drawing
+ 6)	 1.
+	
+Qf3-d3
+ 7)	 1.
+	
+…
+	
+Qd8-e7
+ 8)	 1.
+	
+Qd2-f2
+ 9)	 1.
+	
+Qd6-d1
+10)	 1.
+	
+Qd4-h8
+11)	 1.
+	
+…
+	
+Qd1-h5
+12)	 1.
+	
+Qf2xh4
+10 Double attack / Queen: C
+ 1)	 1.
+	
+Qf1-c4
+ 2)	 1.
+	
+Qe2-e5
+	
+ 3)	
+1.
+	
+Qd1-d6
+	
+(1.
+	
+Qd1
+-
+h5
+	
+and
+	
+1.
+	
+Qd1-d5
+	
+only
+	
+win
+	
+a
+	
+pawn.)
+ 4)	 1.
+	
+Qa2-f2
+ 5)	 1.
+	
+…
+	
+Qb5-g5
+ 6)	 1.
+	
+…
+	
+Qa5-c3
+ 7)	 1.
+	
+…
+	
+Qd7-b5
+ 8)	 1.
+	
+Qd2-g5
+ 9)	 1.
+	
+...
+	
+Qf7-b7
+10)	 1.
+	
+Qb2-c3
+11)	 1.
+	
+...
+	
+Qd8-h4
+12)	 1.
+	
+Qd4-f2
+11 Double attack / Setting up a double attack: B
+ 1)	 Dd5
+ 2)	 Dc1
+ 3)	 Dd5
+ 4)	 Vb5
+ 5)	 Vh7
+ 6)	 Vf2
+ 7)	 Da4
+ 8)	 Ve4
+ 9)	 Dd8
+10)	 Df5
+11)	 Vf6
+12)	 Vf4
+
+---PAGE---
+12 Double attack / Queen: D
+ 1)	 1.
+	
+...
+	
+Qe7xc5+
+ 2)	 1.
+	
+Qf3-f8+
+ 3)	 1.
+	
+Qd1-h5+
+ 4)	 1.
+	
+Qd7-h3+
+ 5)	 1.
+	
+Qc4-a4
+ 6)	 1.
+	
+…
+	
+Qe3-e2
+ 7)	 1.
+	
+...
+	
+Qe8-c6
+ 8)	 1.
+	
+Qf2-a7
+ 9)	 1.
+	
+Qe2-e4
+10)	 1.
+	
+Qa8-a7
+	
+(1.
+	
+Qa8
+-
+f3
+	
+Nf2xh1)
+11)	 1.
+	
+...
+	
+Qf6-c6
+12)	 Drawing
+13 Double attack / Queen: E
+ 1)	 1.
+	
+...
+	
+Qe7-b4+
+ 2)	 1.
+	
+Qd2-h6
+	
+ 3)	
+1.
+	
+Qc4-d4
+ 4)	 1.
+	
+Qd1-a4+
+ 5)	 1.
+	
+Qd1-b3+
+ 6)	 1.
+	
+Qd1-a4
+ 7)	 1.
+	
+Qe2-d1+
+ 8)	 1.
+	
+...
+	
+Qa2-d5
+ 9)	 1.
+	
+...
+	
+Qd7-e7
+10)	 1.
+	
+...
+	
+Qb8-g3
+11)	 1.
+	
+...
+	
+Qd7-g4
+12)	 1.
+	
+Qe2-e5+
+14 Double attack / Queen: F
+ 1)	 1.
+	
+Qf3-f6
+ 2)	 1.
+	
+...
+	
+Qc7xc2
+ 3)	 1.
+	
+...
+	
+Qf7-a7+
+ 4)	 1.
+	
+Qg7-b2
+ 5)	 1.
+	
+Qc1-h1
+ 6)	 1.
+	
+Qd2-b4
+ 7)	 1.
+	
+Qf2-c2+
+ 8)	 1.
+	
+...
+	
+Qf7-a2
+ 9)	 1.
+	
+...
+	
+Qe6-c4
+10)	 1.
+	
+...
+	
+Qe8-d8
+11)	 1.
+	
+...
+	
+Qd8-b6
+12)	 1.
+	
+Qe3-c5
+	
+(1.
+	
+Qe3xa7
+	
+only
+	
+wins
+	
+a
+	
+pawn.)
+16 The pin / Pin: A
+ 1)	 1.
+	
+...
+	
+Be8-b5
+ 2)	 1.
+	
+Ra1-a5
+ 3)	 1.
+	
+...
+	
+Qh8-h6
+ 4)	 1.
+	
+Bd6-c5
+ 5)	 1.
+	
+Ra4-d4
+ 6)	 1.
+	
+...
+	
+Qd6-c5
+	
+(c6,
+	
+c7)
+ 7)	 1.
+	
+Bf2-h4
+ 8)	 1.
+	
+...
+	
+Rh4-c4
+ 9)	 1.
+	
+Bc2-e4
+10)	 1.
+	
+Bf1-b5
+11)	 1.
+	
+...
+	
+Bg7-e5	
+12)	 	 Drawing
+17 The pin / Setting up a pin: A
+ 1)	Ta8
+ 2)	 Le5
+ 3)	 Te6
+ 4)	 Wh2
+ 5)	 Xc5
+	
+of
+	
+Xd4
+ 6)	 Va8
+ 7)	 Lh1
+ 8)	 Da3
+ 9)	 Tc4
+10)	 Da4
+11)	 Xg5
+12)	 Ta4
+18 The pin / Pin: B
+ 1)	 1.
+	
+Qe2-e4
+ 2)	 1.
+	
+...
+	
+Rf8-c8
+ 3)	 1.
+	
+...
+	
+Qd6-c5
+ 4)	 1.
+	
+Rc5-c7
+ 5)	 1.
+	
+Bc1-b2
+ 6)	 1.
+	
+Bd3-b5
+ 7)	 Drawing
+ 8)	 Drawing
+ 9)	 1.
+	
+Be2-f3
+10)	 Drawing
+11)	 Drawing
+12)	 1.
+	
+...
+	
+Rf8-e8
+19 The pin / Pin: C
+ 1)	 1.
+	
+Ra1-d1
+ 2)	 1.
+	
+...
+	
+Be7-b4
+ 3)	 1.
+	
+Rf1-e1
+ 4)	 1.
+	
+...
+	
+Ba4-c6
+ 5)	 1.
+	
+...
+	
+Qd4-d6
+ 6)	 1.
+	
+...
+	
+Be7-c5
+ 7)	 1.
+	
+Qe1-b4
+ 8)	 1.
+	
+Bh3-f1
+ 9)	 1.
+	
+...
+	
+Qf8-a8
+10)	 1.
+	
+Qe1-b1
+11)	 1.
+	
+Qc2-d1!
+	
+(1.
+	
+Qc2-d2?
+	
+Bd4xf2+)
+12)	 1.
+	
+Bg2-f1
+21 Elimination of the defence  / Capturing + material: A
+ 1)	 1.
+	
+Bb2xf6+
+	
+Ke7xf6
+	
+2.
+	
+Rd1xd5
+ 2)	 1.
+	
+...
+	
+Nb6xc4+
+	
+2.
+	
+b3xc4
+	
+Re8xe2+
+ 3)	 1.
+	
+Bd3xg6+
+	
+Kf7xg6
+	
+2.
+	
+Nf3xe5+
+ 4)	 1.
+	
+...
+	
+Ra2xg2
+	
+2.
+	
+Kh1xg2
+	
+Kh7xg7
+ 5)	 1.
+	
+Rh1xh7
+	
+Kg8xh7
+	
+2.
+	
+Kf3xe4
+ 6)	 1.
+	
+Be3xb6
+	
+a7xb6
+	
+2.
+	
+Rd1xd7
+ 7)	 1.
+	
+Re8xd8
+	
+Bf6xd8
+	
+2.
+	
+Bb3xd5
+ 8)	 1.
+	
+Nd3xc5
+	
+b6xc5
+	
+2.
+	
+Ba4xd7;
+	
+1.
+	
+…
+	
+Bd7xa4
+	
+2.
+	
+Nc5xa4
+ 9)	 1.
+	
+...
+	
+Qg6xc2
+	
+2.
+	
+Rc1xc2
+	
+Bd7xa4
+10)	 1.
+	
+Ng4xf6
+	
+Rf8xf6
+	
+2.
+	
+Re3xc3
+	
+1
+1)	 1.
+	
+...
+	
+Ra2xe2
+	
+2.
+	
+Re1xe2
+	
+Be6xc4
+12)	 1.
+	
+Rc1xc7
+	
+Na6xc7
+	
+2.
+	
+Re1xe7
+
+---PAGE---
+22 Elimination of the defence  / Chasing away + material: A
+ 1)	 1.
+	
+...
+	
+b5-b4
+ 2)	 1.
+	
+...
+	
+g5-g4
+ 3)	 1.
+	
+c2-c4
+ 4)	 1.
+	
+Bf2-c5
+ 5)	 1.
+	
+Rd2-f2+
+ 6)	 1.
+	
+...
+	
+Rh8-h4+
+ 7)	 Drawing
+ 8)	 Drawing
+ 9)	 1.
+	
+...
+	
+Bf8-h6;
+	
+1.
+	
+…
+	
+Bf8-a3?
+	
+2.
+	
+Ra1.
+10)	 1.
+	
+Bg6-d3;
+	
+1.
+	
+Bg6
+-
+h5?
+	
+Re2-e5.
+11)	 1.
+	
+...
+	
+Nc6-a5;
+	
+1.
+	
+…
+	
+Nc6-e5?
+	
+12)	
+1.
+	
+...
+	
+Ra8-d8
+23 Elimination of the defence  / Capturing + material: B
+ 1)	 1.
+	
+Bb3xd5+
+ 2)	 1.
+	
+Rg1xg6
+ 3)	 1.
+	
+Ra7xf7+
+ 4)	 1.
+	
+...
+	
+Bc5xd4
+ 5)	 1.
+	
+...
+	
+Qg7xg2+
+ 6)	 1.
+	
+Rh6xc6+
+ 7)	 1.
+	
+Nc7xe8
+ 8)	 1.
+	
+Re1xe6
+ 9)	 1.
+	
+Nf5xh6+
+10)	 1.
+	
+...
+	
+Qc5xe3+
+11)	 1.
+	
+e6xf7+
+12)	 1.
+	
+Re6xf6
+24 Elimination of the defence  / Luring away + material: B
+ 1)	 1.
+	
+b5-b6
+ 2)	 1.
+	
+Re2-e5+
+ 3)	 1.
+	
+Nc3-d5
+ 4)	 1.
+	
+f5-f6+
+ 5)	 1.
+	
+...
+	
+Ba5-d2+
+ 6)	 1.
+	
+...
+	
+d5-d4
+ 7)	 1.
+	
+Bf2xc5
+	
+d6xc5
+	
+2.
+	
+Re1xe5
+ 8)	 1.
+	
+…
+	
+Rf8xf2
+	
+2.
+	
+Be3xf2
+	
+Kg6xg5
+ 9)	 1.
+	
+…
+	
+Rd2xd1
+	
+2.
+	
+Qf1xd1
+	
+Qe3xf2
+10)	 1.
+	
+...
+	
+b7-b5
+	
+2.
+	
+Qc4xb5
+	
+Re8xe4
+11)	 1.
+	
+...
+	
+Ra8-a1+
+	
+2.
+	
+Bd4xa1
+	
+Qc7xc5;
+	
+2.
+	
+Bd4-g1
+	
+Qc7xc5;
+	
+1.
+	
+…
+	
+Qc7xc5?
+	
+2.
+	
+Bd4xc5
+	
+Ra8-a1+
+	
+3.
+	
+Bc5-g1
+12)	 1.
+	
+Nf3-g5+
+	
+Bd8xg5
+	
+(otherwise
+	
+2.
+	
+Ng5xe6)
+	
+2.
+	
+Rc1xc7+
+26 Opening / Golden rules: A
+ 1)	 Bf1-c4:
+ The
+	
+bishop
+	
+controls
+	
+the
+	
+centre
+	
+and
+	
+has
+	
+some
+	
+control
+	
+over
+	
+the
+	
+opponents
+	
+side
+	
+of
+	
+the
+	
+board.
+Bf1-d3:
+	
+	 The
+	
+bishop
+	
+blocks
+	
+the
+	
+d2
+	
+pawn,
+	
+which
+	
+blocks
+	
+the
+	
+bishop
+	
+on
+	
+c1.
+	
+Nb1-a3:
+	
+	 On
+	
+a3
+	
+the
+	
+knight
+	
+has
+	
+less
+	
+mobility
+	
+and
+	
+no
+	
+control
+	
+of
+	
+the
+	
+centre.
+ 2)	 Bf1-c4
+ The
+	
+bishop
+	
+controls
+	
+the
+	
+centre
+	
+and
+	
+has
+	
+some
+	
+influence
+	
+over
+	
+the
+	
+opponents
+	
+side
+	
+of
+	
+the
+	
+board.
+Bf1-b5+	 Giving
+	
+check
+	
+is
+	
+not
+	
+correct
+	
+in
+	
+this
+	
+position.
+	
+Black
+	
+can
+	
+play
+	
+1.
+	
+…
+	
+c7-c6
+	
+and
+	
+the
+	
+bishop
+	
+must
+	
+move
+	
+again.
+Bf1-e2	 Too
+	
+modest.
+	The
+	
+move
+	
+of
+	
+the
+	
+bishop
+	
+makes
+	
+castling
+	
+possible
+	
+but
+	
+the
+	
+bishop
+	
+does
+	
+not
+	
+control
+	
+the
+	
+centre.
+ 3)	 Nb8-c6
+ The
+	
+best
+	
+way
+	
+to
+	
+protect
+	
+the
+	
+pawn
+	
+on
+	
+e5.
+f7-f6	 The
+	
+pawn
+	
+on
+	
+f6
+	
+is
+	
+in
+	
+the
+	
+way
+	
+of
+	
+the
+	
+knight
+	
+on
+	
+g8.
+	
+Moving
+	
+this
+	
+pawn
+	
+can
+	
+expose
+	
+the
+	
+uncastled
+	
+Black
+	
+king
+	
+to
+	
+an
+	
+attack.
+	
+It
+	
+is
+	
+too
+	
+early
+	
+to
+	
+explain
+	
+the
+	
+consequences
+	
+of
+	
+2.
+	
+Nf3xe5.
+	
+Qd8-e7	
+The
+	
+queen
+	
+protects
+	
+the
+	
+pawn
+	
+on
+	
+e5
+	
+but
+	
+prevents
+	
+the	
+bishop
+	
+on
+	
+f8
+	
+from
+	
+coming
+	
+out.
+ 4)	 Nb8-c6
+ A	
+developing
+	
+move
+	
+attacking
+	
+the
+	
+queen.
+	White	
+must
+	
+lose
+	
+time
+	
+now
+	
+because
+	
+the
+	
+queen
+	
+has
+	
+to
+	
+move
+	
+again.
+c7-c5	 The
+	
+pawn
+	
+attacks
+	
+the
+	
+queen,
+	
+but
+	
+on
+	
+c5
+	
+the
+	
+pawn
+	
+is
+	a
+	
+bit
+	
+in
+	
+the
+	
+way
+	
+of
+	
+the
+	
+bishop
+	
+on
+	
+f8.
+d7-d6	 Not
+	
+a
+	
+bad
+	
+move,
+	
+but
+	
+not
+	
+the
+	
+best.
+	White
+	
+plays
+	
+2.
+	
+Ng1-f3
+	
+and
+	
+on
+	
+2.
+	
+…
+	
+Nb8-c6
+	White
+	
+can
+	
+play
+	
+3.
+	
+Bf1-b5
+	
+and
+	
+keep
+	
+the
+	
+queen
+	
+on
+	
+d4.
+ 5)	 Ng1-f3
+ The
+	
+best
+	
+square
+	
+for
+	
+the
+	
+knight.
+	White
+	
+can
+	
+castle
+	
+next
+	
+move.
+	 Qd1-f3	 Only
+	
+if
+	
+Black
+	
+is
+	
+not
+	
+careful,
+	
+is
+	
+this
+	
+a
+	
+good
+	
+move,
+	
+but
+	
+after
+	
+1.
+	
+…
+	
+Ng8-f6
+	
+Black
+	
+has
+	
+parried
+	
+the
+	
+mating
+	
+threat.
+	The
+	
+queen
+	
+on
+	
+f3
+	
+is
+	
+in
+	
+the
+	
+way
+	
+of
+	
+the
+	
+knight
+	
+on
+	
+g1.
+	 Qd1-h5	 Black
+	
+plays
+	
+1.
+	
+…
+	
+Qd8-e7
+	
+and
+	
+on
+	
+the
+	
+next
+	
+move
+	
+chases
+	
+away
+	
+the
+	
+queen
+	
+with
+	
+2.
+	
+…
+	
+Ng8-f6
+	
+costing
+	White
+	
+time.
+ 6)	 0-0
+ Black
+	
+protects
+	
+f7
+	
+with
+	
+a
+	
+developing
+	
+move.
+Qd8-e7	 The
+	
+queen
+	
+does
+	
+not
+	
+really
+	
+protect
+	
+f7.
+	
+She
+	
+is
+	
+too
+	
+valuable.
+	
+Rh8-f8	
+Not
+	
+a
+	
+proper
+	
+protecting
+	
+move.
+	
+Black
+	
+cannot
+	
+castle
+	kingside
+	
+any
+	
+longer.
+ 7)	 0-0
+ The
+	
+king
+	
+is
+	
+safe.
+	
+Excellent
+	
+move.
+Bg5-e3	 The
+	
+bishop
+	
+is
+	
+well
+	
+placed
+	
+on
+	
+g5.
+	There
+	
+is
+	
+no
+	
+reason	
+to
+	
+move
+	
+the
+	
+same
+	
+piece
+	
+twice
+	
+in
+	
+the
+	
+opening
+	
+unless
+	
+it
+	
+is
+	
+under
+	
+attack.
+Bg5xf6	 An
+	
+unnecessary
+	
+exchange.
+	
+Do
+	
+not
+	
+exchange
+	
+if
+	
+not
+	necessary
+.
+ 8)	 Ng8-f6
+ The
+	
+right
+	
+move.
+	
+Here
+	
+the
+	
+knight
+	
+controls
+	
+two
+	
+centre
+	
+squares.
+Ng8-e7	 The
+	
+knight
+	
+on
+	
+e7
+	
+has
+	
+less
+	
+mobility
+	
+than
+	
+on
+	
+f6.
+	
+From	
+there
+	
+it
+	
+con
+	trols
+	
+two
+	
+squares
+	
+in
+	
+the
+	
+centre.
+Bc8-d7	 A 	
+developing
+	
+move,
+	
+but
+	
+the
+	
+bishop
+	
+is
+	
+not
+	
+so
+	
+active
+	on
+	
+d7.
+ 9)	 0-0	 White
+	
+correctly
+	
+applies
+	
+the
+	
+third
+	
+golden
+	
+rule
+	
+–	
+king
+	
+safety.
+f3xe5	 The
+	
+pawn
+	
+on
+	
+e5
+	
+cannot
+	
+be
+	
+taken
+	
+so
+	
+easily.
+	
+Black
+	
+wins
+	
+the
+	
+knight
+	
+by
+	
+the
+	
+double
+	
+attack:
+	
+1.
+	
+…
+	
+Qd8-a5+.
+ Nf3-g5	
+A	
+premature
+	
+attack
+	
+on
+	
+f7.
+	
+Black
+	
+plays
+	
+1.
+	
+…
+	 d7-d5.
+10)	 Ng1-f3
+ The
+		
+move
+	
+of
+	
+the
+	
+knight
+	
+enables
+	
+castling.
+	
+On
+	
+f3
+	
+the
+	
+knight
+	
+attacks
+	
+e5
+	
+and
+	
+he
+	
+controls
+	
+two
+	
+centre
+	
+squares.
+Bf1-b5	 This
+	
+is
+	
+a
+	
+good
+	
+move
+	
+when
+	
+there
+	
+is
+	
+a
+	
+knight
+	
+on
+	
+c6.
+	The
+	
+bishop
+	
+can
+	
+be
+	
+chased
+	
+away
+	
+by
+	
+a
+	
+pawn.
+d2-d3	 Not
+	
+a
+	
+bad
+	
+move
+	
+but
+	
+the
+	
+bishop
+	
+on
+	
+f1
+	
+cannot
+	
+be
+	
+developed
+	
+to
+	
+an
+	
+active
+	
+square
+	
+anymore.
+11)	 e2-e3
+ White
+	
+must
+	
+parry
+	
+the
+	
+threat
+	
+Qh4xf2#.
+	This
+	
+is
+	
+the
+	
+only
+	
+way.
+d2-d4	 Defends
+	
+against
+	
+the
+	
+mate
+	
+on
+	
+f2,
+	
+but
+	
+after
+	
+1.
+	
+…
+	
+Bc5xd4
+	White
+	
+just
+	
+loses
+	
+a
+	
+pawn
+	
+and
+	
+there
+	
+is
+	
+the
+	
+same
+	
+mating
+	
+threat.
+
+---PAGE---
+Ng1-f3	 Sometimes 	developing	is	not	right.	Black	gives	mate	on	f2.
+12)	 Qd1-d5
+ Now
+	
+and
+	
+then a
+	
+quick
+	
+attack
+	
+on
+	
+f7
+	
+is
+	
+correct.
+	
+Black
+	
+can
+	
+protect
+	
+f7
+	
+only
+	
+by
+	
+1.
+	
+…	
+Ng8-h6,
+	
+but
+	
+with
+	
+‘capturing
+	
++
+	
+material’	
+(2.
+	
+Bc1xh6).
+	White
+	
+wins
+	
+material.
+Nb1-c3	 Good
+	
+move
+	
+but
+	
+not
+	
+the
+	
+best.
+	There
+	
+are
+	
+always
+	
+exceptions
+	
+to
+	
+the
+	
+rules.
+0-0	 Good
+	
+move
+	
+but
+	
+not
+	
+the
+	
+best.
+27 Test / Repetition: A
+ 1)	 1.
+	
+...
+	
+Ra8-d8
+ 2)	 Ra8
+ 3)	 1.
+	
+Qe2-e4
+ 4)	 1.
+	
+...
+	
+Qg6xc2
+ 5)	 1.
+	
+...
+	
+Rf8-c8
+ 6)	 Qa2
+ 7)	 Drawing
+ 8)	 1.
+	
+Rh1xh7
+ 9)	 1.
+	
+...
+	
+Rf8-e8
+10)	 Qf4
+11)	 1.
+	
+Qe2-e5
+12)	 1.
+	
+Bd3-b5
+28 Test / Mix: C
+ 1)	 1.
+	
+Bf1-b5
+	
+(pin)
+ 2)	 1.
+	
+...
+	
+Bf8-h6
+	
+(pin)
+ 3)	 1.
+	
+Rf1-e1
+	
+(pin)
+ 4)	 1.
+	
+Re1xe5
+	
+(capturing
+	
++
+	
+material)
+ 5)	 1.
+	
+Ng3xe4
+	
+(capturing
+	
++
+	
+material)
+ 6)	 1.
+	
+...
+	
+Rf8xf3
+	
+(capturing
+	
++
+	
+material)
+ 7)	 1.
+	
+Qe7-e3+
+	
+(double
+	
+attack:
+	
+queen)
+ 8)	 1.
+	
+...
+	
+Qg6-c2+
+	
+(double
+	
+attack:
+	
+queen)
+ 9)	 1.
+	
+...
+	
+Qd7-b7
+	
+(double
+	
+attack:
+	
+queen)
+10)	 1.
+	
+...
+	
+Ra1xe1
+	
+(luring
+	
+away
+	
++
+	
+material)
+11)	 1.
+	
+Be3-h6+
+	
+(luring
+	
+away
+	
++
+	
+material)
+12)	 1.
+	
+Nf3-e5
+	
+(chasing
+	
+away
+	
++
+	
+material)
+29 Test / Mix: D
+ 1)	 1.
+	
+...
+	
+Bh4-f6
+	
+(pin)
+ 2)	 1.
+	
+Be2-b5
+	
+(pin)
+ 3)	 1.
+	
+...
+	
+Ra8-d8
+	
+(pin)
+ 4)	 1.
+	
+Rg1xg7+
+	
+(capturing
+	
++
+	
+material)
+ 5)	 1.
+	
+Qd4xf6+
+	
+(capturing
+	
++
+	
+material)
+ 6)	 1.
+	
+Re1xe5
+	
+(capturing
+	
++
+	
+material)
+ 7)	 1.
+	
+...
+	
+Qg6-f6
+	
+(double
+	
+attack:
+	
+queen)
+ 8)	 1.
+	
+Qe2-h5
+	
+(double
+	
+attack:
+	
+queen)
+ 9)	 1.
+	
+Qh4-d8
+	
+(double
+	
+attack:
+	
+queen)
+10)	 1.
+	
+...
+	
+b7-b5
+	
+(luring
+	
+away
+	
++
+	
+material)
+11)	 1.
+	
+Rh1-h8+
+	
+(luring
+	
+away
+	
++
+	
+material)
+12)	 1.
+	
+Ne5-c4
+	
+(chasing
+	
+away
+	
++
+	
+material)
+30 Test / Mix: E
+ 1)	 1.
+	
+...
+	
+Qc7-f4+
+	
+(double
+	
+attack:
+	
+queen)
+ 2)	 1.
+	
+Bg2xd5
+	
+(pin)
+ 3)	 1.
+	
+...
+	
+Qa5xd2+
+	
+(capturing
+	
++
+	
+material)
+ 4)	 1.
+	
+Bc2-b3+
+	
+(chasing
+	
+away
+	
++
+	
+material);
+	
+1.
+	
+Bc2-h7+
+	
+Kg8-f7
+	
+is
+	
+not
+	
+working.
+ 5)	 1.
+	
+Bg3xd6+
+	
+(capturing
+	
++
+	
+material)
+ 6)	 1.
+	
+Qd1-a4+
+	
+(double
+	
+attack:
+	
+queen)
+ 7)	 1.
+	
+Nf5xg7
+	
+(capturing
+	
++
+	
+material)
+ 8)	 1.
+	
+Rd1-d8+
+	
+(luring
+	
+away
+	
++
+	
+material)
+ 9)	 Drawing
+10)	 1.
+	
+...
+	
+Rf8-d8
+	
+(pin)
+11)	 1.
+	
+...
+	
+Qe3-e4
+	
+(double
+	
+attack:
+	
+queen)
+12)	 Drawing
+31 Mate / Composing mate: A
+ 1)	 Db7,
+	
+c6
+ 2)	 Da7,
+	
+a3
+ 3)	 Da4,
+	
+b3
+ 4)	 Tg1,
+	
+Pf3
+ 5)	 Ta5,
+	
+Pd7
+ 6)	 Tb5,
+	
+Pc3	
+ 7)	 Ta8,
+	
+Lc6
+ 8)	 Tf8,
+	
+Lh6
+ 9)	 Ta5,
+	
+Ld8
+10)	 De7,
+	
+Pf5
+11)	 Pg6,
+	
+Dd7
+12)	 Pe7,
+	
+Df6
+32 Mate / Mate in two: A
+ 1)	 1.
+	
+Rf5-f7+
+	
+Ka7-b8
+	
+2.
+	
+Rg6-g8#;
+	
+smart
+	
+is
+	
+1.
+	
+Rf5-b5
+	
+Ka7-a8
+	
+2.
+	
+Rg6-a6#
+ 2)	 1.
+	
+Rb1-b7+
+	
+Kh7-g8
+	
+2.
+	
+Ra1-a8#
+ 3)	 1.
+	
+Rb2-g2+
+	
+Kg7-h6
+	
+2.
+	
+Ra1-h1#
+ 4)	 1.
+	
+Qe6-g6+
+	
+Kh7-g8
+	
+2.
+	
+Rb6-b8#
+ 5)	 1.
+	
+Qb3-b8+
+	
+Ka7-a6
+	
+2.
+	
+Rb1-a1#
+ 6)	 Drawing
+ 7)	 1.
+	
+...
+	
+Be7-c5+
+	
+2.
+	
+Kg1-h1
+	
+Rf8-f1#
+ 8)	 1.
+	
+...
+	
+Bg4-f3+
+	
+2.
+	
+Kg2-f1
+	
+Rh8-h1#	
+ 9)	 Drawing
+10)	 1.
+	
+…
+	
+Rd8-g8+
+	
+2.
+	
+Kg2-h1
+	
+Nd3-f2#
+11)	 1.
+	
+Nd5-e7+
+	
+Kg8-h7
+	
+2.
+	
+Rg2-h2#
+12)	 1.
+	
+...
+	
+Nd4-f3+
+	
+2.
+	
+Kg1-h1
+	
+Ra2xh2#
+33 Mate / Mate in two: B
+ 1)	 1.
+	
+...
+	
+Qe3-e1+
+	
+2.
+	
+Rd1xe1
+	
+Re8xe1#
+ 2)	 1.
+	
+Rd7xa7+
+	
+Bb6xa7
+	
+2.
+	
+Re7xa7#
+ 3)	 1.
+	
+Qd3-d8+
+	
+Nc6xd8
+	
+2.
+	
+Rd1xd8#
+ 4)	 1.
+	
+Qg5-g7+
+	
+Qf7xg7
+	
+2.
+	
+f6xg7#
+ 5)	 1.
+	
+...
+	
+Re7-e1+
+	
+2.
+	
+Ra1xe1
+	
+Qh4xe1#
+ 6)	 1.
+	
+...
+	
+Rh3-h1+
+	
+2.
+	
+Ng3xh1
+	
+Rh8xh1#
+ 7)	 1.
+	
+Qd4xf6+
+	
+Ne8xf6
+	
+2.
+	
+Bb2xf6#
+ 8)	 1.
+	
+...
+	
+Nd3-f2+
+	
+2.
+	
+Nh3xf2
+	
+Ne4xf2#
+ 9)	 1.
+	
+Qe5xe6+
+	
+Bd7xe6
+	
+2.
+	
+Re1xe6+
+10)	 1.
+	
+Qa3-f8+
+	
+Rf4xf8
+	
+2.
+	
+Rf1xf8#
+11)	 1.
+	
+Qc1-h6+
+	
+Rd6xh6
+	
+2.
+	
+Rc6xh6#
+12)	 1.
+	
+Qf3-f6+
+	
+Be5xf6
+	
+2.
+	
+Bd4xf6#
+
+---PAGE---
+34 Mate / Mate in two: C
+ 1)	 1.
+	
+Qa4-e8+
+	
+Kh8-h7
+	
+2.
+	
+Qe8-g8#
+ 2)	 1.
+	
+Qh2-g2+
+	
+Ka8-b8
+	
+2.
+	
+Qg2-b7#
+ 3)	 1.
+	
+Qe5-c5+
+	
+Kb6-a6
+	
+2.
+	
+Qb5-a5#
+ 4)	 1.
+	
+Qe5-a5+
+	
+Kb6-c6
+	
+2.
+	
+Qa5-c5#
+ 5)	 1.
+	
+Re1-e8+
+	
+Kb8-a7
+	
+2.
+	
+Re8-a8#
+ 6)	 1.
+	
+...
+	
+Rd8-d1+
+	
+2.
+	
+Kf1-e2
+	
+Rd1
+-
+e1#
+ 7)	 1.
+	
+Qh6-h7+
+	
+Kf7-f8
+	
+2.
+	
+Qh7-g8#
+ 8)	 1.
+	
+Qe3-a3+
+	
+Ka7-b7
+	
+2.
+	
+Qa3-a6#
+ 9)	 1.
+	
+...
+	
+Qf2-f3+
+	
+2.
+	
+Kh1-h2
+	
+Qf3
+-
+h3#
+10)	 1.
+	
+Qd5-b7+
+	
+Kh7-h6
+	
+(1.
+	
+...
+	
+Kh7
+-
+g8
+	
+2.
+	
+Qb7-g7#)
+	
+2.
+	
+Qb7
+-
+h1#
+11)	 1.
+	
+...
+	
+Qh6-c6+
+	
+2.
+	
+Kh1-g1
+	
+Qc6
+-
+g2#
+12)	 1.
+	
+...
+	
+Qd7-d5+
+	
+2.
+	
+Kg2-f1
+	
+Qd5
+-
+f3#
+35 Mate / Mate in two: D
+ 1)	 1.
+	
+...
+	
+Bh5-f3+
+	
+2.
+	
+Kh1-h2
+	
+Bf8-d6#
+ 2)	 1.
+	
+Ne4-f6+
+	
+Kg8-g7
+	
+2.
+	
+Qf5-h7#
+ 3)	 1.
+	
+Na4-b6+
+	
+Kc8-d8
+	
+2.
+	
+Ra1-a8#
+ 4)	 1.
+	
+...
+	
+Re8-e1+
+	
+2.
+	
+Kb1-c2
+	
+Qa3-c1#
+ 5)	 1.
+	
+...
+	
+Qf4-f3+
+	
+2.
+	
+Kg2-g1
+	
+Nd4-e2#
+ 6)	 1.
+	
+Qh4-h8+
+	
+Kf8-e7
+	
+2.
+	
+Rc4-c7#
+ 7)	 1.
+	
+Bc3-a5+
+	
+Kc7-c8
+	
+2.
+	
+Rd1-d8#
+ 8)	 drawing
+ 9)	 drawing
+10)	 1.
+	
+Nf4-e6+
+	
+Kf8-g8
+	
+2.
+	
+Rb7-g7#
+11)	 1.
+	
+...
+	
+Be5-f4+
+	
+2.
+	
+Kd2-c3
+	
+Qf1-a1#
+12)	 1.
+	
+Qe6-c8+
+	
+Kf8-e7
+	
+2.
+	
+Rh6-e6#
+36 Double attack / Knight: A
+ 1)	 1.
+	
+Nd5xc7+
+	
+ 2)	
+1.
+	
+Nc4-d6+
+	
+ 3)	
+1.
+	
+Nf5-d6+	
+ 4)	 1.
+	
+Nb5xc7+
+	
+(1.
+	
+Bf4xc7
+	
+only
+	
+wins
+	
+a
+	
+pawn)
+ 5)	 1.
+	
+Nc4xb6)
+ 6)	 1.
+	
+...
+	
+Nf5-d6	
+ 7)	 1.
+	
+Ne4-d6
+ 8)	 1.
+	
+Nb5-c7
+	
+(1.
+	
+Nb5
+-
+d6?
+	
+Re8-e7)
+ 9)	 1.
+	
+Nf4-e6
+	
+(1.
+	
+Nf4
+-
+d5
+	
+Nb8-a6)
+10)	 1.
+	
+...
+	
+Ne6-g5
+	
+1
+1)	 1.
+	
+...
+	
+Nc5-d3
+	
+(1.
+	
+…
+	
+Nf4-d3?
+	
+2.
+	
+Nb3xc5+;
+	
+1.
+	
+…
+	
+Nc5xb3
+	
+2.
+	
+Bd1xb3
+	
+Nf4-d3
+	
+is
+	
+correct
+	
+too)
+12)	 1.
+	
+Nf4-d5
+	
+(1.
+	
+Nc3-d5?
+	
+Qc7xc2#)
+37 Double attack / Knight: B
+ 1)	 1.
+	
+Nc4-e3
+ 2)	 1.
+	
+Nc5-e6+
+ 3)	 1.
+	
+...
+	
+Ne5xd3+
+ 4)	 1.
+	
+Ne4-d6+
+ 5)	 1.
+	
+e7-e8N+
+	
+(1.
+	
+Nf4
+-
+e6+
+	
+is
+	
+against
+	
+the
+	
+rules;
+	
+1.
+	
+e7-e8Q
+	
+Qc7xc2#)
+ 6)	 1.
+	
+Ne5xf7+
+ 7)	 1.
+	
+...
+	
+Nc4-d6
+ 8)	 1.
+	
+...
+	
+Ne5-f3
+ 9)	 1.
+	
+...
+	
+Ne5-f3+
+10)	 1.
+	
+...
+	
+Nf6-g8
+	
+(1.
+	
+…
+	
+Nf6-d5?
+	
+2.
+	
+Bg2xd5)
+11)	 1.
+	
+Nf4-g6+
+12)	 1.
+	
+...
+	
+Nh5-g3
+	
+(1.
+	
+…
+	
+Nc6-d4?
+	
+2.
+	
+Qe2-d1
+	
+but
+	
+Black
+	
+is
+	
+better)
+38 Mate / Mate in two (rook):E
+ 1)	 1.
+	
+Rf7-f1
+ 2)	 1.
+	
+Rf6-a6
+	
+or
+	
+1.
+	
+Kf8
+-
+f7
+ 3)	 1.
+	
+...
+	
+Rc1-d1
+ 4)	 1.
+	
+...
+	
+Kc4-b3
+ 5)	 1.
+	
+...
+	
+Kc6-c7
+ 6)	 1.
+	
+Ka5-b6
+ 7)	 1.
+	
+Rd1-d7
+ 8)	 1.
+	
+Ra1-a2
+ 9)	 Drawing
+10)	 1.
+	
+Kd5-e6
+11)	 1.
+	
+Ke2-d3
+12)	 1.
+	
+Rh2-h8
+	
+or
+	
+1.
+	
+Kc2-b3
+39 Test / Mix: F
+ 1)	 1.
+	
+Bf5xd7
+	
+Rc7xd7
+	
+2.
+	
+Nd3xe5
+	
+(capturing
+	
++
+	
+material)
+ 2)	 1.
+	
+...
+	
+Qa5-a2+
+	
+2.
+	
+Kb1-c1
+	 	 Qa2xc2
+	
+#
+	
+(mate
+	
+in
+	
+two)
+ 3)	 1.
+	
+Qd2-d7
+	
+(double
+	
+attack:
+	
+queen)
+ 4)	 1.
+	
+Qe4-c6+
+	
+Ke8-f8
+	
+2.
+	
+Qc6xa8#
+	
+(mate
+	
+in
+	
+two)
+ 5)	 1.
+	
+...
+	
+Rb8-e8
+	
+(pin)
+ 6)	 1.
+	
+Qd1-a4+
+	
+(double
+	
+attack:
+	
+queen)
+ 7)	 1.
+	
+Rh1xh6+
+	
+Bg7xh6
+	
+2.
+	
+Qe2xe5+;
+	
+1.
+	
+Qe2xe5+
+	
+brings
+	
+in
+	
+a
+	
+pawn
+	
+(luring
+	
+away
+	
++
+	
+material).
+ 8)	 1.
+	
+Ne5-d7+
+	
+(double
+	
+attack:
+	
+knight)
+ 9)	 1.
+	
+...
+	
+e5xd4+
+	
+2.
+	
+Nf3xd4
+	
+Rc8xc5
+	
+(capturing
+	
++
+	
+material)
+10)	 1.
+	
+Ra1-a8
+	
+and
+	
+if
+	
+the
+	
+bishop
+	
+moves,
+	
+mate
+	
+on
+	
+h8
+	
+follows
+	
+(pin)
+
+---PAGE---
+11) 1. 	Qc3-e5+	Kb8-a8	2.	Qe5-e8#	(mate	in	two)
+12) 1. 	...	Qf6-b2	(double	attack:	queen)
+40 T
+est / Mix: G
+1) 1. 	Bf3-d5	(pin)
+2) 1. 	Qf7-g8+	(mate	in	two)
+3) 1. 	...	Nc5-d3	with	mating	threat	on	b2	(double	attack:
+knight)
+4) 1. 	...	Qc7xc4	2.	Nd2xc4	Rd8xd5	(capturing	+	material)
+5) 1. 	Qd1-c2	(double	attack:	queen)
+6) 1. 	Re6-a6+	Ka7-b8	2.	Nc5-d7#	(mate	in	two)
+7) 1.	...	Ra8-a2	(pin)
+8) 1.	Qe2-g2	(double	attack:	queen)
+9) 1.	b2-b4	and	2.	Rf2xf5	(chasing	away	+	material)
+10) 1.	Ra1-a7	(pin+eliminating the defender)	1.	...	Ne7-d5	2.	
+Rc7xc6
+11) 1.	...	Qg6-d6	(pin)
+12) 1.	Nh5-f6+	(double	attack:	knight)		
+41 Double attack / Rook, bishop, pawn, king: A
+1) 1. 	Rd2-d8+
+2) 1. 	Rf1-f5+
+3) 1. 	Re4-c4
+4) 1. 	Rc1-c7
+5) 1. 	Bf3-d5+
+6) 1. 	Bg2xc6
+7) 1. 	Ba4-d7
+8) 1. 	Bg3-c7
+9) 1. 	...	d5-d4
+10) 1. 	...	f3xg2
+11) 1. 	c4-c5
+12) 1. 	Kd2-c3
+42 Double attack / Rook, bishop, pawn, king: B
+1)
+1.	...	Rc8-c2+
+2) 1. 	Bg3-e5+
+3) 1. 	Rd1-d7
+4) 1. 	Rh5-g5+
+5) 1. 	...	Bd6xg3+
+6) 1. 	Bf3-d5
+7) 1. 	c2-c4
+8) Drawing
+9)
+Drawing
+10) 1. 	Be2-c4
+11) Drawing
+12)
+Drawing
+43 Double attack / Cooperation of two pieces: B
+1) 1. 	Qd2-d4	f7-f6	2.	Ng3xe4
+2) 1. 	Qf3-e3+	Qd7-e6	2.	Bg5xh6
+3) 1. 	…	Bg6-d3
+4) 1. 	Qf8-c5	Ra7-b7	2.	Na6xc7
+5) 1. 	Nd5-e7
+6) 1. 	Qb3-c2	g7-g6	2.	Rc3xc8
+7) 1. 	…	Qb6-a5	2.	Bc1-e3	Be7xg5
+8) 1. 	Qd1-c1	0-0	2.	Be3xh6
+9) 1. 	Qf3-g3
+10) 1. 	...	Bb7-e4
+11) 1. 	Bg7-d4
+12) 1. 	Qa7-a2;	1.	Nh4-g6+?	Kh8-g8	2.	Qa7-a2+	Qc7-f7+
+45 Double attack / Discover
+ed attack: A
+1) 1. 	Nd4-f5+
+2) 1. 	Ne4-d6+
+3) 1. 	Rc4-c8+
+4) 1. 	Ne5-c6+
+5) 1. 	...	Nf3-h4+
+6) 1. 	Rf7xa7+
+7) 1. 	e4-e5+
+8) 1. 	...	d4-d3+
+9) 1. 	Kf2-g3
+10) 1. 	...	Kc5-b5
+11) 1. 	...	Bd6-h2+
+12) 1. 	Bd3xh7+
+46 Double attack / Discover
+ed attack: B
+1) 1. 	…	Bb6-d4+
+2) 1. 	d3-d4+
+3) 1. 	...	Re5-g5+
+4) 1. 	Bd3-b5+
+5) 1. 	…	Bc6xf3
+6) Drawing
+7)
+1.	Ne4-c5
+8) 1. 	…	Rc4xd4
+9) 1. 	Be4-c6
+10) 1. 	…	d5xc4
+11) 1. 	…	Nd6-e4
+12) 1. 	…	c6-c5
+47 Double attack / Discover
+ed attack: C
+1) 1. 	...	d4-d3+
+2) 1. 	...	d7-d5
+3) 1. 	Re4-e8+
+4) 1. 	d4-d5
+5) 1. 	Ne4-g5+;
+	 1.Ne4-f6+?	Nd7xf6
+6) 1. 	Re5-b5+
+7) 1. 	...	Ng5-e4
+8) 1. 	...	Bd6xh2+
+9) 1. 	Ne5xc6
+10) 1. 	...	Re6-h6
+11) 1. 	Ne4-f6+
+12) 1. 	...	Re4-e1+
+48 Double attack / Discover
+ed attack: D
+1) 1. 	Bb4-e7
+2) 1. 	…	Bc5-b4
+3) 1. 	…	Nd4-e2+
+4) 1. 	…	Bc5-b4
+
+---PAGE---
+ 5)	 1.	Ne3-f5
+ 6)	
+1.
+	
+Nd4-f5
+ 7)	 1.
+	
+Re4-e7
+ 8)	 1.
+	
+Nc3-d1
+ 9)	 1. 	 … 	 Nd5-c3
+10)	 1.
+	
+Rf4-f8
+11)	 1.
+	
+Ne4-d2!;
+	
+1.
+	
+Ne4xc5?
+	
+b6xc5
+	
+2.
+	
+Qf3-a8
+	
+Qb3-b8
+12)	 1.
+	
+Be4-f5;
+	
+1.
+	
+Be4-g2?
+	
+Qh3-d7
+50 Defending / Defending against mate: A
+ 1)	 1.
+	
+Re8-e1
+ 2)	 1.
+	
+…
+	
+Rg8-g6
+	
+(otherwise
+	
+2.
+	
+Nc3-a4#
+	
+or
+	
+2.
+	
+Nc3-e4#)
+ 3)	 1.
+	
+…
+	
+f5xg4
+ 4)	 1.
+	
+Qb5-d5
+ 5)	 1.
+	
+…
+	
+Kh8-h7
+ 6)	 1.
+	
+…
+	
+Rd7-d1+
+ 7)	 1.
+	
+…
+	
+Nd7-f6
+ 8)	 1.
+	
+…
+	
+Qf6-d8
+ 9)	 1.
+	
+...
+	
+Qa6-h6
+10)	 1.
+	
+Kh1-g1
+11)	 1.
+	
+…
+	
+c5-c4
+12)	 drawing
+51 Defending / Defending against mate: B
+ 1)	 no
+ 2)	 1.
+	
+…
+	
+Qd3xb3
+	
+2.
+	
+Rc1
+-
+c8+
+	
+	
+	 Qb3
+-
+g8
+ 3)	 1.
+	
+…
+	
+Rd6-d1+
+ 4)	 no,
+	
+because	
+1.
+	
+…
+	
+Qb8
+	
+2.
+	
+Qa5+;
+	
+1.
+	
+…
+	
+Kb8
+	
+2.
+	
+Qd8+
+	
+or
+	
+1.
+	
+…
+	
+Qa4
+	
+2.
+	
+Qd8#
+ 5)	 no
+ 6)	 1.
+	
+Qb2xb7
+ 7)	 1.
+	
+e7-e8N+
+ 8)	 no
+ 9)	 1.
+	
+Ng5-h3
+10)	 1.
+	
+Kc1-b1
+11)	 no,
+	
+1.
+	
+…
+	
+f2
+	
+2.
+	
+Qxf8#
+12)	 no,
+	
+1.
+		
+Kxc1
+		
+Qa1#,
+	
+1.
+	
+Rxc1
+	
+Nd2#
+53 Test / Repetition: B
+ 1)	 1.
+	
+...
+	
+Bd6xh2+
+	
+(discovered
+	
+attack)
+ 2)	 1.
+	
+Nf5-d6+
+	
+(double
+	
+attack:
+	
+knight)
+	
+ 3)	
+1.
+	
+Bg3-c7
+	
+(double
+	
+attack:
+	
+bishop)
+ 4)	 1.
+	
+...
+	
+Be5-f4+
+	
+2.
+	
+Kd2-c3
+	
+Qf1
+-
+a1#
+	
+(mate
+	
+in
+	
+two)
+ 5)	 1.
+	
+Rc1
+-
+c7
+	
+(double
+	
+attack:
+	
+rook)
+ 6)	 1.
+	
+...
+	
+Nc5-d3
+	
+(double
+	
+attack:
+	
+knight)
+ 7)	 1.
+	
+Kd2-c3
+	
+(double
+	
+attack:
+	
+king)
+ 8)	 1.
+	
+d4-d5
+	
+(discovered
+	
+attack)
+ 9)	 1.
+	
+...
+	
+Bh5-f3+
+	
+(mate
+	
+in
+	
+two)
+10)	 1.
+	
+...
+	
+Bc6xf3
+	
+(discovered
+	
+attack)
+11)	 1.
+	
+...
+	
+Nd4-f3+
+	
+(mate
+	
+in
+	
+two)
+12)	 1.
+	
+...
+	
+Nd5-c3
+	
+(discovered
+	
+attack)
+54 Test / Mix: H
+ 1)	 1.
+	
+Ng5-e6+
+	
+(double
+	
+attack:
+	
+knight)
+ 2)	 Drawing
+ 3)	 1.
+	
+f7-f8N+
+	
+(double
+	
+attack:
+	
+knight)
+ 4)	 1.
+	
+...
+	
+Kf2-g3
+	
+(double
+	
+attack
+	
+with
+	
+two
+	
+pieces)
+ 5)	 1.
+	
+b2-b4
+	
+(double
+	
+attack:
+	
+pawn)
+ 6)	 1.
+	
+…
+	
+Rd8-d1+
+	
+(1.
+	
+…
+	
+Qd8xf6+?
+	
+2.
+	
+Re1-e8#)
+	
+2.
+	
+Kg1-f2
+	
+Qd8xf6+
+	
+(defending
+	
+against
+	
+mate)
+ 7)	 1.
+	
+...
+	
+Qa4-c2+
+	
+(mate
+	
+in
+	
+two)
+ 8)	 1.
+	
+Rb7-e7+
+	
+(mate
+	
+in
+	
+two)
+ 9)	 1.
+	
+...
+	
+Qd4-h4+
+	
+(mate
+	
+in
+	
+two)
+10)	 1.
+	
+Bb3xf7+
+	
+(discovered
+	
+attack)
+11)	 1.
+	
+...
+	
+Ne5xf3+
+	
+(discovered
+	
+attack)
+12)	 1.
+	
+...
+	
+Nf5-d4
+	
+(discovered
+	
+attack)
+55 Test / Mix: I
+ 1)	 1.
+	
+…
+	
+Be8-g6
+	
+(1.
+	
+…
+	
+g7-g6
+	
+2.
+	
+Rc7xh7#)
+	
+(defending
+	
+against
+	
+mate)
+ 2)	
+1.
+	
+...
+	
+Nc5-d3
+	
+(double
+	
+attack:
+	
+knight)
+ 3)	 1.
+	
+Re6xh6+
+	
+(discovered
+	
+attack)
+ 4)	 1.
+	
+Qf5-f6+
+	
+(mate
+	
+in
+	
+two)
+ 5)	 1.
+	
+d4-d5
+	
+(discovered
+	
+attack)
+ 6)	 1.
+	
+Bf3xd5+
+	
+(double
+	
+attack:
+	
+bishop)
+ 7)	 1.
+	
+Ne4-f6+
+	
+(mate
+	
+in
+	
+two)
+ 8)	 1.
+	
+...
+	
+Bf5-c8
+	
+(double
+	
+attack:
+	
+bishop)
+ 9)	 1.
+	
+Qd2xh6+
+	
+(mate
+	
+in
+	
+two)
+	 	 1.
+	
+Rf6xh6?
+	
+Kh8-g8
+10)	 1.
+	
+...
+	
+Ne2xg3+
+	
+(discovered
+	
+attack)
+11)	 1.
+	
+...
+	
+Nd6-e4
+	
+(double
+	
+attack:
+	
+knight)
+12)	 1.
+	
+Be4-d5+
+	
+(discovered
+	
+attack)
+56 Test / Mix: J
+ 1)	 1.
+	
+...
+	
+h6-h5
+	 	 (defending
+	
+against
+	
+mate)
+ 2)	 1.
+	
+...
+	
+Re8xe3+
+	
+(capturing
+	
++
+	
+material)
+ 3)	 1.
+	
+...
+	
+Nf4-e2+
+	
+(double
+	
+attack:
+	
+knight)
+ 4)	 1.
+	
+Bf4-e5
+	
+(double
+	
+attack:
+	
+bishop)
+ 5)	 1.
+	
+Bc2xh7+
+	
+(discovered
+	
+attack)
+ 6)	 1.
+	
+e4-e5
+	
+(discovered
+	
+attack)
+ 7)	 1.
+	
+...
+	
+Bc4-d5
+	
+(double
+	
+attack:
+	
+bishop)
+ 8)	 1.
+	
+...
+	
+Rf8xf2+
+	
+(capturing
+	
++
+	
+material)
+ 9)	 1.
+	
+Qd4-d1
+	
+(pin)
+10)	 1.
+	
+...
+	
+Rh8-h4+
+	
+chasing
+	
+away
+	
++
+	
+material)
+11)	 1.
+	
+Qd3-b5+
+	
+(double
+	
+attack:
+	
+queen)
+12)	 1.
+	
+...
+	
+Ne5-f3+
+	
+(discovered
+	
+attack)

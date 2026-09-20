@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import PuzzleSectionProgress from '../../../components/PuzzleSectionProgress'
+import { puzzleCollections, type PuzzleCollection, type PuzzleSection } from '../../../data/puzzleCollections'
+
+export function getStaticPaths() {
+  return puzzleCollections.flatMap((collection) => collection.sections.map((section) => ({
+    params: { collection: collection.slug, section: section.slug },
+    props: { collection, section },
+  })))
+}
+
+type Props = {
+  collection: PuzzleCollection
+  section: PuzzleSection
+}
+
+const { collection, section } = Astro.props
+---
+
+<BaseLayout title={`${section.title} | ${collection.title} | ChessBadger`} description={section.description}>
+  <section class="bg-[#eef6ff]">
+    <div class="mx-auto max-w-6xl px-6 py-7 sm:py-9">
+      <p class="text-sm font-black tracking-[0.08em] text-amber-800">
+        <a href="/puzzles" class="hover:text-amber-700">Puzzles</a>
+        <span class="mx-2 text-stone-400" aria-hidden="true">/</span>
+        <a href={`/puzzles/${collection.slug}`} class="hover:text-amber-700">{collection.title}</a>
+      </p>
+      <p class="mt-4 text-xs font-black uppercase tracking-[0.14em] text-stone-500">{section.workbookPages}</p>
+      <h1 class="mt-2 max-w-4xl text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">{section.title}</h1>
+      <p class="mt-4 max-w-2xl text-lg text-stone-600">{section.description}</p>
+    </div>
+  </section>
+
+  <section class="bg-stone-100">
+    <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+      <PuzzleSectionProgress collection={collection} section={section} client:load />
+    </div>
+  </section>
+</BaseLayout>

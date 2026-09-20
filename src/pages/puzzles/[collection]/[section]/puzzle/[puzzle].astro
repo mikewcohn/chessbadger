@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../../../../../layouts/BaseLayout.astro'
+import PuzzleTrainer from '../../../../../components/PuzzleTrainer'
+import { puzzleCollections, type PuzzleCollection, type PuzzleSection } from '../../../../../data/puzzleCollections'
+import type { Puzzle } from '../../../../../data/puzzles'
+
+export function getStaticPaths() {
+  return puzzleCollections.flatMap((collection) => collection.sections.flatMap((section) =>
+    section.puzzles.map((puzzle) => ({
+      params: { collection: collection.slug, section: section.slug, puzzle: puzzle.id },
+      props: { collection, section, puzzle },
+    })),
+  ))
+}
+
+type Props = {
+  collection: PuzzleCollection
+  section: PuzzleSection
+  puzzle: Puzzle
+}
+
+const { collection, section, puzzle } = Astro.props
+---
+
+<BaseLayout title={`${puzzle.title} | ${section.title} | ChessBadger`} description={`Practice ${puzzle.title} from ${collection.title}`}>
+  <section class="bg-[#eef6ff]">
+    <div class="mx-auto max-w-6xl px-6 py-6 sm:py-7">
+      <p class="text-sm font-black tracking-[0.08em] text-amber-800">Puzzle trainer</p>
+      <h1 class="mt-2 max-w-3xl text-3xl font-black leading-tight tracking-tight text-stone-950 sm:text-4xl">{section.title}</h1>
+    </div>
+  </section>
+
+  <section class="bg-stone-100">
+    <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <PuzzleTrainer
+        puzzles={section.puzzles}
+        collectionName={collection.title}
+        collectionSlug={collection.slug}
+        sectionName={section.title}
+        sectionSlug={section.slug}
+        initialPuzzleId={puzzle.id}
+        client:load
+      />
+    </div>
+  </section>
+</BaseLayout>

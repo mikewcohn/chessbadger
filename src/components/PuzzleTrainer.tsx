@@ -1,20 +1,22 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Chess, type Square } from 'chess.js'
 import {
   Chessboard,
   ChessboardProvider,
   SparePiece,
-  defaultPieces,
   fenStringToPositionObject,
   type Arrow,
   type PositionDataType,
 } from 'react-chessboard'
-import type { Puzzle } from '../data/puzzles'
+import type { PlaceablePiece, Puzzle } from '../data/puzzles'
 
 type PuzzleTrainerProps = {
   puzzles: Puzzle[]
   collectionName: string
   collectionSlug: string
+  sectionName: string
+  sectionSlug: string
+  initialPuzzleId: string
 }
 
 type Result = 'correct' | 'incorrect' | null
@@ -47,17 +49,62 @@ const DARK_SQUARE_STYLE = {
 const normalizeSan = (san: string) =>
   san.trim().replaceAll('0', 'O').replace(/[!?]+$/g, '')
 
-const queenName = (piece: 'wQ' | 'bQ') => piece === 'wQ' ? 'white queen' : 'black queen'
+const pieceNames = {
+  wQ: 'white queen',
+  bQ: 'black queen',
+  wR: 'white rook',
+  bR: 'black rook',
+  wB: 'white bishop',
+  bB: 'black bishop',
+  wN: 'white knight',
+  bN: 'black knight',
+  wP: 'white pawn',
+  bP: 'black pawn',
+} as const
+
+const pieceLetters = {
+  wQ: 'Q',
+  bQ: 'Q',
+  wR: 'R',
+  bR: 'R',
+  wB: 'B',
+  bB: 'B',
+  wN: 'N',
+  bN: 'N',
+  wP: '',
+  bP: '',
+} as const
 
 const formatAnswer = (puzzle: Puzzle, answer: string) =>
-  puzzle.type === 'placement' ? `Q${answer}` : answer
+  puzzle.type === 'placement' ? `${pieceLetters[puzzle.piece]}${answer}` : answer
 
-const formatAnswers = (puzzle: Puzzle) =>
-  puzzle.answers.map((answer) => formatAnswer(puzzle, answer)).join(', ')
+const formatAnswers = (puzzle: Puzzle) => {
+  if (
+    puzzle.type !== 'placement'
+    && puzzle.type !== 'composition'
+    && puzzle.playThrough
+    && puzzle.solutionLines
+  ) {
+    return puzzle.solutionLines.map((line) => line.join(' ')).join(' or ')
+  }
 
-const createAnswerArrows = (fen: string, answers: string[]): Arrow[] =>
-  answers.flatMap((answer) => {
-    const game = new Chess(fen)
+  return puzzle.answers.map((answer) => formatAnswer(puzzle, answer)).join(', ')
+}
+
+const createAnswerArrows = (puzzle: Puzzle): Arrow[] => {
+
+  if (puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.answerMoves) {
+    return puzzle.answerMoves.map((move) => ({
+      startSquare: move.slice(0, 2) as Square,
+      endSquare: move.slice(2, 4) as Square,
+      color: 'rgba(217, 119, 6, 0.9)',
+    }))
+  }
+
+  if (puzzle.type === 'composition') return []
+
+  return puzzle.answers.flatMap((answer) => {
+    const game = new Chess(puzzle.fen)
 
     try {
       const move = game.move(normalizeSan(answer))
@@ -70,33 +117,67 @@ const createAnswerArrows = (fen: string, answers: string[]): Arrow[] =>
       return []
     }
   })
+}
 
-export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug }: PuzzleTrainerProps) {
-  const [puzzleIndex, setPuzzleIndex] = useState(0)
-  const [position, setPosition] = useState<string | PositionDataType>(puzzles[0].fen)
+export default function PuzzleTrainer({
+  puzzles,
+  collectionName,
+  collectionSlug,
+  sectionName,
+  sectionSlug,
+  initialPuzzleId,
+}: PuzzleTrainerProps) {
+  const initialPuzzleIndex = Math.max(0, puzzles.findIndex((candidate) => candidate.id === initialPuzzleId))
+  const [puzzleIndex, setPuzzleIndex] = useState(initialPuzzleIndex)
+  const [position, setPosition] = useState<string | PositionDataType>(puzzles[initialPuzzleIndex].fen)
   const [attemptedMove, setAttemptedMove] = useState<string | null>(null)
   const [result, setResult] = useState<Result>(null)
   const [answerVisible, setAnswerVisible] = useState(false)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
   const [placementPieceSelected, setPlacementPieceSelected] = useState(false)
   const [placedSquares, setPlacedSquares] = useState<string[]>([])
+  const [selectedCompositionPiece, setSelectedCompositionPiece] = useState<PlaceablePiece | null>(null)
+  const [compositionPlacements, setCompositionPlacements] = useState<Record<string, PlaceablePiece>>({})
+  const [activeSolutionLine, setActiveSolutionLine] = useState<string[] | null>(null)
+  const [opponentReply, setOpponentReply] = useState('')
+  const [isResponding, setIsResponding] = useState(false)
   const [boardRevision, setBoardRevision] = useState(0)
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
   const [sharedPractice, setSharedPractice] = useState<SharedPractice | null>(null)
   const [studentName, setStudentName] = useState('')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle')
+  const replyTimerRef = useRef<number | null>(null)
 
   const puzzle = puzzles[puzzleIndex]
   const puzzleAttempts = attemptHistory[puzzle.id] ?? []
-  const sideToMove = puzzle.type === 'placement'
+  const sideToMove = puzzle.type === 'placement' || puzzle.type === 'composition'
     ? null
-    : new Chess(puzzle.fen).turn() === 'w' ? 'White' : 'Black'
+    : puzzle.sideToMove
+      ? puzzle.sideToMove === 'white' ? 'White' : 'Black'
+      : new Chess(puzzle.fen).turn() === 'w' ? 'White' : 'Black'
   const answerArrows = useMemo(
-    () => answerVisible && puzzle.type !== 'placement'
-      ? createAnswerArrows(puzzle.fen, puzzle.answers)
+    () => answerVisible && puzzle.type !== 'placement' && puzzle.type !== 'composition'
+      ? createAnswerArrows(puzzle)
       : [],
     [answerVisible, puzzle],
   )
+  const boardPosition = useMemo<string | PositionDataType>(() => {
+    if (puzzle.type !== 'placement' && puzzle.type !== 'composition') return position
+
+    const nextPosition = fenStringToPositionObject(puzzle.fen, 8, 8)
+
+    if (puzzle.type === 'placement') {
+      placedSquares.forEach((square) => {
+        nextPosition[square] = { pieceType: puzzle.piece }
+      })
+    } else {
+      Object.entries(compositionPlacements).forEach(([square, pieceType]) => {
+        nextPosition[square] = { pieceType }
+      })
+    }
+
+    return nextPosition
+  }, [compositionPlacements, placedSquares, position, puzzle])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -155,7 +236,26 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
     return () => controller.abort()
   }, [])
 
-  const resetPuzzle = (nextIndex = puzzleIndex) => {
+  useEffect(() => () => {
+    if (replyTimerRef.current !== null) window.clearTimeout(replyTimerRef.current)
+  }, [])
+
+  const resetPuzzle = (nextIndex = puzzleIndex, updateUrl = true) => {
+    if (replyTimerRef.current !== null) {
+      window.clearTimeout(replyTimerRef.current)
+      replyTimerRef.current = null
+    }
+    const nextPuzzle = puzzles[nextIndex]
+    if (updateUrl && nextIndex !== puzzleIndex) {
+      const params = new URLSearchParams(window.location.search)
+      const query = params.toString()
+      window.history.pushState(
+        {},
+        '',
+        `/puzzles/${collectionSlug}/${sectionSlug}/puzzle/${nextPuzzle.id}${query ? `?${query}` : ''}`,
+      )
+    }
+    document.title = `${nextPuzzle.title} | ${sectionName} | ChessBadger`
     setPuzzleIndex(nextIndex)
     setPosition(puzzles[nextIndex].fen)
     setAttemptedMove(null)
@@ -164,14 +264,43 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
     setSelectedSquare(null)
     setPlacementPieceSelected(false)
     setPlacedSquares([])
+    setSelectedCompositionPiece(null)
+    setCompositionPlacements({})
+    setActiveSolutionLine(null)
+    setOpponentReply('')
+    setIsResponding(false)
     setBoardRevision((revision) => revision + 1)
   }
 
+  useEffect(() => {
+    const syncPuzzleToUrl = () => {
+      const puzzleId = decodeURIComponent(window.location.pathname.split('/').at(-1) ?? '')
+      const urlPuzzleIndex = puzzles.findIndex((candidate) => candidate.id === puzzleId)
+      if (urlPuzzleIndex >= 0) resetPuzzle(urlPuzzleIndex, false)
+    }
+
+    window.addEventListener('popstate', syncPuzzleToUrl)
+    return () => window.removeEventListener('popstate', syncPuzzleToUrl)
+  }, [puzzles])
+
   const showAnswer = () => {
+    if (replyTimerRef.current !== null) {
+      window.clearTimeout(replyTimerRef.current)
+      replyTimerRef.current = null
+    }
     setPosition(puzzle.fen)
     setSelectedSquare(null)
     setPlacementPieceSelected(false)
     setPlacedSquares(puzzle.type === 'placement' ? puzzle.answers : [])
+    setSelectedCompositionPiece(null)
+    setCompositionPlacements(
+      puzzle.type === 'composition'
+        ? Object.fromEntries(puzzle.placements.map(({ piece, square }) => [square, piece]))
+        : {},
+    )
+    setActiveSolutionLine(null)
+    setOpponentReply('')
+    setIsResponding(false)
     setAnswerVisible(true)
   }
 
@@ -219,8 +348,95 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
     recordAttempt(moveSan, acceptedAnswers.has(normalizeSan(moveSan)))
   }
 
+  const answerNoDefense = () => {
+    if (puzzle.type === 'placement' || puzzle.type === 'composition' || !puzzle.canAnswerNo || attemptedMove) return
+    setAttemptedMove('No')
+    checkMoveAttempt('No')
+  }
+
   const tryMove = (sourceSquare: string, targetSquare: string | null) => {
-    if (puzzle.type === 'placement' || !targetSquare || attemptedMove || typeof position !== 'string') return false
+    if (
+      puzzle.type === 'placement'
+      || puzzle.type === 'composition'
+      || !targetSquare
+      || attemptedMove
+      || isResponding
+    ) return false
+
+    if (puzzle.playThrough && puzzle.solutionLines && typeof position === 'string') {
+      const game = new Chess(position)
+
+      try {
+        const move = game.move({
+          from: sourceSquare,
+          to: targetSquare,
+          promotion: 'q',
+        })
+
+        setSelectedSquare(null)
+
+        if (activeSolutionLine) {
+          const isCorrect = normalizeSan(move.san) === normalizeSan(activeSolutionLine[2])
+          const attemptLabel = [...activeSolutionLine.slice(0, 2), move.san].join(' ')
+          setPosition(game.fen())
+          setAttemptedMove(attemptLabel)
+          recordAttempt(attemptLabel, isCorrect)
+          return true
+        }
+
+        const matchingLine = puzzle.solutionLines.find(
+          (line) => normalizeSan(line[0]) === normalizeSan(move.san),
+        )
+
+        if (!matchingLine) {
+          setPosition(game.fen())
+          setAttemptedMove(move.san)
+          recordAttempt(move.san, false)
+          return true
+        }
+
+        setPosition(game.fen())
+        setActiveSolutionLine(matchingLine)
+        setOpponentReply('')
+        setIsResponding(true)
+        replyTimerRef.current = window.setTimeout(() => {
+          const reply = game.move(matchingLine[1])
+          setPosition(game.fen())
+          setOpponentReply(reply.san)
+          setIsResponding(false)
+          replyTimerRef.current = null
+        }, 450)
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    if (puzzle.answerMoves) {
+      const currentPosition = typeof position === 'string'
+        ? fenStringToPositionObject(position, 8, 8)
+        : position
+      const piece = currentPosition[sourceSquare]
+      const expectedColor = puzzle.sideToMove === 'black' ? 'b' : 'w'
+      if (!piece || !piece.pieceType.startsWith(expectedColor)) return false
+
+      const nextPosition = { ...currentPosition }
+      delete nextPosition[sourceSquare]
+      nextPosition[targetSquare] = piece
+      const attemptedCoordinates = `${sourceSquare}${targetSquare}`.toLowerCase()
+      const answerIndex = puzzle.answerMoves.findIndex((move) => move.toLowerCase() === attemptedCoordinates)
+      const attemptLabel = answerIndex >= 0
+        ? puzzle.answers[answerIndex]
+        : `${sourceSquare}–${targetSquare}`
+
+      setPosition(nextPosition)
+      setAttemptedMove(attemptLabel)
+      setSelectedSquare(null)
+      recordAttempt(attemptLabel, answerIndex >= 0)
+      return true
+    }
+
+    if (typeof position !== 'string') return false
 
     const game = new Chess(position)
 
@@ -241,10 +457,26 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
     }
   }
 
-  const tryPlacement = (targetSquare: string | null, pieceType = puzzle.type === 'placement' ? puzzle.piece : '') => {
-    if (puzzle.type !== 'placement' || !targetSquare || attemptedMove || pieceType !== puzzle.piece) return false
+  const tryPlacement = (
+    targetSquare: string | null,
+    pieceType = puzzle.type === 'placement' ? puzzle.piece : '',
+    sourceSquare: string | null = null,
+  ) => {
+    if (puzzle.type !== 'placement' || !targetSquare || attemptedMove || answerVisible || pieceType !== puzzle.piece) return false
 
     setPlacementPieceSelected(false)
+
+    if (sourceSquare) {
+      if (sourceSquare === targetSquare || !placedSquares.includes(sourceSquare) || placedSquares.includes(targetSquare)) {
+        return false
+      }
+
+      const startingPosition = fenStringToPositionObject(puzzle.fen, 8, 8)
+      if (startingPosition[targetSquare]) return false
+
+      setPlacedSquares((squares) => squares.map((square) => square === sourceSquare ? targetSquare : square))
+      return true
+    }
 
     if (placedSquares.includes(targetSquare)) {
       setPlacedSquares((squares) => squares.filter((square) => square !== targetSquare))
@@ -271,11 +503,106 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
     recordAttempt(attemptLabel, isCorrect)
   }
 
+  const tryCompositionPlacement = (
+    targetSquare: string | null,
+    pieceType: PlaceablePiece | '',
+    sourceSquare: string | null = null,
+  ) => {
+    if (puzzle.type !== 'composition' || !targetSquare || !pieceType || attemptedMove || answerVisible) return false
+    if (!puzzle.pieces.includes(pieceType)) return false
+
+    const startingPosition = fenStringToPositionObject(puzzle.fen, 8, 8)
+    if (startingPosition[targetSquare]) return false
+
+    if (sourceSquare) {
+      if (
+        sourceSquare === targetSquare
+        || compositionPlacements[sourceSquare] !== pieceType
+        || compositionPlacements[targetSquare]
+      ) return false
+
+      setCompositionPlacements((placements) => {
+        const next = { ...placements }
+        delete next[sourceSquare]
+        next[targetSquare] = pieceType
+        return next
+      })
+      setSelectedCompositionPiece(null)
+      return true
+    }
+
+    if (compositionPlacements[targetSquare] === pieceType) {
+      setCompositionPlacements((placements) => {
+        const next = { ...placements }
+        delete next[targetSquare]
+        return next
+      })
+      setSelectedCompositionPiece(pieceType)
+      return true
+    }
+
+    setCompositionPlacements((placements) => {
+      const next = Object.fromEntries(
+        Object.entries(placements).filter(([, placedPiece]) => placedPiece !== pieceType),
+      )
+      next[targetSquare] = pieceType
+      return next
+    })
+    setSelectedCompositionPiece(null)
+    return true
+  }
+
+  const checkComposition = () => {
+    if (puzzle.type !== 'composition' || Object.keys(compositionPlacements).length === 0 || attemptedMove) return
+
+    const isCorrect = Object.keys(compositionPlacements).length === puzzle.placements.length
+      && puzzle.placements.every(({ piece, square }) => compositionPlacements[square] === piece)
+    const attemptLabel = Object.entries(compositionPlacements)
+      .map(([square, piece]) => `${pieceLetters[piece]}${square}`)
+      .join(', ')
+
+    setAttemptedMove(attemptLabel)
+    recordAttempt(attemptLabel, isCorrect)
+  }
+
   const handleSquareClick = (square: string) => {
-    if (attemptedMove) return
+    if (attemptedMove || answerVisible || isResponding) return
 
     if (puzzle.type === 'placement') {
       if (placementPieceSelected || placedSquares.includes(square)) tryPlacement(square)
+      return
+    }
+
+    if (puzzle.type === 'composition') {
+      const placedPiece = compositionPlacements[square]
+      if (placedPiece) {
+        setCompositionPlacements((placements) => {
+          const next = { ...placements }
+          delete next[square]
+          return next
+        })
+        setSelectedCompositionPiece(placedPiece)
+      } else if (selectedCompositionPiece) {
+        tryCompositionPlacement(square, selectedCompositionPiece)
+      }
+      return
+    }
+
+
+    if (puzzle.answerMoves) {
+      const currentPosition = typeof position === 'string'
+        ? fenStringToPositionObject(position, 8, 8)
+        : position
+      const clickedSquare = square as Square
+
+      if (selectedSquare) {
+        if (tryMove(selectedSquare, clickedSquare)) return
+        setSelectedSquare(null)
+      }
+
+      const piece = currentPosition[clickedSquare]
+      const expectedColor = puzzle.sideToMove === 'black' ? 'b' : 'w'
+      if (piece?.pieceType.startsWith(expectedColor)) setSelectedSquare(clickedSquare)
       return
     }
 
@@ -292,8 +619,13 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
     if (piece?.color === game.turn()) setSelectedSquare(clickedSquare)
   }
 
-  const squareStyles = answerVisible && puzzle.type === 'placement'
-    ? Object.fromEntries(puzzle.answers.map((answer) => [answer, {
+  const answerSquares = puzzle.type === 'placement'
+    ? puzzle.answers
+    : puzzle.type === 'composition'
+      ? puzzle.placements.map(({ square }) => square)
+      : []
+  const squareStyles = answerVisible && (puzzle.type === 'placement' || puzzle.type === 'composition')
+    ? Object.fromEntries(answerSquares.map((answer) => [answer, {
         boxShadow: 'inset 0 0 0 5px rgba(217, 119, 6, 0.88)',
       }]))
     : selectedSquare ? {
@@ -306,15 +638,18 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
   const collectionHref = sharedPractice
     ? `/puzzles/${collectionSlug}?student=${encodeURIComponent(sharedPractice.studentId)}&key=${encodeURIComponent(sharedPractice.practiceKey)}`
     : `/puzzles/${collectionSlug}`
+  const sectionHref = sharedPractice
+    ? `/puzzles/${collectionSlug}/${sectionSlug}?student=${encodeURIComponent(sharedPractice.studentId)}&key=${encodeURIComponent(sharedPractice.practiceKey)}`
+    : `/puzzles/${collectionSlug}/${sectionSlug}`
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] lg:items-start">
+    <div className="grid gap-8 md:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] md:items-start">
       <div className="relative flex w-full max-w-[560px] flex-col rounded-2xl border border-stone-300 bg-white p-2 shadow-xl shadow-stone-900/10 sm:p-3">
         <ChessboardProvider
           key={`${puzzle.id}-${boardRevision}`}
           options={{
               id: `puzzle-board-${puzzle.id}`,
-              position,
+              position: boardPosition,
               boardOrientation: 'white',
               showNotation: true,
               allowDragging: attemptedMove === null,
@@ -327,33 +662,35 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
               darkSquareStyle: DARK_SQUARE_STYLE,
               lightSquareNotationStyle: { color: '#3f6651' },
               darkSquareNotationStyle: { color: 'rgba(246, 246, 239, 0.88)' },
-              canDragPiece: ({ isSparePiece }) => puzzle.type === 'placement'
-                ? isSparePiece && attemptedMove === null
-                : !isSparePiece && attemptedMove === null,
-              onPieceClick: ({ isSparePiece }) => {
+              canDragPiece: ({ isSparePiece, square }) => {
+                if (attemptedMove !== null || answerVisible || isResponding) return false
+                if (puzzle.type === 'placement') {
+                  return isSparePiece || (square !== null && placedSquares.includes(square))
+                }
+                if (puzzle.type === 'composition') {
+                  return isSparePiece || (square !== null && Boolean(compositionPlacements[square]))
+                }
+                return !isSparePiece
+              },
+              onPieceClick: ({ isSparePiece, piece }) => {
                 if (puzzle.type === 'placement' && isSparePiece && !attemptedMove) {
                   setPlacementPieceSelected(true)
                 }
+                if (puzzle.type === 'composition' && isSparePiece && !attemptedMove) {
+                  const pieceType = piece.pieceType as PlaceablePiece
+                  if (puzzle.pieces.includes(pieceType)) setSelectedCompositionPiece(pieceType)
+                }
               },
               onPieceDrop: ({ piece, sourceSquare, targetSquare }) => puzzle.type === 'placement'
-                ? tryPlacement(targetSquare, piece.pieceType)
+                ? tryPlacement(targetSquare, piece.pieceType, piece.isSparePiece ? null : sourceSquare)
+                : puzzle.type === 'composition'
+                  ? tryCompositionPlacement(
+                      targetSquare,
+                      piece.pieceType as PlaceablePiece,
+                      piece.isSparePiece ? null : sourceSquare,
+                    )
                 : tryMove(sourceSquare, targetSquare),
               onSquareClick: ({ square }) => handleSquareClick(square),
-              squareRenderer: puzzle.type === 'placement'
-                ? ({ square, children }) => {
-                    const PlacedQueen = defaultPieces[puzzle.piece]
-                    return (
-                      <div className="relative size-full" style={squareStyles[square]}>
-                        {children}
-                        {placedSquares.includes(square) ? (
-                          <div className="pointer-events-none absolute inset-0">
-                            <PlacedQueen square={square} />
-                          </div>
-                        ) : null}
-                      </div>
-                    )
-                  }
-                : undefined,
           }}
         >
           <div className="overflow-hidden rounded-xl">
@@ -361,11 +698,11 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
           </div>
 
           {puzzle.type === 'placement' && !attemptedMove && !answerVisible ? (
-            <div className="flex min-h-20 items-center justify-between gap-3 px-2 pt-2 sm:min-h-24" aria-label={`Piece to place: ${queenName(puzzle.piece)}`}>
+            <div className="flex min-h-20 items-center justify-between gap-3 px-2 pt-2 sm:min-h-24" aria-label={`Piece to place: ${pieceNames[puzzle.piece]}`}>
               <p className="text-sm font-bold text-stone-600">
                 {placedSquares.length === 0
-                  ? 'Drag or select the queen to mark squares.'
-                  : 'Click a marked square to remove it.'}
+                  ? `Drag or select the ${pieceNames[puzzle.piece].split(' ')[1]} to mark squares.`
+                  : 'Drag a marked piece to move it, or click to remove it.'}
               </p>
               <div
                 className={`size-16 rounded-xl border bg-stone-50 p-1 transition sm:size-20 ${
@@ -373,9 +710,39 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
                     ? 'border-amber-700 ring-4 ring-amber-200'
                     : 'border-stone-300'
                 }`}
-                title={`Drag or select the ${queenName(puzzle.piece)}, then place it on the board`}
+                title={`Drag or select the ${pieceNames[puzzle.piece]}, then place it on the board`}
               >
                 <SparePiece pieceType={puzzle.piece} />
+              </div>
+            </div>
+          ) : null}
+
+          {puzzle.type === 'composition' && !attemptedMove && !answerVisible ? (
+            <div className="flex min-h-20 items-center justify-between gap-3 px-2 pt-2 sm:min-h-24" aria-label="Pieces to place">
+              <p className="text-sm font-bold text-stone-600">
+                {Object.keys(compositionPlacements).length === 0
+                  ? 'Drag or select each piece, then place it on the board.'
+                  : 'Drag a placed piece, or click it to reposition.'}
+              </p>
+              <div className="flex shrink-0 gap-2">
+                {puzzle.pieces.map((piece) => {
+                  const isPlaced = Object.values(compositionPlacements).includes(piece)
+                  return (
+                    <div
+                      key={piece}
+                      className={`size-14 rounded-xl border bg-stone-50 p-1 transition sm:size-16 ${
+                        selectedCompositionPiece === piece
+                          ? 'border-amber-700 ring-4 ring-amber-200'
+                          : isPlaced
+                            ? 'border-stone-200 opacity-35'
+                            : 'border-stone-300'
+                      }`}
+                      title={`Drag or select the ${pieceNames[piece]}, then place it on the board`}
+                    >
+                      <SparePiece pieceType={piece} />
+                    </div>
+                  )
+                })}
               </div>
             </div>
           ) : null}
@@ -460,6 +827,10 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
           <a href={collectionHref} className="underline decoration-amber-300 underline-offset-4 hover:text-amber-700">
             {collectionName}
           </a>
+          <span aria-hidden="true">/</span>
+          <a href={sectionHref} className="underline decoration-amber-300 underline-offset-4 hover:text-amber-700">
+            {sectionName}
+          </a>
           <span aria-hidden="true">·</span>
           <span className="uppercase tracking-[0.16em]">Puzzle {puzzleIndex + 1} of {puzzles.length}</span>
         </div>
@@ -468,9 +839,21 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
         </h2>
         <p className="mt-3 text-lg font-bold text-stone-700">
           {puzzle.type === 'placement'
-            ? 'Place the piece on all squares that make a double attack.'
-            : `${sideToMove} to move`}
+            ? puzzle.instruction ?? 'Place the piece on all squares that make a double attack.'
+            : puzzle.type === 'composition'
+              ? puzzle.instruction ?? 'Place both pieces so the king is checkmated.'
+              : puzzle.instruction ?? `${sideToMove} to move`}
         </p>
+
+        {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.playThrough && result === null ? (
+          <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-950" aria-live="polite">
+            {isResponding
+              ? 'Opponent is replying…'
+              : opponentReply
+                ? `${sideToMove === 'White' ? 'Black' : 'White'} replied ${opponentReply}. Find mate.`
+                : 'Find the first move. After the reply, finish the mate.'}
+          </p>
+        ) : null}
 
         {sharedPractice ? (
           <p className={saveStatus === 'error' ? 'mt-2 text-sm font-bold text-rose-800' : 'mt-2 text-sm font-bold text-emerald-800'}>
@@ -504,6 +887,25 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
                 Check answer
               </button>
             ) : null}
+            {puzzle.type === 'composition' ? (
+              <button
+                type="button"
+                onClick={checkComposition}
+                disabled={Object.keys(compositionPlacements).length !== puzzle.placements.length}
+                className="cursor-pointer rounded-full bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Check answer
+              </button>
+            ) : null}
+            {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.canAnswerNo ? (
+              <button
+                type="button"
+                onClick={answerNoDefense}
+                className="cursor-pointer rounded-full bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800"
+              >
+                No — mate cannot be prevented
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={showAnswer}
@@ -515,7 +917,7 @@ export default function PuzzleTrainer({ puzzles, collectionName, collectionSlug 
             <button
               type="button"
               onClick={() => resetPuzzle()}
-              disabled={!attemptedMove && !answerVisible && placedSquares.length === 0}
+              disabled={!attemptedMove && !answerVisible && placedSquares.length === 0 && Object.keys(compositionPlacements).length === 0}
               className="cursor-pointer rounded-full border border-stone-300 bg-white px-5 py-2.5 text-sm font-bold text-stone-900 hover:border-stone-950 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Try again
