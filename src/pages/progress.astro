@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import SharedProgress from '../components/SharedProgress'
+---
+
+<BaseLayout title="Shared Puzzle Results | ChessBadger" description="View shared ChessBadger puzzle results">
+  <section class="bg-[#eef6ff]">
+    <div class="mx-auto max-w-6xl px-5 py-9 sm:px-6 sm:py-12">
+      <p class="text-sm font-bold tracking-[0.04em] text-amber-800">Coach view</p>
+      <h1 class="mt-3 max-w-4xl text-4xl font-bold leading-[1.04] tracking-[-0.025em] text-stone-950 sm:text-5xl">
+        Shared puzzle progress.
+      </h1>
+      <p class="mt-4 max-w-2xl text-lg leading-8 text-stone-600">
+        This private page is read-only. Refresh it whenever you want to see the latest checked attempts.
+      </p>
+    </div>
+  </section>
+
+  <section class="bg-stone-100">
+    <div class="mx-auto max-w-5xl px-5 py-10 sm:px-6 sm:py-14">
+      <SharedProgress client:load />
+    </div>
+  </section>
+</BaseLayout>

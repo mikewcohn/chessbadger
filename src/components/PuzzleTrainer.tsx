@@ -9,6 +9,7 @@ import {
   type PositionDataType,
 } from 'react-chessboard'
 import type { PlaceablePiece, Puzzle } from '../data/puzzles'
+import { formatDuration, usePuzzleTimer } from '../hooks/usePuzzleTimer'
 
 type PuzzleTrainerProps = {
   puzzles: Puzzle[]
@@ -19,12 +20,15 @@ type PuzzleTrainerProps = {
   initialPuzzleId: string
 }
 
-type Result = 'correct' | 'incorrect' | null
+type Result = 'correct' | 'incorrect' | 'answer-viewed' | null
 
 type Attempt = {
   move: string
   result: Exclude<Result, null>
   checkedAt?: string
+  durationMs?: number
+  pauseCount?: number
+  restartCount?: number
 }
 
 type SharedPractice = {
@@ -168,6 +172,7 @@ export default function PuzzleTrainer({
   const [studentName, setStudentName] = useState('')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
+  const timer = usePuzzleTimer()
 
   const puzzle = puzzles[puzzleIndex]
   const puzzleAttempts = attemptHistory[puzzle.id] ?? []
@@ -238,6 +243,9 @@ export default function PuzzleTrainer({
                 move: attempt.move,
                 result: attempt.result,
                 checkedAt: attempt.checkedAt,
+                durationMs: attempt.durationMs,
+                pauseCount: attempt.pauseCount,
+                restartCount: attempt.restartCount,
               },
             ]
             return grouped
@@ -261,7 +269,7 @@ export default function PuzzleTrainer({
     if (replyTimerRef.current !== null) window.clearTimeout(replyTimerRef.current)
   }, [])
 
-  const resetPuzzle = (nextIndex = puzzleIndex, updateUrl = true) => {
+  const resetPuzzle = (nextIndex = puzzleIndex, updateUrl = true, isRestart = false) => {
     if (replyTimerRef.current !== null) {
       window.clearTimeout(replyTimerRef.current)
       replyTimerRef.current = null
@@ -292,6 +300,7 @@ export default function PuzzleTrainer({
     setOpponentReply('')
     setIsResponding(false)
     setBoardRevision((revision) => revision + 1)
+    timer.reset(isRestart)
   }
 
   useEffect(() => {
@@ -324,22 +333,23 @@ export default function PuzzleTrainer({
     setNextSolutionPly(0)
     setOpponentReply('')
     setIsResponding(false)
+    setAttemptedMove('Answer viewed')
     setAnswerVisible(true)
+    recordAttempt('Answer viewed', 'answer-viewed')
   }
 
-  const recordAttempt = (attemptLabel: string, isCorrect: boolean) => {
-    const nextResult = isCorrect ? 'correct' : 'incorrect'
+  const recordAttempt = (attemptLabel: string, nextResult: Exclude<Result, null>) => {
     const checkedAt = new Date().toISOString()
+    const timing = timer.complete()
 
     setAttemptHistory((history) => ({
       ...history,
       [puzzle.id]: [
         ...(history[puzzle.id] ?? []),
-        { move: attemptLabel, result: nextResult, checkedAt },
+        { move: attemptLabel, result: nextResult, checkedAt, ...timing },
       ],
     }))
     setResult(nextResult)
-    setAnswerVisible(false)
 
     if (sharedPractice) {
       setSaveStatus('saving')
@@ -353,6 +363,7 @@ export default function PuzzleTrainer({
           puzzleTitle: puzzle.title,
           move: attemptLabel,
           result: nextResult,
+          ...timing,
         }),
       })
         .then(async (response) => {
@@ -368,7 +379,7 @@ export default function PuzzleTrainer({
 
   const checkMoveAttempt = (moveSan: string) => {
     const acceptedAnswers = new Set(puzzle.answers.map(normalizeSan))
-    recordAttempt(moveSan, acceptedAnswers.has(normalizeSan(moveSan)))
+    recordAttempt(moveSan, acceptedAnswers.has(normalizeSan(moveSan)) ? 'correct' : 'incorrect')
   }
 
   const answerNoDefense = () => {
@@ -402,6 +413,7 @@ export default function PuzzleTrainer({
       || !targetSquare
       || attemptedMove
       || isResponding
+      || !timer.isRunning
     ) return false
 
     if (puzzle.playThrough && puzzle.solutionLines && typeof position === 'string') {
@@ -423,7 +435,7 @@ export default function PuzzleTrainer({
           if (!isCorrect || nextSolutionPly === activeSolutionLine.length - 1) {
             setPosition(game.fen())
             setAttemptedMove(attemptLabel)
-            recordAttempt(attemptLabel, isCorrect)
+            recordAttempt(attemptLabel, isCorrect ? 'correct' : 'incorrect')
             return true
           }
 
@@ -438,7 +450,7 @@ export default function PuzzleTrainer({
         if (!matchingLine) {
           setPosition(game.fen())
           setAttemptedMove(move.san)
-          recordAttempt(move.san, false)
+          recordAttempt(move.san, 'incorrect')
           return true
         }
 
@@ -471,7 +483,7 @@ export default function PuzzleTrainer({
       setPosition(nextPosition)
       setAttemptedMove(attemptLabel)
       setSelectedSquare(null)
-      recordAttempt(attemptLabel, answerIndex >= 0)
+      recordAttempt(attemptLabel, answerIndex >= 0 ? 'correct' : 'incorrect')
       return true
     }
 
@@ -497,7 +509,7 @@ export default function PuzzleTrainer({
     pieceType = puzzle.type === 'placement' ? puzzle.piece : '',
     sourceSquare: string | null = null,
   ) => {
-    if (puzzle.type !== 'placement' || !targetSquare || attemptedMove || answerVisible || pieceType !== puzzle.piece) return false
+    if (puzzle.type !== 'placement' || !targetSquare || attemptedMove || answerVisible || !timer.isRunning || pieceType !== puzzle.piece) return false
 
     setPlacementPieceSelected(false)
 
@@ -535,7 +547,7 @@ export default function PuzzleTrainer({
     const attemptLabel = placedSquares.map((square) => formatAnswer(puzzle, square)).join(', ')
 
     setAttemptedMove(attemptLabel)
-    recordAttempt(attemptLabel, isCorrect)
+    recordAttempt(attemptLabel, isCorrect ? 'correct' : 'incorrect')
   }
 
   const tryCompositionPlacement = (
@@ -543,7 +555,7 @@ export default function PuzzleTrainer({
     pieceType: PlaceablePiece | '',
     sourceSquare: string | null = null,
   ) => {
-    if (puzzle.type !== 'composition' || !targetSquare || !pieceType || attemptedMove || answerVisible) return false
+    if (puzzle.type !== 'composition' || !targetSquare || !pieceType || attemptedMove || answerVisible || !timer.isRunning) return false
     if (!puzzle.pieces.includes(pieceType)) return false
 
     const startingPosition = fenStringToPositionObject(puzzle.fen, 8, 8)
@@ -597,11 +609,11 @@ export default function PuzzleTrainer({
       .join(', ')
 
     setAttemptedMove(attemptLabel)
-    recordAttempt(attemptLabel, isCorrect)
+    recordAttempt(attemptLabel, isCorrect ? 'correct' : 'incorrect')
   }
 
   const handleSquareClick = (square: string) => {
-    if (attemptedMove || answerVisible || isResponding) return
+    if (attemptedMove || answerVisible || isResponding || !timer.isRunning) return
 
     if (puzzle.type === 'placement') {
       if (placementPieceSelected || placedSquares.includes(square)) tryPlacement(square)
@@ -687,7 +699,7 @@ export default function PuzzleTrainer({
               position: boardPosition,
               boardOrientation: 'white',
               showNotation: true,
-              allowDragging: attemptedMove === null,
+              allowDragging: attemptedMove === null && timer.isRunning,
               allowDrawingArrows: false,
               arrows: answerArrows,
               clearArrowsOnClick: false,
@@ -698,7 +710,7 @@ export default function PuzzleTrainer({
               lightSquareNotationStyle: { color: '#3f6651' },
               darkSquareNotationStyle: { color: 'rgba(246, 246, 239, 0.88)' },
               canDragPiece: ({ isSparePiece, square }) => {
-                if (attemptedMove !== null || answerVisible || isResponding) return false
+                if (attemptedMove !== null || answerVisible || isResponding || !timer.isRunning) return false
                 if (puzzle.type === 'placement') {
                   return isSparePiece || (square !== null && placedSquares.includes(square))
                 }
@@ -708,10 +720,10 @@ export default function PuzzleTrainer({
                 return !isSparePiece
               },
               onPieceClick: ({ isSparePiece, piece }) => {
-                if (puzzle.type === 'placement' && isSparePiece && !attemptedMove) {
+                if (puzzle.type === 'placement' && isSparePiece && !attemptedMove && timer.isRunning) {
                   setPlacementPieceSelected(true)
                 }
-                if (puzzle.type === 'composition' && isSparePiece && !attemptedMove) {
+                if (puzzle.type === 'composition' && isSparePiece && !attemptedMove && timer.isRunning) {
                   const pieceType = piece.pieceType as PlaceablePiece
                   if (puzzle.pieces.includes(pieceType)) setSelectedCompositionPiece(pieceType)
                 }
@@ -788,7 +800,9 @@ export default function PuzzleTrainer({
             className={`order-first mb-3 rounded-xl border p-4 shadow-sm sm:p-5 ${
               result === 'correct'
                 ? 'border-emerald-200 bg-emerald-950 text-white'
-                : 'border-rose-200 bg-rose-950 text-white'
+                : result === 'answer-viewed'
+                  ? 'border-amber-200 bg-amber-950 text-white'
+                  : 'border-rose-200 bg-rose-950 text-white'
             }`}
             role="status"
             aria-live="polite"
@@ -815,6 +829,30 @@ export default function PuzzleTrainer({
                   <p className="text-sm font-bold text-emerald-100">All puzzles complete.</p>
                 )}
               </div>
+            ) : result === 'answer-viewed' ? (
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Answer viewed</p>
+                <p className="mt-2 text-sm text-amber-50">
+                  Answer: <strong>{formatAnswers(puzzle)}</strong>
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => resetPuzzle(puzzleIndex, true, true)}
+                    className="cursor-pointer rounded-full bg-white px-4 py-2 text-sm font-bold text-amber-950 hover:bg-amber-50"
+                  >
+                    Restart puzzle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => resetPuzzle(puzzleIndex + 1)}
+                    disabled={puzzleIndex === puzzles.length - 1}
+                    className="cursor-pointer rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Advance
+                  </button>
+                </div>
+              </div>
             ) : (
               <div>
                 <p className="text-2xl font-bold sm:text-3xl">Not quite—try again.</p>
@@ -834,7 +872,7 @@ export default function PuzzleTrainer({
                   </button>
                   <button
                     type="button"
-                    onClick={() => resetPuzzle()}
+                    onClick={() => resetPuzzle(puzzleIndex, true, true)}
                     className="cursor-pointer rounded-full bg-white px-4 py-2 text-sm font-bold text-rose-950 hover:bg-rose-50"
                   >
                     Try again
@@ -880,6 +918,57 @@ export default function PuzzleTrainer({
               : puzzle.instruction ?? `${sideToMove} to move`}
         </p>
 
+        <section className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-stone-500" aria-label="Puzzle timer">
+          <span>Active time</span>
+          <span className="font-mono font-semibold tabular-nums text-stone-700" aria-live="off">
+            {formatDuration(timer.elapsedMs)}
+          </span>
+          {result === null ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={timer.isRunning ? timer.pause : timer.resume}
+                className="cursor-pointer font-semibold text-amber-900 underline decoration-amber-300 underline-offset-4 hover:text-amber-700"
+              >
+                {timer.isRunning ? 'Pause' : 'Resume'}
+              </button>
+            </>
+          ) : null}
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
+            onClick={() => resetPuzzle(puzzleIndex, true, true)}
+            className="cursor-pointer font-semibold text-stone-600 underline decoration-stone-300 underline-offset-4 hover:text-stone-900"
+          >
+            Restart
+          </button>
+          {!timer.isRunning && result === null ? (
+            <p className="basis-full text-xs font-semibold text-amber-900">
+              {timer.pauseReason === 'hidden'
+                ? 'Paused while this tab was away.'
+                : timer.pauseReason === 'inactivity'
+                  ? 'Paused after five minutes without activity.'
+                  : 'Timer paused.'}
+            </p>
+          ) : null}
+        </section>
+
+        {timer.showInactivityPrompt ? (
+          <section className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4" role="alertdialog" aria-labelledby="still-working-heading">
+            <h2 id="still-working-heading" className="font-bold text-amber-950">Still working on this puzzle?</h2>
+            <p className="mt-1 text-sm text-amber-900">The timer paused after five minutes without activity.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={timer.resume} className="cursor-pointer rounded-lg bg-amber-800 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700">
+                Continue
+              </button>
+              <button type="button" onClick={timer.keepPaused} className="cursor-pointer rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-950 hover:border-amber-500">
+                Keep paused
+              </button>
+            </div>
+          </section>
+        ) : null}
+
         {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.playThrough && result === null ? (
           <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-950" aria-live="polite">
             {isResponding
@@ -918,7 +1007,7 @@ export default function PuzzleTrainer({
               <button
                 type="button"
                 onClick={checkPlacements}
-                disabled={placedSquares.length === 0}
+                disabled={placedSquares.length === 0 || !timer.isRunning}
               className="cursor-pointer rounded-lg bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Check answer
@@ -928,7 +1017,7 @@ export default function PuzzleTrainer({
               <button
                 type="button"
                 onClick={checkComposition}
-                disabled={Object.keys(compositionPlacements).length !== puzzle.placements.length}
+                disabled={Object.keys(compositionPlacements).length !== puzzle.placements.length || !timer.isRunning}
                 className="cursor-pointer rounded-lg bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Check answer
@@ -938,6 +1027,7 @@ export default function PuzzleTrainer({
               <button
                 type="button"
                 onClick={answerNoDefense}
+                disabled={!timer.isRunning}
                 className="cursor-pointer rounded-lg bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800"
               >
                 No — mate cannot be prevented
@@ -946,18 +1036,10 @@ export default function PuzzleTrainer({
             <button
               type="button"
               onClick={showAnswer}
-              disabled={answerVisible}
+              disabled={answerVisible || !timer.isRunning}
               className="cursor-pointer rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Show answer
-            </button>
-            <button
-              type="button"
-              onClick={() => resetPuzzle()}
-              disabled={!attemptedMove && !answerVisible && placedSquares.length === 0 && Object.keys(compositionPlacements).length === 0}
-              className="cursor-pointer rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-bold text-stone-900 hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Try again
             </button>
           </div>
         ) : null}
@@ -971,13 +1053,20 @@ export default function PuzzleTrainer({
               {puzzleAttempts.map((attempt, index) => (
                 <li
                   key={`${attempt.move}-${index}`}
-                  className="flex items-center justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3 text-sm"
+                  className="flex items-start justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3 text-sm"
                 >
-                  <span className="font-bold text-stone-900">
-                    {index + 1}. {attempt.move}
+                  <span>
+                    <span className="block font-bold text-stone-900">{index + 1}. {attempt.move}</span>
+                    {attempt.durationMs !== undefined ? (
+                      <span className="mt-1 block text-stone-500">
+                        {formatDuration(attempt.durationMs)}
+                        {attempt.pauseCount ? ` · ${attempt.pauseCount} ${attempt.pauseCount === 1 ? 'pause' : 'pauses'}` : ''}
+                        {attempt.restartCount ? ` · ${attempt.restartCount} ${attempt.restartCount === 1 ? 'restart' : 'restarts'}` : ''}
+                      </span>
+                    ) : null}
                   </span>
-                  <span className={attempt.result === 'correct' ? 'font-bold text-emerald-800' : 'font-bold text-rose-800'}>
-                    {attempt.result === 'correct' ? 'Correct' : 'Not quite'}
+                  <span className={attempt.result === 'correct' ? 'font-bold text-emerald-800' : attempt.result === 'answer-viewed' ? 'font-bold text-amber-800' : 'font-bold text-rose-800'}>
+                    {attempt.result === 'correct' ? 'Correct' : attempt.result === 'answer-viewed' ? 'Answer viewed' : 'Not quite'}
                   </span>
                 </li>
               ))}

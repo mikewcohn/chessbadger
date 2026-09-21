@@ -45,6 +45,7 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
     id: crypto.randomUUID(),
     name,
     practiceKey: createSecret(),
+    resultsKey: createSecret(),
     createdAt: new Date().toISOString(),
     attempts: [],
   }

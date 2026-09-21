@@ -3,7 +3,7 @@ import type { PuzzleCollection, PuzzleSection } from '../data/puzzleCollections'
 
 type Attempt = {
   puzzleId: string
-  result: 'correct' | 'incorrect'
+  result: 'correct' | 'incorrect' | 'answer-viewed'
 }
 
 type PuzzleStatus = 'solved' | 'solved-after-retry' | 'missed' | 'not-attempted'
@@ -23,7 +23,7 @@ const getStatuses = (section: PuzzleSection, attempts: Attempt[]) => {
 
   return section.puzzles.map<PuzzleStatus>((puzzle) => {
     const puzzleAttempts = attemptsByPuzzle.get(puzzle.id) ?? []
-    const hasIncorrectAttempt = puzzleAttempts.some((attempt) => attempt.result === 'incorrect')
+    const hasIncorrectAttempt = puzzleAttempts.some((attempt) => attempt.result !== 'correct')
     const hasCorrectAttempt = puzzleAttempts.some((attempt) => attempt.result === 'correct')
     if (hasIncorrectAttempt && hasCorrectAttempt) return 'solved-after-retry'
     if (hasIncorrectAttempt) return 'missed'

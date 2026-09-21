@@ -59,6 +59,17 @@ Open `/coach?token=YOUR_TOKEN` to create separate private practice links for eac
 student. Checked moves are saved to that student's record and appear on the coach
 dashboard after a refresh.
 
+Students can also open `/track-progress` to create their own private practice link
+and a separate read-only results link to share with a coach. The practice links are
+remembered in that browser, but students should bookmark them because there is no
+email- or password-based recovery. Self-service records also appear on the private
+coach dashboard.
+
+Each puzzle records active solving time with the attempt. Students can pause and
+resume the timer, restart a puzzle, or view the answer; the shared results show the
+elapsed time plus pause and restart counts. The timer pauses automatically when the
+tab is hidden and, after five minutes without activity, asks whether to continue.
+
 In Cloudflare Pages, create a Workers KV namespace, bind it to both production and
 preview as `PUZZLE_ATTEMPTS`, add `COACH_ACCESS_TOKEN` as an encrypted secret for
 both environments, and redeploy. Keep coach and student links private because their

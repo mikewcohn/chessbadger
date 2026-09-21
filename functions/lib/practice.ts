@@ -1,4 +1,4 @@
-export type AttemptResult = 'correct' | 'incorrect'
+export type AttemptResult = 'correct' | 'incorrect' | 'answer-viewed'
 
 export type StoredAttempt = {
   id: string
@@ -7,12 +7,16 @@ export type StoredAttempt = {
   move: string
   result: AttemptResult
   checkedAt: string
+  durationMs?: number
+  pauseCount?: number
+  restartCount?: number
 }
 
 export type StudentRecord = {
   id: string
   name: string
   practiceKey: string
+  resultsKey?: string
   createdAt: string
   attempts: StoredAttempt[]
 }

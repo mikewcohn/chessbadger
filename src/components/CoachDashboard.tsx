@@ -1,18 +1,23 @@
 import { useEffect, useState, type SubmitEvent } from 'react'
+import { formatDuration } from '../hooks/usePuzzleTimer'
 
 type Attempt = {
   id: string
   puzzleId: string
   puzzleTitle: string
   move: string
-  result: 'correct' | 'incorrect'
+  result: 'correct' | 'incorrect' | 'answer-viewed'
   checkedAt: string
+  durationMs?: number
+  pauseCount?: number
+  restartCount?: number
 }
 
 type Student = {
   id: string
   name: string
   practiceKey: string
+  resultsKey?: string
   createdAt: string
   attempts: Attempt[]
 }
@@ -77,6 +82,9 @@ export default function CoachDashboard() {
   const practiceUrl = (student: Student) =>
     `${window.location.origin}/puzzles/steps-2-workbook?student=${encodeURIComponent(student.id)}&key=${encodeURIComponent(student.practiceKey)}`
 
+  const resultsUrl = (student: Student) =>
+    `${window.location.origin}/progress?student=${encodeURIComponent(student.id)}&key=${encodeURIComponent(student.resultsKey ?? '')}`
+
   return (
     <div className="grid gap-8">
       <form onSubmit={createStudent} className="rounded-3xl border border-stone-200 bg-white p-6 shadow-lg shadow-stone-900/5 sm:p-8">
@@ -124,6 +132,15 @@ export default function CoachDashboard() {
               >
                 Copy student link
               </button>
+              {student.resultsKey ? (
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard.writeText(resultsUrl(student))}
+                  className="cursor-pointer rounded-full border border-stone-300 px-4 py-2 text-sm font-bold text-stone-900 hover:border-stone-950"
+                >
+                  Copy results link
+                </button>
+              ) : null}
               <a
                 href={practiceUrl(student)}
                 className="rounded-full bg-stone-950 px-4 py-2 text-sm font-bold text-white hover:bg-stone-800"
@@ -141,10 +158,15 @@ export default function CoachDashboard() {
                 <li key={attempt.id} className="grid gap-1 rounded-2xl bg-stone-50 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4">
                   <div>
                     <p className="font-bold text-stone-950">{attempt.puzzleTitle}: {attempt.move}</p>
-                    <p className="text-sm text-stone-500">{new Date(attempt.checkedAt).toLocaleString()}</p>
+                    <p className="text-sm text-stone-500">
+                      {new Date(attempt.checkedAt).toLocaleString()}
+                      {attempt.durationMs !== undefined ? ` · ${formatDuration(attempt.durationMs)}` : ''}
+                      {attempt.pauseCount ? ` · ${attempt.pauseCount} ${attempt.pauseCount === 1 ? 'pause' : 'pauses'}` : ''}
+                      {attempt.restartCount ? ` · ${attempt.restartCount} ${attempt.restartCount === 1 ? 'restart' : 'restarts'}` : ''}
+                    </p>
                   </div>
-                  <p className={attempt.result === 'correct' ? 'font-bold text-emerald-800' : 'font-bold text-rose-800'}>
-                    {attempt.result === 'correct' ? 'Correct' : 'Try again, fool!'}
+                  <p className={attempt.result === 'correct' ? 'font-bold text-emerald-800' : attempt.result === 'answer-viewed' ? 'font-bold text-amber-800' : 'font-bold text-rose-800'}>
+                    {attempt.result === 'correct' ? 'Correct' : attempt.result === 'answer-viewed' ? 'Answer viewed' : 'Try again, fool!'}
                   </p>
                 </li>
               ))}

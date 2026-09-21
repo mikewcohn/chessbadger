@@ -16,6 +16,9 @@ type SaveAttemptBody = {
   puzzleTitle?: string
   move?: string
   result?: AttemptResult
+  durationMs?: number
+  pauseCount?: number
+  restartCount?: number
 }
 
 const authenticateStudent = async (
@@ -55,6 +58,9 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
   const puzzleTitle = body.puzzleTitle?.trim() ?? ''
   const move = body.move?.trim() ?? ''
   const result = body.result
+  const durationMs = body.durationMs
+  const pauseCount = body.pauseCount
+  const restartCount = body.restartCount
   const student = await authenticateStudent(env, studentId, practiceKey)
 
   if (!student) return json({ error: 'Invalid student link.' }, 401)
@@ -64,8 +70,17 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
   if (move.length < 1 || move.length > 24) {
     return json({ error: 'Invalid move.' }, 400)
   }
-  if (result !== 'correct' && result !== 'incorrect') {
+  if (result !== 'correct' && result !== 'incorrect' && result !== 'answer-viewed') {
     return json({ error: 'Invalid result.' }, 400)
+  }
+  if (typeof durationMs !== 'number' || !Number.isInteger(durationMs) || durationMs < 0 || durationMs > 86_400_000) {
+    return json({ error: 'Invalid puzzle duration.' }, 400)
+  }
+  if (typeof pauseCount !== 'number' || !Number.isInteger(pauseCount) || pauseCount < 0 || pauseCount > 1000) {
+    return json({ error: 'Invalid pause count.' }, 400)
+  }
+  if (typeof restartCount !== 'number' || !Number.isInteger(restartCount) || restartCount < 0 || restartCount > 1000) {
+    return json({ error: 'Invalid restart count.' }, 400)
   }
 
   const attempt: StoredAttempt = {
@@ -75,6 +90,9 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
     move,
     result,
     checkedAt: new Date().toISOString(),
+    durationMs,
+    pauseCount,
+    restartCount,
   }
 
   student.attempts = [...student.attempts, attempt].slice(-1000)
