@@ -1,40 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { PuzzleCollection, PuzzleSection } from '../data/puzzleCollections'
+import type { PuzzleCollection } from '../data/puzzleCollections'
 import { getCachedPracticeAttempts } from '../lib/practiceClient'
-
-type Attempt = {
-  puzzleId: string
-  result: 'correct' | 'incorrect' | 'answer-viewed'
-}
-
-type PuzzleStatus = 'solved' | 'solved-after-retry' | 'missed' | 'not-attempted'
+import {
+  getPuzzleStatuses,
+  summarizePuzzleStatuses,
+  type PracticeAttempt,
+} from '../lib/puzzleProgress'
+import PuzzleProgressBar from './PuzzleProgressBar'
 
 type PuzzleCollectionProgressProps = {
   collection: PuzzleCollection
 }
 
-const getStatuses = (section: PuzzleSection, attempts: Attempt[]) => {
-  const attemptsByPuzzle = new Map<string, Attempt[]>()
-  for (const attempt of attempts) {
-    attemptsByPuzzle.set(attempt.puzzleId, [
-      ...(attemptsByPuzzle.get(attempt.puzzleId) ?? []),
-      attempt,
-    ])
-  }
-
-  return section.puzzles.map<PuzzleStatus>((puzzle) => {
-    const puzzleAttempts = attemptsByPuzzle.get(puzzle.id) ?? []
-    const hasIncorrectAttempt = puzzleAttempts.some((attempt) => attempt.result !== 'correct')
-    const hasCorrectAttempt = puzzleAttempts.some((attempt) => attempt.result === 'correct')
-    if (hasIncorrectAttempt && hasCorrectAttempt) return 'solved-after-retry'
-    if (hasIncorrectAttempt) return 'missed'
-    if (hasCorrectAttempt) return 'solved'
-    return 'not-attempted'
-  })
-}
-
 export default function PuzzleCollectionProgress({ collection }: PuzzleCollectionProgressProps) {
-  const [attempts, setAttempts] = useState<Attempt[]>([])
+  const [attempts, setAttempts] = useState<PracticeAttempt[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +25,7 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
     )
       .then(async (response) => {
         const data = await response.json() as {
-          attempts?: Attempt[]
+          attempts?: PracticeAttempt[]
           error?: string
         }
         if (!response.ok || !data.attempts) throw new Error(data.error ?? 'Could not load puzzle progress.')
@@ -62,61 +41,81 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
   }, [])
 
   const sectionProgress = useMemo(() => collection.sections.map((section) => {
-    const statuses = getStatuses(section, attempts)
-    const solved = statuses.filter((status) => status === 'solved' || status === 'solved-after-retry').length
+    const statuses = getPuzzleStatuses(section.puzzles, attempts)
+    const progress = summarizePuzzleStatuses(statuses)
     const firstMissed = statuses.findIndex((status) => status === 'missed')
     const firstNotAttempted = statuses.findIndex((status) => status === 'not-attempted')
     const continueIndex = firstMissed >= 0 ? firstMissed : firstNotAttempted >= 0 ? firstNotAttempted : 0
 
-    return { section, statuses, solved, continueIndex }
+    return { section, progress, continueIndex }
   }), [attempts, collection.sections])
 
   const availableCount = collection.sections.filter((section) => section.puzzles.length > 0).length
-  const solvedCount = sectionProgress.reduce((total, progress) => total + progress.solved, 0)
-  const totalPuzzleCount = collection.puzzles.length
+  const bookProgress = sectionProgress.reduce((total, section) => ({
+    attempted: total.attempted + section.progress.attempted,
+    clean: total.clean + section.progress.clean,
+    retried: total.retried + section.progress.retried,
+    missed: total.missed + section.progress.missed,
+    total: total.total + section.progress.total,
+  }), { attempted: 0, clean: 0, retried: 0, missed: 0, total: 0 })
+  const bookPercent = bookProgress.total === 0
+    ? 0
+    : Math.round((bookProgress.attempted / bookProgress.total) * 100)
 
   return (
     <div className="grid gap-6">
-      <section className="border-y border-stone-200 bg-white px-1 py-5 sm:px-6">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+        <div className="border-b border-stone-200 px-5 py-5 sm:px-7">
           <div>
-            <div className="min-h-6">
+            <div className="min-h-7">
               {loading
                 ? <span className="block h-5 w-44 animate-pulse rounded bg-stone-200"><span className="sr-only">Loading progress</span></span>
-                : <p className="font-bold text-amber-900">Your puzzle progress</p>}
+                : <h2 className="text-2xl font-bold tracking-[-0.02em] text-stone-950">Your book progress</h2>}
             </div>
+            <p className="mt-1 text-sm text-stone-500">Progress across {availableCount} available sections.</p>
             {error ? <p className="mt-1 text-sm font-semibold text-rose-800">{error}</p> : null}
           </div>
-          <dl className="grid grid-cols-3 gap-5 sm:gap-9">
-            <div>
-              <dd className="text-2xl font-bold text-stone-950">{availableCount}</dd>
-              <dt className="text-sm font-medium text-stone-500">sections</dt>
+        </div>
+        <div className="grid grid-cols-3 gap-4 px-5 py-5 sm:grid-cols-[minmax(260px,1.4fr)_repeat(3,minmax(90px,0.6fr))] sm:items-center sm:px-7">
+          <div className="col-span-3 sm:col-span-1">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="font-bold text-stone-950">Overall completion</p>
+              <p className="text-sm font-bold text-stone-700">{bookPercent}%</p>
             </div>
-            <div>
-              <dd className="text-2xl font-bold text-stone-950">{totalPuzzleCount}</dd>
-              <dt className="text-sm font-medium text-stone-500">puzzles</dt>
+            <div className="mt-2"><PuzzleProgressBar progress={bookProgress} /></div>
+            <p className="mt-1.5 text-xs font-medium text-stone-500">{bookProgress.attempted} of {bookProgress.total} puzzles attempted</p>
+          </div>
+          {([
+            [bookProgress.clean, 'Clean', 'text-emerald-800'],
+            [bookProgress.retried, 'Retried', 'text-emerald-700'],
+            [bookProgress.missed, 'Missed', 'text-rose-800'],
+          ] as const).map(([value, label, color]) => (
+            <div key={label} className="border-l border-stone-200 pl-4">
+              <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              <p className="text-sm text-stone-500">{label}</p>
             </div>
-            <div>
-              <dd className="text-2xl font-bold text-emerald-800">{solvedCount}</dd>
-              <dt className="text-sm font-medium text-stone-500">solved</dt>
-            </div>
-          </dl>
+          ))}
         </div>
       </section>
 
       <ol className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm divide-y divide-stone-200">
-        {sectionProgress.map(({ section, statuses, solved, continueIndex }, index) => {
+        {sectionProgress.map(({ section, progress, continueIndex }, index) => {
           const isAvailable = section.puzzles.length > 0
           const sectionHref = `/puzzles/${collection.slug}/${section.slug}`
           const nextPuzzle = section.puzzles[continueIndex]
           const continueHref = nextPuzzle
             ? `/puzzles/${collection.slug}/${section.slug}/puzzle/${nextPuzzle.id}`
             : sectionHref
-          const attempted = statuses.filter((status) => status !== 'not-attempted').length
+          const percent = progress.total === 0 ? 0 : Math.round((progress.attempted / progress.total) * 100)
+          const actionLabel = progress.attempted === 0
+            ? 'Start'
+            : progress.missed > 0 || progress.attempted === progress.total
+              ? 'Review'
+              : 'Continue'
 
           return (
             <li key={section.slug}>
-              <article className={`relative grid gap-4 p-5 transition sm:p-6 lg:grid-cols-[3rem_minmax(0,1fr)_9rem_auto] lg:items-center ${isAvailable ? 'bg-white hover:bg-amber-50/40' : 'bg-stone-50/70'}`}>
+              <article className={`relative grid gap-4 p-5 transition sm:p-6 lg:grid-cols-[3rem_minmax(240px,1fr)_minmax(260px,0.9fr)_auto] lg:items-center ${isAvailable ? 'bg-white hover:bg-amber-50/40' : 'bg-stone-50/70'}`}>
                 {isAvailable ? (
                   <a href={sectionHref} className="absolute inset-0 z-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-800" aria-label={`View ${section.title}`} />
                 ) : null}
@@ -128,24 +127,24 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
                     <p className="text-xs font-bold uppercase tracking-[0.11em] text-stone-500">{section.workbookPages}</p>
                     <h2 className={`mt-1 text-xl font-bold tracking-[-0.015em] ${isAvailable ? 'text-stone-950' : 'text-stone-600'}`}>{section.title}</h2>
                     <p className="mt-1 text-sm leading-relaxed text-stone-600">{section.description}</p>
-                    {isAvailable ? (
-                      <div className="mt-3 h-1.5 max-w-xl overflow-hidden rounded-full bg-stone-200" aria-label={`${solved} of ${section.puzzles.length} puzzles solved`}>
-                        <div className="h-full rounded-full bg-emerald-700" style={{ width: `${section.puzzles.length ? (solved / section.puzzles.length) * 100 : 0}%` }} />
-                      </div>
-                    ) : null}
                   </div>
                 </div>
                 {isAvailable ? (
-                  <div className="z-10 flex gap-5 text-sm text-stone-600 lg:block lg:text-right">
-                    <p><strong className="font-semibold text-stone-900">{section.puzzles.length}</strong> puzzles</p>
-                    <p className="lg:mt-1"><strong className="font-semibold text-emerald-800">{solved}</strong> solved</p>
+                  <div className="z-10 min-w-0">
+                    <PuzzleProgressBar progress={progress} className="h-2" />
+                    <p className="mt-1.5 text-xs font-medium text-stone-500">{progress.attempted} of {progress.total} attempted · {percent}%</p>
+                    <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-stone-600">
+                      <span><strong className="text-emerald-800">{progress.clean}</strong> clean</span>
+                      <span><strong className="text-emerald-700">{progress.retried}</strong> retried</span>
+                      <span><strong className="text-rose-800">{progress.missed}</strong> missed</span>
+                    </p>
                   </div>
                 ) : (
                   <span className="text-sm font-semibold text-stone-500 lg:text-right">Coming soon</span>
                 )}
                 {isAvailable ? (
                   <a href={continueHref} className="z-10 inline-flex w-fit items-center gap-2 rounded-lg bg-amber-800 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">
-                    {attempted === 0 ? 'Start' : solved === section.puzzles.length ? 'Review' : 'Continue'}
+                    {actionLabel}
                     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M6 12h12m-5-5 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </a>
                 ) : <span aria-hidden="true" />}
