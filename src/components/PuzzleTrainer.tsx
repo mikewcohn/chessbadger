@@ -230,6 +230,7 @@ export default function PuzzleTrainer({
   const [alwaysWhiteOnBottom, setAlwaysWhiteOnBottom] = useState(true)
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
+  const [coachReviewMode, setCoachReviewMode] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
   const timer = usePuzzleTimer()
@@ -306,6 +307,9 @@ export default function PuzzleTrainer({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const isCoachReview = params.get('review') === 'coach'
+    setCoachReviewMode(isCoachReview)
+    if (isCoachReview) timer.pause()
     const requestedPuzzle = Number(params.get('puzzle'))
     if (Number.isInteger(requestedPuzzle) && requestedPuzzle >= 1 && requestedPuzzle <= puzzles.length) {
       setPuzzleIndex(requestedPuzzle - 1)
@@ -770,6 +774,85 @@ export default function PuzzleTrainer({
 
   const collectionHref = `/puzzles/${collectionSlug}`
   const sectionHref = `/puzzles/${collectionSlug}/${sectionSlug}`
+  const coachReturnHref = `/coach/?book=${encodeURIComponent(collectionSlug)}&section=${encodeURIComponent(sectionSlug)}`
+  const coachStatus = puzzleAttempts.some((attempt) => attempt.result === 'correct')
+    ? puzzleAttempts.some((attempt) => attempt.result !== 'correct') ? 'Solved after retry' : 'Solved cleanly'
+    : puzzleAttempts.length > 0 ? 'Missed' : 'Not attempted'
+  const coachStatusClass = coachStatus === 'Missed'
+    ? 'text-rose-800'
+    : coachStatus === 'Not attempted' ? 'text-stone-600' : 'text-emerald-800'
+
+  if (coachReviewMode) {
+    return (
+      <div className="grid gap-6 md:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] md:items-start lg:gap-8">
+        <div className="w-full max-w-[560px] rounded-2xl border border-stone-300 bg-white p-2 shadow-sm sm:p-3">
+          <ChessboardProvider
+            key={`coach-${puzzle.id}-${boardTheme}`}
+            options={{
+              id: `coach-puzzle-board-${puzzle.id}`,
+              position: puzzle.fen,
+              boardOrientation,
+              showNotation: true,
+              allowDragging: false,
+              allowDrawingArrows: false,
+              lightSquareStyle: BOARD_THEMES[boardTheme].light,
+              darkSquareStyle: BOARD_THEMES[boardTheme].dark,
+              lightSquareNotationStyle: { color: BOARD_THEMES[boardTheme].lightNotation },
+              darkSquareNotationStyle: { color: BOARD_THEMES[boardTheme].darkNotation },
+              canDragPiece: () => false,
+            }}
+          >
+            <div className="overflow-hidden rounded-xl"><Chessboard /></div>
+          </ChessboardProvider>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-3">
+            <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+              Board style
+              <select value={boardTheme} onChange={(event) => updateBoardTheme(event.currentTarget.value as BoardTheme)} className="cursor-pointer rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 font-semibold text-stone-900 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200">
+                {(Object.entries(BOARD_THEMES) as Array<[BoardTheme, (typeof BOARD_THEMES)[BoardTheme]]>).map(([value, theme]) => <option key={value} value={value}>{theme.label}</option>)}
+              </select>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-bold text-stone-700">
+              <input type="checkbox" checked={alwaysWhiteOnBottom} onChange={(event) => updateBoardOrientationPreference(event.currentTarget.checked)} className="size-4 cursor-pointer accent-amber-800" />
+              Always show White on bottom
+            </label>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+          <a href={coachReturnHref} className="inline-flex items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700">
+            <span aria-hidden="true">←</span> Back to coach review
+          </a>
+          <p className="mt-5 text-xs font-bold uppercase tracking-[0.12em] text-stone-500">{collectionName} · {sectionName}</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-[-0.015em] text-stone-950 sm:text-3xl">{puzzle.title}</h1>
+          <p className="mt-2 text-stone-600">{sideToMove ? `${sideToMove} to move` : puzzle.instruction}</p>
+
+          <div className="mt-5 grid gap-3 rounded-xl bg-stone-50 p-4 sm:grid-cols-2">
+            <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-stone-500">Result</p><p className={`mt-1 font-bold ${coachStatusClass}`}>{coachStatus}</p></div>
+            <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-stone-500">Answer</p><p className="mt-1 font-bold text-stone-900">{formatAnswers(puzzle)}</p></div>
+          </div>
+
+          <section className="mt-6 border-t border-stone-200 pt-5" aria-labelledby="coach-attempt-history-heading">
+            <h2 id="coach-attempt-history-heading" className="text-lg font-bold text-stone-950">Student attempts</h2>
+            {saveStatus === 'loading' ? <p className="mt-3 text-sm text-stone-500">Loading attempts…</p> : puzzleAttempts.length === 0 ? (
+              <p className="mt-3 rounded-xl bg-stone-50 px-4 py-5 text-sm text-stone-600">No attempts have been recorded for this puzzle.</p>
+            ) : (
+              <ol className="mt-3 grid gap-2">
+                {puzzleAttempts.map((attempt, index) => {
+                  const details = [attempt.checkedAt ? new Date(attempt.checkedAt).toLocaleString() : null, attempt.durationMs !== undefined ? formatDuration(attempt.durationMs) : null].filter(Boolean)
+                  return (
+                    <li key={`${attempt.move}-${index}`} className="flex items-start justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3 text-sm">
+                      <span><span className="block font-bold text-stone-900">{index + 1}. {attempt.move}</span>{details.length > 0 ? <span className="mt-1 block text-stone-500">{details.join(' · ')}</span> : null}</span>
+                      <span className={attempt.result === 'correct' ? 'font-bold text-emerald-800' : attempt.result === 'answer-viewed' ? 'font-bold text-amber-800' : 'font-bold text-rose-800'}>{attempt.result === 'correct' ? 'Correct' : attempt.result === 'answer-viewed' ? 'Answer viewed' : 'Incorrect'}</span>
+                    </li>
+                  )
+                })}
+              </ol>
+            )}
+          </section>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] md:items-start lg:gap-8">

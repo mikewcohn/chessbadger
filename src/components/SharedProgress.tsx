@@ -132,7 +132,6 @@ export default function SharedProgress({ books }: SharedProgressProps) {
   const [sortOrder, setSortOrder] = useState<SortOrder>('book')
   const [showDateTime, setShowDateTime] = useState(false)
   const [showSolvingTime, setShowSolvingTime] = useState(true)
-  const [selectedPuzzleId, setSelectedPuzzleId] = useState<string | null>(null)
 
   const catalog = useMemo(() => {
     const entries = new Map<string, CatalogEntry>()
@@ -224,10 +223,10 @@ export default function SharedProgress({ books }: SharedProgressProps) {
   const rangeLastNumber = activeSection?.puzzles[rangeEnd - 1] ? puzzleDisplayNumber(activeSection.puzzles[rangeEnd - 1], rangeEnd - 1) : 0
 
   const visibleSummaries = useMemo(() => sectionSummaries
-    .filter((summary) => (statusFilter === 'all' || summary.status === statusFilter) && (selectedPuzzleId === null || summary.id === selectedPuzzleId))
+    .filter((summary) => statusFilter === 'all' || summary.status === statusFilter)
     .toSorted((left, right) => sortOrder === 'recent'
       ? new Date(right.latestAttempt.checkedAt).getTime() - new Date(left.latestAttempt.checkedAt).getTime()
-      : left.puzzleIndex - right.puzzleIndex), [sectionSummaries, selectedPuzzleId, sortOrder, statusFilter])
+      : left.puzzleIndex - right.puzzleIndex), [sectionSummaries, sortOrder, statusFilter])
 
   const updateUrl = (nextBook: string, nextSection: string | null) => {
     const params = new URLSearchParams()
@@ -237,16 +236,16 @@ export default function SharedProgress({ books }: SharedProgressProps) {
   }
 
   const chooseBook = (nextBook: string) => {
-    setBookSlug(nextBook); setSectionSlug(null); setRangeStart(0); setSelectedPuzzleId(null); setStatusFilter('all')
+    setBookSlug(nextBook); setSectionSlug(null); setRangeStart(0); setStatusFilter('all')
     updateUrl(nextBook, null)
   }
 
   const chooseSection = (nextSection: string) => {
-    setSectionSlug(nextSection); setRangeStart(0); setSelectedPuzzleId(null); setStatusFilter('all')
+    setSectionSlug(nextSection); setRangeStart(0); setStatusFilter('all')
     updateUrl(activeBook.slug, nextSection)
   }
 
-  const chooseStatusFilter = (filter: StatusFilter) => { setStatusFilter(filter); setSelectedPuzzleId(null) }
+  const chooseStatusFilter = (filter: StatusFilter) => setStatusFilter(filter)
 
   if (loading) return <p className="rounded-2xl border border-stone-200 bg-white p-8 text-stone-600">Loading results…</p>
   if (error) return <section className="rounded-2xl border border-rose-200 bg-white p-8"><h2 className="text-2xl font-bold text-stone-950">Results unavailable</h2><p className="mt-2 text-rose-800">{error}</p></section>
@@ -293,26 +292,25 @@ export default function SharedProgress({ books }: SharedProgressProps) {
                 <li id="section-details" className="bg-stone-50/70">
                   <div className="border-l-4 border-amber-700">
                     {rangeStarts.length > 1 ? (
-                      <div className="border-b border-stone-200 px-5 py-4 sm:px-7"><p className="mb-2 text-sm font-bold text-stone-700">Puzzle range</p><div className="flex gap-2 overflow-x-auto pb-1">{rangeStarts.map((start) => { const end = Math.min(start + RANGE_SIZE, activeSection.puzzles.length); return <button key={start} type="button" onClick={() => { setRangeStart(start); setSelectedPuzzleId(null) }} aria-pressed={rangeStart === start} className={`shrink-0 cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold ${rangeStart === start ? 'border-amber-800 bg-amber-800 text-white' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-500'}`}>{puzzleDisplayNumber(activeSection.puzzles[start], start)}–{puzzleDisplayNumber(activeSection.puzzles[end - 1], end - 1)}</button> })}</div></div>
+                      <div className="border-b border-stone-200 px-5 py-4 sm:px-7"><p className="mb-2 text-sm font-bold text-stone-700">Puzzle range</p><div className="flex gap-2 overflow-x-auto pb-1">{rangeStarts.map((start) => { const end = Math.min(start + RANGE_SIZE, activeSection.puzzles.length); return <button key={start} type="button" onClick={() => setRangeStart(start)} aria-pressed={rangeStart === start} className={`shrink-0 cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold ${rangeStart === start ? 'border-amber-800 bg-amber-800 text-white' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-500'}`}>{puzzleDisplayNumber(activeSection.puzzles[start], start)}–{puzzleDisplayNumber(activeSection.puzzles[end - 1], end - 1)}</button> })}</div></div>
                     ) : null}
 
                     <div className="border-b border-stone-200 px-5 py-5 sm:px-7">
-                      <div className="mb-4 flex flex-wrap items-end justify-between gap-2"><div><h3 className="font-bold text-stone-950">Puzzles {rangeFirstNumber}–{rangeLastNumber}</h3><p className="mt-1 text-sm text-stone-500">{progressFor(activeSection.puzzles).attempted} of {activeSection.puzzles.length} puzzles attempted</p></div><p className="text-sm text-stone-500">Select a puzzle to filter its result</p></div>
+                      <div className="mb-4 flex flex-wrap items-end justify-between gap-2"><div><h3 className="font-bold text-stone-950">Puzzles {rangeFirstNumber}–{rangeLastNumber}</h3><p className="mt-1 text-sm text-stone-500">{progressFor(activeSection.puzzles).attempted} of {activeSection.puzzles.length} puzzles attempted</p></div><p className="text-sm text-stone-500">Select a puzzle to review it</p></div>
                       <div className="grid grid-cols-4 gap-2 sm:grid-cols-8 md:grid-cols-10">
                         {visiblePuzzles.map((puzzle, localIndex) => {
                           const status = summariesByPuzzle.get(puzzle.id)?.status ?? 'not-attempted'
                           const number = puzzleDisplayNumber(puzzle, rangeStart + localIndex)
-                          const isSelected = selectedPuzzleId === puzzle.id
                           const style = status === 'clean' ? 'border-emerald-800 bg-emerald-800 text-white hover:bg-emerald-700' : status === 'retried' ? 'border-emerald-300 bg-emerald-50 text-emerald-950 hover:bg-emerald-100' : status === 'missed' ? 'border-rose-800 bg-rose-800 text-white hover:bg-rose-700' : 'border-stone-300 bg-stone-100 text-stone-700 hover:border-stone-500 hover:bg-white'
-                          return <button key={puzzle.id} type="button" onClick={() => { setSelectedPuzzleId(isSelected ? null : puzzle.id); setStatusFilter('all') }} aria-pressed={isSelected} aria-label={`Puzzle ${number}: ${statusLabels[status]}`} className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm font-bold transition ${style} ${isSelected ? 'ring-2 ring-amber-700 ring-offset-2' : ''}`}>{number}<StatusIcon status={status} /></button>
+                          return <a key={puzzle.id} href={`/puzzles/${activeBook.slug}/${activeSection.slug}/puzzle/${puzzle.id}?review=coach`} aria-label={`Review Puzzle ${number}: ${statusLabels[status]}`} className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm font-bold transition ${style}`}>{number}<StatusIcon status={status} /></a>
                         })}
                       </div>
                     </div>
 
                     <div className="border-b border-stone-200 px-5 py-5 sm:px-7">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                        <div><h3 className="text-lg font-bold text-stone-950">Puzzle results</h3><p className="mt-1 text-sm text-stone-500">Showing {visibleSummaries.length} of {sectionSummaries.length} attempted puzzles{selectedPuzzleId ? ' · one puzzle selected' : ''}</p></div>
-                        <div className="flex flex-wrap gap-2" aria-label="Filter puzzle results">{([['all', 'All'], ['clean', 'Clean'], ['retried', 'Retried'], ['missed', 'Missed']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => chooseStatusFilter(value)} aria-pressed={statusFilter === value && selectedPuzzleId === null} className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold ${statusFilter === value && selectedPuzzleId === null ? 'border-amber-800 bg-amber-800 text-white' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-500'}`}>{label}</button>)}</div>
+                        <div><h3 className="text-lg font-bold text-stone-950">Puzzle results</h3><p className="mt-1 text-sm text-stone-500">Showing {visibleSummaries.length} of {sectionSummaries.length} attempted puzzles</p></div>
+                        <div className="flex flex-wrap gap-2" aria-label="Filter puzzle results">{([['all', 'All'], ['clean', 'Clean'], ['retried', 'Retried'], ['missed', 'Missed']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => chooseStatusFilter(value)} aria-pressed={statusFilter === value} className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold ${statusFilter === value ? 'border-amber-800 bg-amber-800 text-white' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-500'}`}>{label}</button>)}</div>
                       </div>
                       <div className="mt-4 flex flex-col gap-3 border-t border-stone-200 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                         <div className="flex flex-wrap gap-x-5 gap-y-3">
@@ -324,13 +322,13 @@ export default function SharedProgress({ books }: SharedProgressProps) {
                     </div>
 
                     {visibleSummaries.length === 0 ? (
-                      <p className="m-5 rounded-xl bg-white px-4 py-10 text-center text-stone-600 sm:m-7">{selectedPuzzleId ? 'This puzzle has not been attempted.' : sectionSummaries.length === 0 ? 'No attempts have been recorded in this section.' : 'No puzzle results match this filter.'}</p>
+                      <p className="m-5 rounded-xl bg-white px-4 py-10 text-center text-stone-600 sm:m-7">{sectionSummaries.length === 0 ? 'No attempts have been recorded in this section.' : 'No puzzle results match this filter.'}</p>
                     ) : (
                       <ol className="divide-y divide-stone-200 bg-white">{visibleSummaries.map((summary) => {
                         const failedCount = summary.attempts.filter((attempt) => attempt.result !== 'correct').length
                         const answerWasViewed = summary.attempts.some((attempt) => attempt.result === 'answer-viewed')
                         const detailParts = [showDateTime ? new Date(summary.latestAttempt.checkedAt).toLocaleString() : null, showSolvingTime && summary.latestAttempt.durationMs !== undefined ? formatDuration(summary.latestAttempt.durationMs) : null, showSolvingTime && summary.latestAttempt.pauseCount ? `${summary.latestAttempt.pauseCount} ${summary.latestAttempt.pauseCount === 1 ? 'pause' : 'pauses'}` : null, showSolvingTime && summary.latestAttempt.restartCount ? `${summary.latestAttempt.restartCount} ${summary.latestAttempt.restartCount === 1 ? 'restart' : 'restarts'}` : null].filter(Boolean)
-                        return <li key={summary.id} className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-7"><div className="min-w-0"><div className="flex flex-wrap items-baseline gap-x-2 gap-y-1"><p className="font-bold text-stone-950">{summary.title}</p><span className="font-semibold text-stone-700">{summary.move}</span></div>{summary.status === 'retried' ? <p className="mt-1 text-sm text-stone-600">{failedCount} failed {failedCount === 1 ? 'attempt' : 'attempts'}{summary.failedMoves.length > 0 ? `: ${summary.failedMoves.join(', ')}` : ''}{answerWasViewed ? `${summary.failedMoves.length > 0 ? ' · ' : ': '}answer viewed` : ''}</p> : summary.status === 'missed' && answerWasViewed && summary.move.toLowerCase() !== 'answer viewed' ? <p className="mt-1 text-sm text-amber-800">Answer viewed</p> : null}{detailParts.length > 0 ? <p className="mt-1 text-sm text-stone-500">{detailParts.join(' · ')}</p> : null}</div><div className={`flex items-center gap-2 text-sm font-bold ${summary.status === 'missed' ? 'text-rose-800' : 'text-emerald-800'}`}><StatusIcon status={summary.status} />{statusLabels[summary.status]}</div></li>
+                        return <li key={summary.id}><a href={`/puzzles/${activeBook.slug}/${activeSection.slug}/puzzle/${summary.id}?review=coach`} className="grid gap-3 px-5 py-4 transition hover:bg-amber-50/60 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-7"><div className="min-w-0"><div className="flex flex-wrap items-baseline gap-x-2 gap-y-1"><p className="font-bold text-stone-950">{summary.title}</p><span className="font-semibold text-stone-700">{summary.move}</span></div>{summary.status === 'retried' ? <p className="mt-1 text-sm text-stone-600">{failedCount} failed {failedCount === 1 ? 'attempt' : 'attempts'}{summary.failedMoves.length > 0 ? `: ${summary.failedMoves.join(', ')}` : ''}{answerWasViewed ? `${summary.failedMoves.length > 0 ? ' · ' : ': '}answer viewed` : ''}</p> : summary.status === 'missed' && answerWasViewed && summary.move.toLowerCase() !== 'answer viewed' ? <p className="mt-1 text-sm text-amber-800">Answer viewed</p> : null}{detailParts.length > 0 ? <p className="mt-1 text-sm text-stone-500">{detailParts.join(' · ')}</p> : null}</div><div className={`flex items-center gap-2 text-sm font-bold ${summary.status === 'missed' ? 'text-rose-800' : 'text-emerald-800'}`}><StatusIcon status={summary.status} />{statusLabels[summary.status]}<span aria-hidden="true">→</span></div></a></li>
                       })}</ol>
                     )}
                   </div>
