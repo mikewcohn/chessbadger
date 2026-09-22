@@ -25,6 +25,7 @@ type PuzzleTrainerProps = {
 }
 
 type Result = 'correct' | 'incorrect' | 'answer-viewed' | null
+type BoardTheme = 'green' | 'blue' | 'wood' | 'plain'
 
 type Attempt = {
   move: string
@@ -35,21 +36,79 @@ type Attempt = {
   restartCount?: number
 }
 
-const LIGHT_SQUARE_STYLE = {
-  backgroundColor: '#d3d1c8',
-  backgroundImage:
-    'radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.28) 0 5%, transparent 24%), radial-gradient(circle at 78% 72%, rgba(80, 82, 72, 0.12) 0 7%, transparent 28%), linear-gradient(118deg, rgba(255, 255, 255, 0.1), rgba(78, 80, 70, 0.08))',
-  backgroundSize: '82px 82px, 106px 106px, 100% 100%',
-} satisfies CSSProperties
-
-const DARK_SQUARE_STYLE = {
-  backgroundColor: '#6b9078',
-  backgroundImage:
-    'radial-gradient(circle at 22% 18%, rgba(222, 235, 222, 0.2) 0 5%, transparent 23%), radial-gradient(circle at 76% 74%, rgba(28, 65, 45, 0.18) 0 8%, transparent 29%), linear-gradient(118deg, rgba(255, 255, 255, 0.07), rgba(20, 57, 39, 0.12))',
-  backgroundSize: '88px 88px, 112px 112px, 100% 100%',
-} satisfies CSSProperties
+const BOARD_THEMES = {
+  green: {
+    label: 'Green',
+    light: {
+      backgroundColor: '#d3d1c8',
+      backgroundImage:
+        'radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.28) 0 5%, transparent 24%), radial-gradient(circle at 78% 72%, rgba(80, 82, 72, 0.12) 0 7%, transparent 28%), linear-gradient(118deg, rgba(255, 255, 255, 0.1), rgba(78, 80, 70, 0.08))',
+      backgroundSize: '82px 82px, 106px 106px, 100% 100%',
+    },
+    dark: {
+      backgroundColor: '#6b9078',
+      backgroundImage:
+        'radial-gradient(circle at 22% 18%, rgba(222, 235, 222, 0.2) 0 5%, transparent 23%), radial-gradient(circle at 76% 74%, rgba(28, 65, 45, 0.18) 0 8%, transparent 29%), linear-gradient(118deg, rgba(255, 255, 255, 0.07), rgba(20, 57, 39, 0.12))',
+      backgroundSize: '88px 88px, 112px 112px, 100% 100%',
+    },
+    lightNotation: '#3f6651',
+    darkNotation: 'rgba(246, 246, 239, 0.88)',
+  },
+  blue: {
+    label: 'Blue',
+    light: {
+      backgroundColor: '#dce9ef',
+      backgroundImage:
+        'radial-gradient(circle at 20% 24%, rgba(255, 255, 255, 0.42) 0 6%, transparent 28%), radial-gradient(circle at 76% 72%, rgba(87, 132, 154, 0.11) 0 8%, transparent 30%), linear-gradient(122deg, rgba(255, 255, 255, 0.15), rgba(102, 145, 166, 0.08))',
+      backgroundSize: '86px 86px, 110px 110px, 100% 100%',
+    },
+    dark: {
+      backgroundColor: '#8eafbf',
+      backgroundImage:
+        'radial-gradient(circle at 22% 18%, rgba(224, 241, 247, 0.24) 0 6%, transparent 25%), radial-gradient(circle at 74% 76%, rgba(54, 94, 114, 0.15) 0 8%, transparent 30%), linear-gradient(118deg, rgba(255, 255, 255, 0.08), rgba(47, 88, 108, 0.12))',
+      backgroundSize: '90px 90px, 116px 116px, 100% 100%',
+    },
+    lightNotation: '#527c91',
+    darkNotation: 'rgba(242, 249, 252, 0.9)',
+  },
+  wood: {
+    label: 'Wood',
+    light: {
+      backgroundColor: '#d4b98d',
+      backgroundImage:
+        'repeating-linear-gradient(88deg, rgba(91, 62, 38, 0.06) 0 1px, transparent 1px 5px), radial-gradient(ellipse at 18% 24%, rgba(255, 243, 211, 0.24) 0 9%, transparent 35%), linear-gradient(104deg, rgba(255, 255, 255, 0.08), rgba(91, 61, 38, 0.1))',
+      backgroundSize: '100% 100%, 120px 82px, 100% 100%',
+    },
+    dark: {
+      backgroundColor: '#785c49',
+      backgroundImage:
+        'repeating-linear-gradient(91deg, rgba(39, 25, 17, 0.09) 0 1px, transparent 1px 6px), radial-gradient(ellipse at 76% 70%, rgba(207, 174, 132, 0.14) 0 8%, transparent 34%), linear-gradient(112deg, rgba(255, 255, 255, 0.05), rgba(48, 30, 21, 0.12))',
+      backgroundSize: '100% 100%, 118px 88px, 100% 100%',
+    },
+    lightNotation: '#70513b',
+    darkNotation: 'rgba(246, 231, 204, 0.9)',
+  },
+  plain: {
+    label: 'Plain',
+    light: {
+      backgroundColor: '#d1d1d1',
+    },
+    dark: {
+      backgroundColor: '#a5a5a5',
+    },
+    lightNotation: '#777777',
+    darkNotation: 'rgba(245, 245, 245, 0.9)',
+  },
+} satisfies Record<BoardTheme, {
+  label: string
+  light: CSSProperties
+  dark: CSSProperties
+  lightNotation: string
+  darkNotation: string
+}>
 
 const WHITE_ON_BOTTOM_STORAGE_KEY = 'chessbadger.always-white-on-bottom.v1'
+const BOARD_THEME_STORAGE_KEY = 'chessbadger.board-theme.v1'
 
 const normalizeSan = (san: string) =>
   san.trim().replaceAll('0', 'O').replace(/[!?]+$/g, '')
@@ -169,6 +228,7 @@ export default function PuzzleTrainer({
   const [isResponding, setIsResponding] = useState(false)
   const [boardRevision, setBoardRevision] = useState(0)
   const [alwaysWhiteOnBottom, setAlwaysWhiteOnBottom] = useState(true)
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
@@ -212,6 +272,15 @@ export default function PuzzleTrainer({
       if (savedPreference === 'true' || savedPreference === 'false') {
         setAlwaysWhiteOnBottom(savedPreference === 'true')
       }
+      const savedBoardTheme = window.localStorage.getItem(BOARD_THEME_STORAGE_KEY)
+      if (
+        savedBoardTheme === 'green'
+        || savedBoardTheme === 'blue'
+        || savedBoardTheme === 'wood'
+        || savedBoardTheme === 'plain'
+      ) {
+        setBoardTheme(savedBoardTheme)
+      }
     } catch {
       // The setting still works for this page when browser storage is unavailable.
     }
@@ -221,6 +290,15 @@ export default function PuzzleTrainer({
     setAlwaysWhiteOnBottom(checked)
     try {
       window.localStorage.setItem(WHITE_ON_BOTTOM_STORAGE_KEY, String(checked))
+    } catch {
+      // Keep the in-page preference when browser storage is unavailable.
+    }
+  }
+
+  const updateBoardTheme = (theme: BoardTheme) => {
+    setBoardTheme(theme)
+    try {
+      window.localStorage.setItem(BOARD_THEME_STORAGE_KEY, theme)
     } catch {
       // Keep the in-page preference when browser storage is unavailable.
     }
@@ -697,7 +775,7 @@ export default function PuzzleTrainer({
     <div className="grid gap-6 md:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] md:items-start lg:gap-8">
       <div className="relative flex w-full max-w-[560px] flex-col rounded-2xl border border-stone-300 bg-white p-2 shadow-sm sm:p-3">
         <ChessboardProvider
-          key={`${puzzle.id}-${boardRevision}`}
+          key={`${puzzle.id}-${boardRevision}-${boardTheme}`}
           options={{
               id: `puzzle-board-${puzzle.id}`,
               position: boardPosition,
@@ -709,10 +787,10 @@ export default function PuzzleTrainer({
               clearArrowsOnClick: false,
               clearArrowsOnPositionChange: false,
               squareStyles,
-              lightSquareStyle: LIGHT_SQUARE_STYLE,
-              darkSquareStyle: DARK_SQUARE_STYLE,
-              lightSquareNotationStyle: { color: '#3f6651' },
-              darkSquareNotationStyle: { color: 'rgba(246, 246, 239, 0.88)' },
+              lightSquareStyle: BOARD_THEMES[boardTheme].light,
+              darkSquareStyle: BOARD_THEMES[boardTheme].dark,
+              lightSquareNotationStyle: { color: BOARD_THEMES[boardTheme].lightNotation },
+              darkSquareNotationStyle: { color: BOARD_THEMES[boardTheme].darkNotation },
               canDragPiece: ({ isSparePiece, square }) => {
                 if (attemptedMove !== null || answerVisible || isResponding || !timer.isRunning) return false
                 if (puzzle.type === 'placement') {
@@ -748,7 +826,19 @@ export default function PuzzleTrainer({
             <Chessboard />
           </div>
 
-          <div className="flex justify-end px-1 pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-3">
+            <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+              Board style
+              <select
+                value={boardTheme}
+                onChange={(event) => updateBoardTheme(event.currentTarget.value as BoardTheme)}
+                className="cursor-pointer rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 font-semibold text-stone-900 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200"
+              >
+                {(Object.entries(BOARD_THEMES) as Array<[BoardTheme, (typeof BOARD_THEMES)[BoardTheme]]>).map(([value, theme]) => (
+                  <option key={value} value={value}>{theme.label}</option>
+                ))}
+              </select>
+            </label>
             <label className="flex cursor-pointer items-center gap-2 text-sm font-bold text-stone-700">
               <input
                 type="checkbox"
