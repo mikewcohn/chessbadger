@@ -1,9 +1,17 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SharedProgress from '../components/SharedProgress'
-import { puzzles } from '../data/puzzles'
+import { puzzleCollections } from '../data/puzzleCollections'
 
-const workbookPuzzles = puzzles.map(({ id, title }) => ({ id, title }))
+const books = puzzleCollections.map(({ slug, title, sections }) => ({
+  slug,
+  title,
+  sections: sections.map((section) => ({
+    slug: section.slug,
+    title: section.title,
+    puzzles: section.puzzles.map(({ id, title: puzzleTitle }) => ({ id, title: puzzleTitle })),
+  })),
+}))
 ---
 
 <BaseLayout title="Coach Review | ChessBadger" description="Review ChessBadger puzzle results">
@@ -21,7 +29,7 @@ const workbookPuzzles = puzzles.map(({ id, title }) => ({ id, title }))
 
   <section class="bg-stone-100">
     <div class="mx-auto max-w-5xl px-5 py-10 sm:px-6 sm:py-14">
-      <SharedProgress workbookPuzzles={workbookPuzzles} client:load />
+      <SharedProgress books={books} client:load />
     </div>
   </section>
 </BaseLayout>
