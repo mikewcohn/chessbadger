@@ -1,6 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SharedProgress from '../components/SharedProgress'
+import { puzzles } from '../data/puzzles'
+
+const workbookPuzzles = puzzles.map(({ id, title }) => ({ id, title }))
 ---
 
 <BaseLayout title="Coach Review | ChessBadger" description="Review ChessBadger puzzle results">
@@ -18,7 +21,7 @@ import SharedProgress from '../components/SharedProgress'
 
   <section class="bg-stone-100">
     <div class="mx-auto max-w-5xl px-5 py-10 sm:px-6 sm:py-14">
-      <SharedProgress client:load />
+      <SharedProgress workbookPuzzles={workbookPuzzles} client:load />
     </div>
   </section>
 </BaseLayout>
