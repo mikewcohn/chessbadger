@@ -13,37 +13,20 @@ type Attempt = {
   restartCount?: number
 }
 
-type StudentResults = {
-  name: string
-  createdAt: string
-  attempts: Attempt[]
-}
-
 export default function SharedProgress() {
-  const [student, setStudent] = useState<StudentResults | null>(null)
+  const [attempts, setAttempts] = useState<Attempt[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const loadResults = useCallback(async () => {
-    const params = new URLSearchParams(window.location.search)
-    const studentId = params.get('student') ?? ''
-    const resultsKey = params.get('key') ?? ''
-
-    if (!studentId || !resultsKey) {
-      setError('This results link is incomplete.')
-      setLoading(false)
-      return
-    }
-
     setLoading(true)
     setError(null)
+
     try {
-      const response = await fetch(
-        `/api/practice/results?student=${encodeURIComponent(studentId)}&key=${encodeURIComponent(resultsKey)}`,
-      )
-      const data = await response.json() as { student?: StudentResults; error?: string }
-      if (!response.ok || !data.student) throw new Error(data.error ?? 'Could not load results.')
-      setStudent(data.student)
+      const response = await fetch('/api/practice/results')
+      const data = await response.json() as { attempts?: Attempt[]; error?: string }
+      if (!response.ok || !data.attempts) throw new Error(data.error ?? 'Could not load results.')
+      setAttempts(data.attempts)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not load results.')
     } finally {
@@ -57,7 +40,7 @@ export default function SharedProgress() {
 
   const summary = useMemo(() => {
     const attemptsByPuzzle = new Map<string, Attempt[]>()
-    for (const attempt of student?.attempts ?? []) {
+    for (const attempt of attempts) {
       attemptsByPuzzle.set(attempt.puzzleId, [
         ...(attemptsByPuzzle.get(attempt.puzzleId) ?? []),
         attempt,
@@ -66,36 +49,36 @@ export default function SharedProgress() {
 
     let solved = 0
     let missed = 0
-    for (const attempts of attemptsByPuzzle.values()) {
-      if (attempts.some((attempt) => attempt.result === 'correct')) solved += 1
-      else if (attempts.some((attempt) => attempt.result !== 'correct')) missed += 1
+    for (const puzzleAttempts of attemptsByPuzzle.values()) {
+      if (puzzleAttempts.some((attempt) => attempt.result === 'correct')) solved += 1
+      else if (puzzleAttempts.some((attempt) => attempt.result !== 'correct')) missed += 1
     }
 
     return { attempted: attemptsByPuzzle.size, solved, missed }
-  }, [student])
+  }, [attempts])
 
   if (loading) {
-    return <p className="rounded-3xl border border-stone-200 bg-white p-8 text-stone-600">Loading shared results…</p>
+    return <p className="rounded-3xl border border-stone-200 bg-white p-8 text-stone-600">Loading results…</p>
   }
 
-  if (error || !student) {
+  if (error) {
     return (
       <section className="rounded-3xl border border-rose-200 bg-white p-8">
         <h2 className="text-2xl font-bold text-stone-950">Results unavailable</h2>
-        <p className="mt-2 text-rose-800">{error ?? 'Could not load results.'}</p>
+        <p className="mt-2 text-rose-800">{error}</p>
       </section>
     )
   }
 
-  const newestAttempts = student.attempts.toReversed()
+  const newestAttempts = attempts.toReversed()
 
   return (
     <div className="grid gap-6">
       <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-lg shadow-stone-900/5 sm:p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.11em] text-amber-800">Read-only results</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-stone-950">{student.name}</h2>
+            <p className="text-sm font-bold uppercase tracking-[0.11em] text-amber-800">Coach review</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-stone-950">Puzzle progress</h2>
           </div>
           <button
             type="button"

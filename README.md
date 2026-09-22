@@ -44,36 +44,24 @@ All commands are run from the root of the project:
 
 ## Shared puzzle practice
 
-Student puzzle attempts are stored by a Cloudflare Pages Function in a Workers KV
-namespace bound as `PUZZLE_ATTEMPTS`. The coach dashboard is protected by a long,
-unguessable `COACH_ACCESS_TOKEN` environment secret.
-
-For local development, copy `.dev.vars.example` to `.dev.vars`, replace the sample
-token, then run:
+Puzzle attempts are stored as one shared practice history by a Cloudflare Pages
+Function in a Workers KV namespace bound as `PUZZLE_ATTEMPTS`.
 
 ```bash
 npm run preview:pages
 ```
 
-Open `/coach?token=YOUR_TOKEN` to create separate private practice links for each
-student. Checked moves are saved to that student's record and appear on the coach
-dashboard after a refresh.
-
-Students can also open `/track-progress` to create their own private practice link
-and a separate read-only results link to share with a coach. The practice links are
-remembered in that browser, but students should bookmark them because there is no
-email- or password-based recovery. Self-service records also appear on the private
-coach dashboard.
+Use **Do Puzzles** to practice and **Coach Review** to see the shared, read-only
+attempt history. This pilot intentionally has one learner and no accounts or private
+links.
 
 Each puzzle records active solving time with the attempt. Students can pause and
 resume the timer, restart a puzzle, or view the answer; the shared results show the
 elapsed time plus pause and restart counts. The timer pauses automatically when the
 tab is hidden and, after five minutes without activity, asks whether to continue.
 
-In Cloudflare Pages, create a Workers KV namespace, bind it to both production and
-preview as `PUZZLE_ATTEMPTS`, add `COACH_ACCESS_TOKEN` as an encrypted secret for
-both environments, and redeploy. Keep coach and student links private because their
-unguessable tokens provide access in this first version.
+In Cloudflare Pages, create a Workers KV namespace and bind it to both production
+and preview as `PUZZLE_ATTEMPTS`.
 
 ## Learn more
 

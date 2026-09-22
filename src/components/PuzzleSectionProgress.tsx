@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode, type SyntheticEvent } from 'react'
 import type { PuzzleCollection, PuzzleSection } from '../data/puzzleCollections'
+import { getCachedPracticeAttempts } from '../lib/practiceClient'
 
 type Attempt = {
   puzzleId: string
@@ -61,9 +62,6 @@ function LegendItem({ status, children }: { status: PuzzleStatus; children: Reac
 }
 
 export default function PuzzleSectionProgress({ collection, section }: PuzzleSectionProgressProps) {
-  const [studentName, setStudentName] = useState('')
-  const [studentId, setStudentId] = useState('')
-  const [practiceKey, setPracticeKey] = useState('')
   const [attempts, setAttempts] = useState<Attempt[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -73,30 +71,18 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   const [jumpError, setJumpError] = useState('')
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const currentStudentId = params.get('student') ?? ''
-    const currentPracticeKey = params.get('key') ?? ''
-    setStudentId(currentStudentId)
-    setPracticeKey(currentPracticeKey)
-
-    if (!currentStudentId || !currentPracticeKey) {
-      setLoading(false)
-      return
-    }
-
     const controller = new AbortController()
     void fetch(
-      `/api/practice/attempts?student=${encodeURIComponent(currentStudentId)}&key=${encodeURIComponent(currentPracticeKey)}`,
+      '/api/practice/attempts',
       { signal: controller.signal },
     )
       .then(async (response) => {
         const data = await response.json() as {
-          student?: { name: string; attempts: Attempt[] }
+          attempts?: Attempt[]
           error?: string
         }
-        if (!response.ok || !data.student) throw new Error(data.error ?? 'Could not load puzzle progress.')
-        setStudentName(data.student.name)
-        setAttempts(data.student.attempts)
+        if (!response.ok || !data.attempts) throw new Error(data.error ?? 'Could not load puzzle progress.')
+        setAttempts([...data.attempts, ...getCachedPracticeAttempts()])
       })
       .catch((caught: unknown) => {
         if (caught instanceof DOMException && caught.name === 'AbortError') return
@@ -136,10 +122,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
 
   const puzzleHref = (index: number) => {
     const puzzle = section.puzzles[index]
-    const href = `/puzzles/${collection.slug}/${section.slug}/puzzle/${puzzle.id}`
-    if (!studentId || !practiceKey) return href
-    const params = new URLSearchParams({ student: studentId, key: practiceKey })
-    return `${href}?${params.toString()}`
+    return `/puzzles/${collection.slug}/${section.slug}/puzzle/${puzzle.id}`
   }
 
   if (section.puzzles.length === 0) {
@@ -204,9 +187,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
           <div className="min-h-6">
             {loading
               ? <span className="block h-5 w-48 animate-pulse rounded bg-stone-200"><span className="sr-only">Loading progress</span></span>
-              : studentName
-                ? <p className="font-bold text-amber-900">{studentName} · Shared with coach</p>
-                : <p className="font-bold text-amber-900">Choose any puzzle to begin</p>}
+                : <p className="font-bold text-amber-900">Your puzzle progress</p>}
             {error ? <p className="mt-1 text-sm font-semibold text-rose-800">{error}</p> : null}
           </div>
           <dl className="grid w-full min-w-0 grid-cols-3 gap-5 sm:w-auto sm:gap-9">

@@ -12,24 +12,19 @@ export type StoredAttempt = {
   restartCount?: number
 }
 
-export type StudentRecord = {
-  id: string
-  name: string
-  practiceKey: string
-  resultsKey?: string
-  createdAt: string
+export type PracticeRecord = {
   attempts: StoredAttempt[]
 }
 
 type JsonKVNamespace = {
   get<T>(key: string, type: 'json'): Promise<T | null>
   put(key: string, value: string): Promise<void>
-  list(options: { prefix: string }): Promise<{ keys: Array<{ name: string }> }>
+  list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }>
+  delete(key: string): Promise<void>
 }
 
 export type PracticeEnv = {
   PUZZLE_ATTEMPTS: JsonKVNamespace
-  COACH_ACCESS_TOKEN?: string
 }
 
 export type FunctionContext = {
@@ -53,40 +48,10 @@ export const readJson = async <T>(request: Request): Promise<T | null> => {
   }
 }
 
-export const studentKey = (id: string) => `student:${id}`
+const PRACTICE_KEY = 'practice:current'
 
-export const readStudent = (env: PracticeEnv, id: string) =>
-  env.PUZZLE_ATTEMPTS.get<StudentRecord>(studentKey(id), 'json')
+export const readPractice = async (env: PracticeEnv) =>
+  (await env.PUZZLE_ATTEMPTS.get<PracticeRecord>(PRACTICE_KEY, 'json')) ?? { attempts: [] }
 
-export const writeStudent = (env: PracticeEnv, student: StudentRecord) =>
-  env.PUZZLE_ATTEMPTS.put(studentKey(student.id), JSON.stringify(student))
-
-export const readStudentIds = async (env: PracticeEnv) => {
-  const result = await env.PUZZLE_ATTEMPTS.list({ prefix: 'student:' })
-  return result.keys.map(({ name }) => name.slice('student:'.length))
-}
-
-const digest = async (value: string) => {
-  const bytes = new TextEncoder().encode(value)
-  return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
-}
-
-export const secureEqual = async (left: string, right: string) => {
-  const [leftDigest, rightDigest] = await Promise.all([digest(left), digest(right)])
-  if (leftDigest.length !== rightDigest.length) return false
-
-  let difference = 0
-  for (let index = 0; index < leftDigest.length; index += 1) {
-    difference |= leftDigest[index] ^ rightDigest[index]
-  }
-  return difference === 0
-}
-
-export const isCoach = async (env: PracticeEnv, suppliedToken: string) => {
-  const configuredToken = env.COACH_ACCESS_TOKEN?.trim()
-  if (!configuredToken || configuredToken.length < 16) return false
-  return secureEqual(configuredToken, suppliedToken)
-}
-
-export const createSecret = () =>
-  `${crypto.randomUUID().replaceAll('-', '')}${crypto.randomUUID().replaceAll('-', '')}`
+export const writePractice = (env: PracticeEnv, practice: PracticeRecord) =>
+  env.PUZZLE_ATTEMPTS.put(PRACTICE_KEY, JSON.stringify(practice))

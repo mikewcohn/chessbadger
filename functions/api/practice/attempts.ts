@@ -1,17 +1,14 @@
 import {
   json,
+  readPractice,
   readJson,
-  readStudent,
-  secureEqual,
-  writeStudent,
+  writePractice,
   type AttemptResult,
   type FunctionContext,
   type StoredAttempt,
 } from '../../lib/practice'
 
 type SaveAttemptBody = {
-  studentId?: string
-  practiceKey?: string
   puzzleId?: string
   puzzleTitle?: string
   move?: string
@@ -21,39 +18,15 @@ type SaveAttemptBody = {
   restartCount?: number
 }
 
-const authenticateStudent = async (
-  env: FunctionContext['env'],
-  studentId: string,
-  practiceKey: string,
-) => {
-  const student = await readStudent(env, studentId)
-  if (!student || !(await secureEqual(student.practiceKey, practiceKey))) return null
-  return student
-}
-
-export const onRequestGet = async ({ request, env }: FunctionContext) => {
-  const url = new URL(request.url)
-  const studentId = url.searchParams.get('student') ?? ''
-  const practiceKey = url.searchParams.get('key') ?? ''
-  const student = await authenticateStudent(env, studentId, practiceKey)
-
-  if (!student) return json({ error: 'Invalid student link.' }, 401)
-
-  return json({
-    student: {
-      id: student.id,
-      name: student.name,
-      attempts: student.attempts,
-    },
-  })
+export const onRequestGet = async ({ env }: FunctionContext) => {
+  const practice = await readPractice(env)
+  return json({ attempts: practice.attempts })
 }
 
 export const onRequestPost = async ({ request, env }: FunctionContext) => {
   const body = await readJson<SaveAttemptBody>(request)
   if (!body) return json({ error: 'Invalid request.' }, 400)
 
-  const studentId = body.studentId?.trim() ?? ''
-  const practiceKey = body.practiceKey?.trim() ?? ''
   const puzzleId = body.puzzleId?.trim() ?? ''
   const puzzleTitle = body.puzzleTitle?.trim() ?? ''
   const move = body.move?.trim() ?? ''
@@ -61,10 +34,7 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
   const durationMs = body.durationMs
   const pauseCount = body.pauseCount
   const restartCount = body.restartCount
-  const student = await authenticateStudent(env, studentId, practiceKey)
-
-  if (!student) return json({ error: 'Invalid student link.' }, 401)
-  if (!/^page-\d+-puzzle-\d+$/.test(puzzleId) || puzzleTitle.length > 100) {
+  if (!/^(?:page-\d+-puzzle-\d+|polgar-puzzle-\d+)$/.test(puzzleId) || puzzleTitle.length > 100) {
     return json({ error: 'Invalid puzzle.' }, 400)
   }
   if (move.length < 1 || move.length > 24) {
@@ -95,8 +65,9 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
     restartCount,
   }
 
-  student.attempts = [...student.attempts, attempt].slice(-1000)
-  await writeStudent(env, student)
+  const practice = await readPractice(env)
+  practice.attempts = [...practice.attempts, attempt].slice(-1000)
+  await writePractice(env, practice)
 
   return json({ attempt }, 201)
 }

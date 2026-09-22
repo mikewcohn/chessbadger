@@ -10,6 +10,10 @@ import {
 } from 'react-chessboard'
 import type { PlaceablePiece, Puzzle } from '../data/puzzles'
 import { formatDuration, usePuzzleTimer } from '../hooks/usePuzzleTimer'
+import {
+  cachePracticeAttempt,
+  removeCachedPracticeAttempt,
+} from '../lib/practiceClient'
 
 type PuzzleTrainerProps = {
   puzzles: Puzzle[]
@@ -31,11 +35,6 @@ type Attempt = {
   restartCount?: number
 }
 
-type SharedPractice = {
-  studentId: string
-  practiceKey: string
-}
-
 const LIGHT_SQUARE_STYLE = {
   backgroundColor: '#d3d1c8',
   backgroundImage:
@@ -49,6 +48,8 @@ const DARK_SQUARE_STYLE = {
     'radial-gradient(circle at 22% 18%, rgba(222, 235, 222, 0.2) 0 5%, transparent 23%), radial-gradient(circle at 76% 74%, rgba(28, 65, 45, 0.18) 0 8%, transparent 29%), linear-gradient(118deg, rgba(255, 255, 255, 0.07), rgba(20, 57, 39, 0.12))',
   backgroundSize: '88px 88px, 112px 112px, 100% 100%',
 } satisfies CSSProperties
+
+const WHITE_ON_BOTTOM_STORAGE_KEY = 'chessbadger.always-white-on-bottom.v1'
 
 const normalizeSan = (san: string) =>
   san.trim().replaceAll('0', 'O').replace(/[!?]+$/g, '')
@@ -167,9 +168,8 @@ export default function PuzzleTrainer({
   const [opponentReply, setOpponentReply] = useState('')
   const [isResponding, setIsResponding] = useState(false)
   const [boardRevision, setBoardRevision] = useState(0)
+  const [alwaysWhiteOnBottom, setAlwaysWhiteOnBottom] = useState(true)
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
-  const [sharedPractice, setSharedPractice] = useState<SharedPractice | null>(null)
-  const [studentName, setStudentName] = useState('')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
   const timer = usePuzzleTimer()
@@ -181,6 +181,7 @@ export default function PuzzleTrainer({
     : puzzle.sideToMove
       ? puzzle.sideToMove === 'white' ? 'White' : 'Black'
       : new Chess(puzzle.fen).turn() === 'w' ? 'White' : 'Black'
+  const boardOrientation = alwaysWhiteOnBottom || sideToMove !== 'Black' ? 'white' : 'black'
   const answerArrows = useMemo(
     () => answerVisible && puzzle.type !== 'placement' && puzzle.type !== 'composition'
       ? createAnswerArrows(puzzle)
@@ -206,6 +207,26 @@ export default function PuzzleTrainer({
   }, [compositionPlacements, placedSquares, position, puzzle])
 
   useEffect(() => {
+    try {
+      const savedPreference = window.localStorage.getItem(WHITE_ON_BOTTOM_STORAGE_KEY)
+      if (savedPreference === 'true' || savedPreference === 'false') {
+        setAlwaysWhiteOnBottom(savedPreference === 'true')
+      }
+    } catch {
+      // The setting still works for this page when browser storage is unavailable.
+    }
+  }, [])
+
+  const updateBoardOrientationPreference = (checked: boolean) => {
+    setAlwaysWhiteOnBottom(checked)
+    try {
+      window.localStorage.setItem(WHITE_ON_BOTTOM_STORAGE_KEY, String(checked))
+    } catch {
+      // Keep the in-page preference when browser storage is unavailable.
+    }
+  }
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const requestedPuzzle = Number(params.get('puzzle'))
     if (Number.isInteger(requestedPuzzle) && requestedPuzzle >= 1 && requestedPuzzle <= puzzles.length) {
@@ -213,29 +234,18 @@ export default function PuzzleTrainer({
       setPosition(puzzles[requestedPuzzle - 1].fen)
     }
 
-    const studentId = params.get('student') ?? ''
-    const practiceKey = params.get('key') ?? ''
-    if (!studentId || !practiceKey) return
-
     const controller = new AbortController()
-    setSharedPractice({ studentId, practiceKey })
     setSaveStatus('loading')
 
-    void fetch(
-      `/api/practice/attempts?student=${encodeURIComponent(studentId)}&key=${encodeURIComponent(practiceKey)}`,
-      { signal: controller.signal },
-    )
+    void fetch('/api/practice/attempts', { signal: controller.signal })
       .then(async (response) => {
         const data = await response.json() as {
-          student?: {
-            name: string
-            attempts: Array<Attempt & { puzzleId: string }>
-          }
+          attempts?: Array<Attempt & { puzzleId: string }>
           error?: string
         }
-        if (!response.ok || !data.student) throw new Error(data.error ?? 'Could not load practice history.')
+        if (!response.ok || !data.attempts) throw new Error(data.error ?? 'Could not load practice history.')
 
-        const history = data.student.attempts.reduce<Record<string, Attempt[]>>(
+        const history = data.attempts.reduce<Record<string, Attempt[]>>(
           (grouped, attempt) => {
             grouped[attempt.puzzleId] = [
               ...(grouped[attempt.puzzleId] ?? []),
@@ -253,7 +263,6 @@ export default function PuzzleTrainer({
           {},
         )
 
-        setStudentName(data.student.name)
         setAttemptHistory(history)
         setSaveStatus('saved')
       })
@@ -276,12 +285,10 @@ export default function PuzzleTrainer({
     }
     const nextPuzzle = puzzles[nextIndex]
     if (updateUrl && nextIndex !== puzzleIndex) {
-      const params = new URLSearchParams(window.location.search)
-      const query = params.toString()
       window.history.pushState(
         {},
         '',
-        `/puzzles/${collectionSlug}/${sectionSlug}/puzzle/${nextPuzzle.id}${query ? `?${query}` : ''}`,
+        `/puzzles/${collectionSlug}/${sectionSlug}/puzzle/${nextPuzzle.id}`,
       )
     }
     document.title = `${nextPuzzle.title} | ${sectionName} | ChessBadger`
@@ -351,30 +358,31 @@ export default function PuzzleTrainer({
     }))
     setResult(nextResult)
 
-    if (sharedPractice) {
-      setSaveStatus('saving')
-      void fetch('/api/practice/attempts', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          studentId: sharedPractice.studentId,
-          practiceKey: sharedPractice.practiceKey,
-          puzzleId: puzzle.id,
-          puzzleTitle: puzzle.title,
-          move: attemptLabel,
-          result: nextResult,
-          ...timing,
-        }),
+    const cachedAttemptId = cachePracticeAttempt({ puzzleId: puzzle.id, result: nextResult })
+    setSaveStatus('saving')
+    void fetch('/api/practice/attempts', {
+      method: 'POST',
+      keepalive: true,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        puzzleId: puzzle.id,
+        puzzleTitle: puzzle.title,
+        move: attemptLabel,
+        result: nextResult,
+        ...timing,
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const data = await response.json() as { error?: string }
+          throw new Error(data.error ?? 'Could not save attempt.')
+        }
+        setSaveStatus('saved')
       })
-        .then(async (response) => {
-          if (!response.ok) {
-            const data = await response.json() as { error?: string }
-            throw new Error(data.error ?? 'Could not save attempt.')
-          }
-          setSaveStatus('saved')
-        })
-        .catch(() => setSaveStatus('error'))
-    }
+      .catch(() => {
+        removeCachedPracticeAttempt(cachedAttemptId)
+        setSaveStatus('error')
+      })
   }
 
   const checkMoveAttempt = (moveSan: string) => {
@@ -682,12 +690,8 @@ export default function PuzzleTrainer({
       }
     : {}
 
-  const collectionHref = sharedPractice
-    ? `/puzzles/${collectionSlug}?student=${encodeURIComponent(sharedPractice.studentId)}&key=${encodeURIComponent(sharedPractice.practiceKey)}`
-    : `/puzzles/${collectionSlug}`
-  const sectionHref = sharedPractice
-    ? `/puzzles/${collectionSlug}/${sectionSlug}?student=${encodeURIComponent(sharedPractice.studentId)}&key=${encodeURIComponent(sharedPractice.practiceKey)}`
-    : `/puzzles/${collectionSlug}/${sectionSlug}`
+  const collectionHref = `/puzzles/${collectionSlug}`
+  const sectionHref = `/puzzles/${collectionSlug}/${sectionSlug}`
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] md:items-start lg:gap-8">
@@ -697,7 +701,7 @@ export default function PuzzleTrainer({
           options={{
               id: `puzzle-board-${puzzle.id}`,
               position: boardPosition,
-              boardOrientation: 'white',
+              boardOrientation,
               showNotation: true,
               allowDragging: attemptedMove === null && timer.isRunning,
               allowDrawingArrows: false,
@@ -742,6 +746,18 @@ export default function PuzzleTrainer({
         >
           <div className="overflow-hidden rounded-xl">
             <Chessboard />
+          </div>
+
+          <div className="flex justify-end px-1 pt-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-bold text-stone-700">
+              <input
+                type="checkbox"
+                checked={alwaysWhiteOnBottom}
+                onChange={(event) => updateBoardOrientationPreference(event.currentTarget.checked)}
+                className="size-4 cursor-pointer accent-amber-800"
+              />
+              Always show White on bottom
+            </label>
           </div>
 
           {puzzle.type === 'placement' && !attemptedMove && !answerVisible ? (
@@ -981,15 +997,15 @@ export default function PuzzleTrainer({
           </p>
         ) : null}
 
-        {sharedPractice ? (
+        {saveStatus !== 'idle' ? (
           <p className={saveStatus === 'error' ? 'mt-2 text-sm font-bold text-rose-800' : 'mt-2 text-sm font-bold text-emerald-800'}>
             {saveStatus === 'loading'
-              ? 'Loading shared practice…'
+              ? 'Loading progress…'
               : saveStatus === 'saving'
                 ? 'Saving attempt…'
                 : saveStatus === 'error'
-                  ? 'This attempt could not be saved for your coach.'
-                  : `${studentName || 'Student'} · Shared with coach`}
+                  ? 'This attempt could not be saved.'
+                  : 'Progress is saved automatically'}
           </p>
         ) : null}
 

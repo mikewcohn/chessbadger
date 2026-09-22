@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { PuzzleCollection, PuzzleSection } from '../data/puzzleCollections'
+import { getCachedPracticeAttempts } from '../lib/practiceClient'
 
 type Attempt = {
   puzzleId: string
@@ -33,38 +34,23 @@ const getStatuses = (section: PuzzleSection, attempts: Attempt[]) => {
 }
 
 export default function PuzzleCollectionProgress({ collection }: PuzzleCollectionProgressProps) {
-  const [studentName, setStudentName] = useState('')
-  const [studentId, setStudentId] = useState('')
-  const [practiceKey, setPracticeKey] = useState('')
   const [attempts, setAttempts] = useState<Attempt[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const currentStudentId = params.get('student') ?? ''
-    const currentPracticeKey = params.get('key') ?? ''
-    setStudentId(currentStudentId)
-    setPracticeKey(currentPracticeKey)
-
-    if (!currentStudentId || !currentPracticeKey) {
-      setLoading(false)
-      return
-    }
-
     const controller = new AbortController()
     void fetch(
-      `/api/practice/attempts?student=${encodeURIComponent(currentStudentId)}&key=${encodeURIComponent(currentPracticeKey)}`,
+      '/api/practice/attempts',
       { signal: controller.signal },
     )
       .then(async (response) => {
         const data = await response.json() as {
-          student?: { name: string; attempts: Attempt[] }
+          attempts?: Attempt[]
           error?: string
         }
-        if (!response.ok || !data.student) throw new Error(data.error ?? 'Could not load puzzle progress.')
-        setStudentName(data.student.name)
-        setAttempts(data.student.attempts)
+        if (!response.ok || !data.attempts) throw new Error(data.error ?? 'Could not load puzzle progress.')
+        setAttempts([...data.attempts, ...getCachedPracticeAttempts()])
       })
       .catch((caught: unknown) => {
         if (caught instanceof DOMException && caught.name === 'AbortError') return
@@ -89,12 +75,6 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
   const solvedCount = sectionProgress.reduce((total, progress) => total + progress.solved, 0)
   const totalPuzzleCount = collection.puzzles.length
 
-  const withPracticeParams = (href: string) => {
-    if (!studentId || !practiceKey) return href
-    const params = new URLSearchParams({ student: studentId, key: practiceKey })
-    return `${href}?${params.toString()}`
-  }
-
   return (
     <div className="grid gap-6">
       <section className="border-y border-stone-200 bg-white px-1 py-5 sm:px-6">
@@ -103,9 +83,7 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
             <div className="min-h-6">
               {loading
                 ? <span className="block h-5 w-44 animate-pulse rounded bg-stone-200"><span className="sr-only">Loading progress</span></span>
-                : studentName
-                  ? <p className="font-bold text-amber-900">{studentName} · Shared with coach</p>
-                  : <p className="font-bold text-amber-900">Choose a section to begin</p>}
+                : <p className="font-bold text-amber-900">Your puzzle progress</p>}
             </div>
             {error ? <p className="mt-1 text-sm font-semibold text-rose-800">{error}</p> : null}
           </div>
@@ -140,7 +118,7 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
             <li key={section.slug}>
               <article className={`relative grid gap-4 p-5 transition sm:p-6 lg:grid-cols-[3rem_minmax(0,1fr)_9rem_auto] lg:items-center ${isAvailable ? 'bg-white hover:bg-amber-50/40' : 'bg-stone-50/70'}`}>
                 {isAvailable ? (
-                  <a href={withPracticeParams(sectionHref)} className="absolute inset-0 z-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-800" aria-label={`View ${section.title}`} />
+                  <a href={sectionHref} className="absolute inset-0 z-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-800" aria-label={`View ${section.title}`} />
                 ) : null}
                 <div className="flex items-start gap-4 lg:contents">
                   <span className={`grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold ${isAvailable ? 'bg-amber-100 text-amber-900' : 'bg-stone-200 text-stone-500'}`}>
@@ -166,7 +144,7 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
                   <span className="text-sm font-semibold text-stone-500 lg:text-right">Coming soon</span>
                 )}
                 {isAvailable ? (
-                  <a href={withPracticeParams(continueHref)} className="z-10 inline-flex w-fit items-center gap-2 rounded-lg bg-amber-800 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">
+                  <a href={continueHref} className="z-10 inline-flex w-fit items-center gap-2 rounded-lg bg-amber-800 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">
                     {attempted === 0 ? 'Start' : solved === section.puzzles.length ? 'Review' : 'Continue'}
                     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M6 12h12m-5-5 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </a>

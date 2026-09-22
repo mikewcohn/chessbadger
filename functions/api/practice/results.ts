@@ -1,25 +1,10 @@
 import {
   json,
-  readStudent,
-  secureEqual,
+  readPractice,
   type FunctionContext,
 } from '../../lib/practice'
 
-export const onRequestGet = async ({ request, env }: FunctionContext) => {
-  const url = new URL(request.url)
-  const studentId = url.searchParams.get('student') ?? ''
-  const resultsKey = url.searchParams.get('key') ?? ''
-  const student = await readStudent(env, studentId)
-
-  if (!student?.resultsKey || !(await secureEqual(student.resultsKey, resultsKey))) {
-    return json({ error: 'Invalid results link.' }, 401)
-  }
-
-  return json({
-    student: {
-      name: student.name,
-      createdAt: student.createdAt,
-      attempts: student.attempts,
-    },
-  })
+export const onRequestGet = async ({ env }: FunctionContext) => {
+  const practice = await readPractice(env)
+  return json({ attempts: practice.attempts })
 }
