@@ -416,7 +416,7 @@ export const puzzles: Puzzle[] = [
   {
     id: 'page-8-puzzle-11',
     title: 'Page 8, Puzzle 11',
-    fen: '6k1/p3npp1/Qpp5/3p4/Pn5p/1BNP3P/1PP2QPK/8 w - - 0 1',
+    fen: '6k1/p3npp1/qpp5/3p4/Pn5p/1BNP3P/1PP2QPK/8 w - - 0 1',
     answers: ['Qxh4'],
   },
   {
