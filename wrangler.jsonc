@@ -10,5 +10,22 @@
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  "env": {
+    "preview": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "chessbadger-preview",
+          "database_id": "b5355655-974e-4d1c-b3df-372551278484",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "vars": {
+        "PUZZLES_D1_MODE": "remote",
+        "CLOUDFLARE_ACCOUNT_ID": "d8cbdb7fe05af1b183fd4eb2aa784bf8",
+        "CLOUDFLARE_D1_DATABASE_ID": "b5355655-974e-4d1c-b3df-372551278484"
+      }
+    }
+  }
 }

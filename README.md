@@ -71,9 +71,28 @@ old KV read/modify/write race. All rows are retained; the existing API/UI window
 still shows the latest 1,000 attempts. Progress remains shared and calculated from
 that window. Existing browser result caching and board preferences are unchanged.
 
-### Production migration (not performed by local setup)
+### Preview deployments
 
-The checked-in database ID is an explicit local-only placeholder. Before deploying:
+`env.preview` in `wrangler.jsonc` binds the isolated `chessbadger-preview` D1
+database and supplies its non-secret build settings. Configure
+`CLOUDFLARE_API_TOKEN` as an encrypted **Preview** environment variable in Pages,
+using an account-scoped token with D1 Read permission. Do not put tokens in Git.
+
+Apply preview schema changes explicitly before deploying code that needs them:
+
+```bash
+npx wrangler d1 migrations apply DB --env preview --remote
+```
+
+Preview history is separate from production. The initial preview database contains
+the puzzle catalog and starts with no attempts; preview testing creates its own
+results. Local development still uses the local Wrangler database.
+
+### Production migration (not performed by preview setup)
+
+The top-level database ID remains a local-only placeholder; `env.preview`
+overrides it only for preview deployments. Production D1 setup is still required
+before merging/deploying this migration to `main`. Before deploying:
 
 1. Create a D1 database with `npx wrangler d1 create chessbadger`. Replace the
    placeholder `database_id` in `wrangler.jsonc` with the returned ID. Configure
