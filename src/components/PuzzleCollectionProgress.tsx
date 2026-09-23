@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { PuzzleCollection } from '../data/puzzleCollections'
+import type { PuzzleCollection } from '../types/puzzleCollections'
 import { getCachedPracticeAttempts } from '../lib/practiceClient'
 import {
   getPuzzleStatuses,

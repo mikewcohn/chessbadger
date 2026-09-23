@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import { puzzleCollections, steps2Workbook } from '../data/puzzleCollections'
+import { puzzleCollections, steps2Workbook } from '../lib/puzzleCollections'
 
 const legacyPuzzleRoutes = steps2Workbook.puzzles.map((puzzle) => {
   const section = steps2Workbook.sections.find((candidate) =>

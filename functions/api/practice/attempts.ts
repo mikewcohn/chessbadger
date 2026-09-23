@@ -2,11 +2,12 @@ import {
   json,
   readPractice,
   readJson,
-  writePractice,
+  appendAttempt,
+  puzzleExists,
   type AttemptResult,
   type FunctionContext,
   type StoredAttempt,
-} from '../../lib/practice'
+} from '../../lib/practice.ts'
 
 type SaveAttemptBody = {
   puzzleId?: string
@@ -25,19 +26,20 @@ export const onRequestGet = async ({ env }: FunctionContext) => {
 
 export const onRequestPost = async ({ request, env }: FunctionContext) => {
   const body = await readJson<SaveAttemptBody>(request)
-  if (!body) return json({ error: 'Invalid request.' }, 400)
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ error: 'Invalid request.' }, 400)
 
-  const puzzleId = body.puzzleId?.trim() ?? ''
-  const puzzleTitle = body.puzzleTitle?.trim() ?? ''
-  const move = body.move?.trim() ?? ''
+  const puzzleId = typeof body.puzzleId === 'string' ? body.puzzleId.trim() : ''
+  const puzzleTitle = typeof body.puzzleTitle === 'string' ? body.puzzleTitle.trim() : ''
+  const move = typeof body.move === 'string' ? body.move.trim() : ''
   const result = body.result
   const durationMs = body.durationMs
   const pauseCount = body.pauseCount
   const restartCount = body.restartCount
-  if (!/^(?:page-\d+-puzzle-\d+|polgar-puzzle-\d+)$/.test(puzzleId) || puzzleTitle.length > 100) {
+  if (!puzzleId || puzzleId.length > 200 || puzzleTitle.length > 100) {
     return json({ error: 'Invalid puzzle.' }, 400)
   }
-  if (move.length < 1 || move.length > 24) {
+  // An attempt can contain a full multi-ply line or multiple composition answers.
+  if (move.length < 1 || move.length > 4096) {
     return json({ error: 'Invalid move.' }, 400)
   }
   if (result !== 'correct' && result !== 'incorrect' && result !== 'answer-viewed') {
@@ -53,6 +55,10 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
     return json({ error: 'Invalid restart count.' }, 400)
   }
 
+  if (!await puzzleExists(env, puzzleId)) {
+    return json({ error: 'Invalid puzzle.' }, 400)
+  }
+
   const attempt: StoredAttempt = {
     id: crypto.randomUUID(),
     puzzleId,
@@ -65,9 +71,7 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
     restartCount,
   }
 
-  const practice = await readPractice(env)
-  practice.attempts = [...practice.attempts, attempt].slice(-1000)
-  await writePractice(env, practice)
+  await appendAttempt(env, attempt)
 
   return json({ attempt }, 201)
 }

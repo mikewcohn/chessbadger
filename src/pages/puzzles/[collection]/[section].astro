@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro'
 import PuzzleSectionProgress from '../../../components/PuzzleSectionProgress'
-import { puzzleCollections, type PuzzleCollection, type PuzzleSection } from '../../../data/puzzleCollections'
+import { puzzleCollections, type PuzzleCollection, type PuzzleSection } from '../../../lib/puzzleCollections'
 
 export function getStaticPaths() {
   return puzzleCollections.flatMap((collection) => collection.sections.map((section) => ({

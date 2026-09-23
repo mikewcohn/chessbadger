@@ -3,10 +3,12 @@
   "name": "chessbadger",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-09-17",
-  "kv_namespaces": [
+  "d1_databases": [
     {
-      "binding": "PUZZLE_ATTEMPTS",
-      "id": "366c836507c14c47a4af5ea805fcd590"
+      "binding": "DB",
+      "database_name": "chessbadger",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode, type SyntheticEvent } from 'react'
-import type { PuzzleCollection, PuzzleSection } from '../data/puzzleCollections'
+import type { PuzzleCollection, PuzzleSection } from '../types/puzzleCollections'
 import { getCachedPracticeAttempts } from '../lib/practiceClient'
 import {
   getPuzzleStatuses,

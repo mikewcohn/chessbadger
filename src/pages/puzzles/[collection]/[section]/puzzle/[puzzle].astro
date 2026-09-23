@@ -1,8 +1,8 @@
 ---
 import BaseLayout from '../../../../../layouts/BaseLayout.astro'
 import PuzzleTrainer from '../../../../../components/PuzzleTrainer'
-import { puzzleCollections, type PuzzleCollection, type PuzzleSection } from '../../../../../data/puzzleCollections'
-import type { Puzzle } from '../../../../../data/puzzles'
+import { puzzleCollections, type PuzzleCollection, type PuzzleSection } from '../../../../../lib/puzzleCollections'
+import type { Puzzle } from '../../../../../types/puzzles'
 
 export function getStaticPaths() {
   return puzzleCollections.flatMap((collection) => collection.sections.flatMap((section) =>

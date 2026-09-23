@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SharedProgress from '../components/SharedProgress'
-import { puzzleCollections } from '../data/puzzleCollections'
+import { puzzleCollections } from '../lib/puzzleCollections'
 
 const books = puzzleCollections.map(({ slug, title, sections }) => ({
   slug,

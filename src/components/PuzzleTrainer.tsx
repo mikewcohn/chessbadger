@@ -8,7 +8,7 @@ import {
   type Arrow,
   type PositionDataType,
 } from 'react-chessboard'
-import type { PlaceablePiece, Puzzle } from '../data/puzzles'
+import type { PlaceablePiece, Puzzle } from '../types/puzzles'
 import { formatDuration, usePuzzleTimer } from '../hooks/usePuzzleTimer'
 import {
   cachePracticeAttempt,
