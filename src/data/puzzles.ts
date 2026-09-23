@@ -369,7 +369,7 @@ export const puzzles: Puzzle[] = [
     id: 'page-8-puzzle-03',
     title: 'Page 8, Puzzle 3',
     fen: '1r4k1/5p1p/p4np1/2p1p3/4P3/1P5P/P5P1/3Q2K1 w - - 0 1',
-    answers: ['Qd6+'],
+    answers: ['Qd6'],
   },
   {
     id: 'page-8-puzzle-04',
