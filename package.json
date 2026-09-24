@@ -12,8 +12,10 @@
     "build": "astro build",
     "verify": "npm run check && npm run build",
     "preview": "astro preview",
-    "preview:pages": "npm run build && wrangler pages dev dist --kv=PUZZLE_ATTEMPTS",
-    "astro": "astro"
+    "preview:pages": "npm run build && wrangler pages dev dist",
+    "astro": "astro",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^8.0.0",

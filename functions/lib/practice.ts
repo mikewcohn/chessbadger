@@ -16,15 +16,15 @@ export type PracticeRecord = {
   attempts: StoredAttempt[]
 }
 
-type JsonKVNamespace = {
-  get<T>(key: string, type: 'json'): Promise<T | null>
-  put(key: string, value: string): Promise<void>
-  list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }>
-  delete(key: string): Promise<void>
+type D1Statement = {
+  bind(...values: (string | number | null)[]): D1Statement
+  first<T>(): Promise<T | null>
+  all<T>(): Promise<{ results: T[] }>
+  run(): Promise<unknown>
 }
 
 export type PracticeEnv = {
-  PUZZLE_ATTEMPTS: JsonKVNamespace
+  DB: { prepare(query: string): D1Statement }
 }
 
 export type FunctionContext = {
@@ -48,10 +48,53 @@ export const readJson = async <T>(request: Request): Promise<T | null> => {
   }
 }
 
-const PRACTICE_KEY = 'practice:current'
+type AttemptRow = {
+  id: string
+  puzzle_id: string
+  puzzle_title: string
+  move: string
+  result: AttemptResult
+  checked_at: string
+  duration_ms: number | null
+  pause_count: number | null
+  restart_count: number | null
+}
 
-export const readPractice = async (env: PracticeEnv) =>
-  (await env.PUZZLE_ATTEMPTS.get<PracticeRecord>(PRACTICE_KEY, 'json')) ?? { attempts: [] }
+export const readPractice = async (env: PracticeEnv): Promise<PracticeRecord> => {
+  const { results } = await env.DB.prepare(`
+    SELECT id, puzzle_id, puzzle_title, move, result, checked_at,
+      duration_ms, pause_count, restart_count
+    FROM practice_attempts
+    ORDER BY checked_at DESC, rowid DESC
+    LIMIT 1000
+  `).all<AttemptRow>()
 
-export const writePractice = (env: PracticeEnv, practice: PracticeRecord) =>
-  env.PUZZLE_ATTEMPTS.put(PRACTICE_KEY, JSON.stringify(practice))
+  return {
+    attempts: results.reverse().map((row) => ({
+      id: row.id,
+      puzzleId: row.puzzle_id,
+      puzzleTitle: row.puzzle_title,
+      move: row.move,
+      result: row.result,
+      checkedAt: row.checked_at,
+      ...(row.duration_ms === null ? {} : { durationMs: row.duration_ms }),
+      ...(row.pause_count === null ? {} : { pauseCount: row.pause_count }),
+      ...(row.restart_count === null ? {} : { restartCount: row.restart_count }),
+    })),
+  }
+}
+
+export const puzzleExists = async (env: PracticeEnv, puzzleId: string): Promise<boolean> =>
+  (await env.DB.prepare('SELECT id FROM puzzles WHERE id = ?').bind(puzzleId).first()) !== null
+
+export const appendAttempt = (env: PracticeEnv, attempt: StoredAttempt) =>
+  env.DB.prepare(`
+    INSERT INTO practice_attempts (
+      id, puzzle_id, puzzle_title, move, result, checked_at,
+      duration_ms, pause_count, restart_count
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    attempt.id, attempt.puzzleId, attempt.puzzleTitle, attempt.move,
+    attempt.result, attempt.checkedAt, attempt.durationMs ?? null,
+    attempt.pauseCount ?? null, attempt.restartCount ?? null,
+  ).run()
