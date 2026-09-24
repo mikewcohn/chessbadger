@@ -15,7 +15,7 @@ function database(t, seed = true) {
     calls.push({ sql, params })
     return db.prepare(sql).all(...params)
   }
-  return { query, calls }
+  return { db, query, calls }
 }
 
 function canonical(value) {
@@ -111,4 +111,21 @@ test('catalog reads all D1 pages using bounded 500-row queries', async (t) => {
 test('empty D1 fails with migration instructions instead of generating empty pages', async (t) => {
   const { query } = database(t, false)
   await assert.rejects(readPuzzleCatalog(query), /D1 puzzle catalog is empty.*Apply the D1 migrations/)
+})
+
+
+test('follow-up migration preserves the upstream page 10 puzzle 12 correction', async (t) => {
+  const { db, query } = database(t)
+  const before = await readPuzzleCatalog(query)
+  db.exec(readFileSync(new URL('../migrations/0003_correct_steps_page_10_puzzle_12.sql', import.meta.url), 'utf8'))
+  const after = await readPuzzleCatalog(query)
+  const expected = structuredClone(before)
+  for (const collection of expected) {
+    for (const puzzle of [...collection.puzzles, ...collection.sections.flatMap((section) => section.puzzles)]) {
+      if (puzzle.id !== 'page-10-puzzle-12') continue
+      puzzle.fen = 'r1bqkb1r/pppp1pp1/8/5P1p/3Q4/1B4n1/PPP3PP/RNB1K2R w - - 0 1'
+      puzzle.answers = ['Qe3+']
+    }
+  }
+  assert.deepEqual(after, expected)
 })
