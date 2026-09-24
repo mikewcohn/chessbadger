@@ -88,16 +88,15 @@ Preview history is separate from production. The initial preview database contai
 the puzzle catalog and starts with no attempts; preview testing creates its own
 results. Local development still uses the local Wrangler database.
 
-### Production migration (not performed by preview setup)
+### Production migration
 
-The top-level database ID remains a local-only placeholder; `env.preview`
-overrides it only for preview deployments. Production D1 setup is still required
-before merging/deploying this migration to `main`. Before deploying:
+The top-level configuration targets the production `chessbadger` D1 database;
+`env.preview` targets the separate `chessbadger-preview` database. The initial
+cutover follows this runbook; future deployments keep these bindings:
 
-1. Create a D1 database with `npx wrangler d1 create chessbadger`. Replace the
-   placeholder `database_id` in `wrangler.jsonc` with the returned ID. Configure
-   production and preview `DB` bindings intentionally; use a separate preview
-   database if preview writes should not affect the shared production history.
+1. Confirm the production `DB` binding and `CLOUDFLARE_D1_DATABASE_ID` both
+   reference `0a5b99d7-8e8b-4a14-bd9b-bf6674109855`. Keep preview on its
+   separate database so preview writes cannot affect production history.
 2. Apply the schema/catalog: `npx wrangler d1 migrations apply DB --remote`.
 3. Export the old KV key without deleting it:
 

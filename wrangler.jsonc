@@ -7,10 +7,15 @@
     {
       "binding": "DB",
       "database_name": "chessbadger",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "0a5b99d7-8e8b-4a14-bd9b-bf6674109855",
       "migrations_dir": "migrations"
     }
   ],
+  "vars": {
+    "PUZZLES_D1_MODE": "remote",
+    "CLOUDFLARE_ACCOUNT_ID": "d8cbdb7fe05af1b183fd4eb2aa784bf8",
+    "CLOUDFLARE_D1_DATABASE_ID": "0a5b99d7-8e8b-4a14-bd9b-bf6674109855"
+  },
   "env": {
     "preview": {
       "d1_databases": [
