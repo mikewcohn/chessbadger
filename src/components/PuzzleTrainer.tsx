@@ -203,7 +203,11 @@ const createAnswerArrows = (puzzle: Puzzle): Arrow[] => {
   })
 }
 
-const createAttemptArrow = (puzzle: Puzzle, attemptMove: string): Arrow[] => {
+const createAttemptArrow = (
+  puzzle: Puzzle,
+  attemptMove: string,
+  color = 'rgba(4, 120, 87, 0.9)',
+): Arrow[] => {
   if (puzzle.type === 'placement' || puzzle.type === 'composition') return []
 
   const firstMove = attemptMove.trim().split(/\s+/)[0]
@@ -212,12 +216,17 @@ const createAttemptArrow = (puzzle: Puzzle, attemptMove: string): Arrow[] => {
     const answerIndex = puzzle.answers.findIndex(
       (answer) => normalizeSan(answer) === normalizeSan(firstMove),
     )
-    const coordinates = answerIndex >= 0 ? puzzle.answerMoves[answerIndex] : undefined
+    const attemptedCoordinates = firstMove.match(/^([a-h][1-8])(?:[-–])?([a-h][1-8])/i)
+    const coordinates = answerIndex >= 0
+      ? puzzle.answerMoves[answerIndex]
+      : attemptedCoordinates
+        ? `${attemptedCoordinates[1]}${attemptedCoordinates[2]}`
+        : undefined
 
     return coordinates ? [{
       startSquare: coordinates.slice(0, 2) as Square,
       endSquare: coordinates.slice(2, 4) as Square,
-      color: 'rgba(4, 120, 87, 0.9)',
+      color,
     }] : []
   }
 
@@ -228,7 +237,7 @@ const createAttemptArrow = (puzzle: Puzzle, attemptMove: string): Arrow[] => {
     return [{
       startSquare: move.from,
       endSquare: move.to,
-      color: 'rgba(4, 120, 87, 0.9)',
+      color,
     }]
   } catch {
     return []
@@ -262,7 +271,6 @@ export default function PuzzleTrainer({
   const [alwaysWhiteOnBottom, setAlwaysWhiteOnBottom] = useState(true)
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
-  const [showHistoryArrow, setShowHistoryArrow] = useState(true)
   const [coachReviewMode, setCoachReviewMode] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
@@ -282,11 +290,21 @@ export default function PuzzleTrainer({
         return createAnswerArrows(puzzle)
       }
 
-      if (!showHistoryArrow || attemptedMove !== null) return []
+      if (attemptedMove !== null && result !== 'correct') return []
       const correctAttempt = puzzleAttempts.findLast((attempt) => attempt.result === 'correct')
       return correctAttempt ? createAttemptArrow(puzzle, correctAttempt.move) : []
     },
-    [answerVisible, attemptedMove, puzzle, puzzleAttempts, showHistoryArrow],
+    [answerVisible, attemptedMove, puzzle, puzzleAttempts, result],
+  )
+  const coachReviewArrows = useMemo(
+    () => puzzleAttempts.flatMap((attempt) => {
+      if (attempt.result === 'correct') return createAttemptArrow(puzzle, attempt.move)
+      if (attempt.result === 'incorrect') {
+        return createAttemptArrow(puzzle, attempt.move, 'rgba(190, 18, 60, 0.9)')
+      }
+      return []
+    }),
+    [puzzle, puzzleAttempts],
   )
   const boardPosition = useMemo<string | PositionDataType>(() => {
     if (puzzle.type !== 'placement' && puzzle.type !== 'composition') return position
@@ -414,7 +432,6 @@ export default function PuzzleTrainer({
     }
     document.title = `${nextPuzzle.title} | ${sectionName} | ChessBadger`
     setPuzzleIndex(nextIndex)
-    setShowHistoryArrow(!isRestart)
     setPosition(puzzles[nextIndex].fen)
     setAttemptedMove(null)
     setResult(null)
@@ -545,8 +562,6 @@ export default function PuzzleTrainer({
       || isResponding
       || !timer.isRunning
     ) return false
-
-    setShowHistoryArrow(false)
 
     if (puzzle.playThrough && puzzle.solutionLines && typeof position === 'string') {
       const game = new Chess(position)
@@ -837,6 +852,9 @@ export default function PuzzleTrainer({
               showNotation: true,
               allowDragging: false,
               allowDrawingArrows: false,
+              arrows: coachReviewArrows,
+              clearArrowsOnClick: false,
+              clearArrowsOnPositionChange: false,
               lightSquareStyle: BOARD_THEMES[boardTheme].light,
               darkSquareStyle: BOARD_THEMES[boardTheme].dark,
               lightSquareNotationStyle: { color: BOARD_THEMES[boardTheme].lightNotation },

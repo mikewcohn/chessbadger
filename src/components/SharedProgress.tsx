@@ -302,7 +302,17 @@ export default function SharedProgress({ books }: SharedProgressProps) {
                           const status = summariesByPuzzle.get(puzzle.id)?.status ?? 'not-attempted'
                           const number = puzzleDisplayNumber(puzzle, rangeStart + localIndex)
                           const style = status === 'clean' ? 'border-emerald-800 bg-emerald-800 text-white hover:bg-emerald-700' : status === 'retried' ? 'border-emerald-300 bg-emerald-50 text-emerald-950 hover:bg-emerald-100' : status === 'missed' ? 'border-rose-800 bg-rose-800 text-white hover:bg-rose-700' : 'border-stone-300 bg-stone-100 text-stone-700 hover:border-stone-500 hover:bg-white'
-                          return <a key={puzzle.id} href={`/puzzles/${activeBook.slug}/${activeSection.slug}/puzzle/${puzzle.id}?review=coach`} aria-label={`Review Puzzle ${number}: ${statusLabels[status]}`} className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm font-bold transition ${style}`}>{number}<StatusIcon status={status} /></a>
+                          return (
+                            <a key={puzzle.id} href={`/puzzles/${activeBook.slug}/${activeSection.slug}/puzzle/${puzzle.id}?review=coach`} aria-label={`Review ${puzzle.title}: ${statusLabels[status]}`} className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm font-bold transition ${style}`}>
+                              <span className="group relative inline-flex">
+                                <span>{number}</span>
+                                <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-stone-950 px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                  {puzzle.title}
+                                </span>
+                              </span>
+                              <StatusIcon status={status} />
+                            </a>
+                          )
                         })}
                       </div>
                     </div>

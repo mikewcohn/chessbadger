@@ -261,9 +261,14 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
                 : 'border-stone-300 bg-stone-100 text-stone-700 hover:border-stone-500 hover:bg-white'
 
           return (
-            <a key={puzzle.id} href={puzzleHref(index)} className={`grid min-h-11 place-items-center rounded-lg border px-2 py-2 text-center transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 ${style}`} aria-label={`Puzzle ${index + 1}: ${statusLabel[status]}`}>
+            <a key={puzzle.id} href={puzzleHref(index)} className={`grid min-h-11 place-items-center rounded-lg border px-2 py-2 text-center transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 ${style}`} aria-label={`${puzzle.title}: ${statusLabel[status]}`}>
               <span className="flex items-center justify-center gap-1.5">
-                <strong className="text-sm font-bold">{index + 1}</strong>
+                <span className="group relative inline-flex">
+                  <strong className="text-sm font-bold">{index + 1}</strong>
+                  <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-stone-950 px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                    {puzzle.title}
+                  </span>
+                </span>
                 <StatusIcon status={status} />
               </span>
             </a>
