@@ -74,19 +74,17 @@ const BOARD_THEMES = {
   wood: {
     label: 'Wood',
     light: {
-      backgroundColor: '#d4b98d',
+      backgroundColor: '#d8c6a4',
       backgroundImage:
-        'repeating-linear-gradient(88deg, rgba(91, 62, 38, 0.06) 0 1px, transparent 1px 5px), radial-gradient(ellipse at 18% 24%, rgba(255, 243, 211, 0.24) 0 9%, transparent 35%), linear-gradient(104deg, rgba(255, 255, 255, 0.08), rgba(91, 61, 38, 0.1))',
-      backgroundSize: '100% 100%, 120px 82px, 100% 100%',
+        'linear-gradient(100deg, rgba(255, 255, 255, 0.1), transparent 45%, rgba(112, 79, 45, 0.065))',
     },
     dark: {
-      backgroundColor: '#785c49',
+      backgroundColor: '#9b7651',
       backgroundImage:
-        'repeating-linear-gradient(91deg, rgba(39, 25, 17, 0.09) 0 1px, transparent 1px 6px), radial-gradient(ellipse at 76% 70%, rgba(207, 174, 132, 0.14) 0 8%, transparent 34%), linear-gradient(112deg, rgba(255, 255, 255, 0.05), rgba(48, 30, 21, 0.12))',
-      backgroundSize: '100% 100%, 118px 88px, 100% 100%',
+        'linear-gradient(98deg, rgba(255, 255, 255, 0.05), transparent 44%, rgba(70, 43, 25, 0.085))',
     },
-    lightNotation: '#70513b',
-    darkNotation: 'rgba(246, 231, 204, 0.9)',
+    lightNotation: '#6f5138',
+    darkNotation: 'rgba(250, 239, 220, 0.92)',
   },
   plain: {
     label: 'Plain',
@@ -106,6 +104,41 @@ const BOARD_THEMES = {
   lightNotation: string
   darkNotation: string
 }>
+
+const createWoodGrainTexture = (seed: number, isLightSquare: boolean) => {
+  const grainColor = isLightSquare ? '#765431' : '#4d321f'
+  const rotation = -18 + (seed % 37)
+  const crossFrequency = (8 + (seed % 9)) / 1000
+  const lengthFrequency = (52 + (seed % 39)) / 1000
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><filter id="wood" x="-50%" y="-50%" width="200%" height="200%"><feTurbulence type="fractalNoise" baseFrequency="${crossFrequency} ${lengthFrequency}" numOctaves="2" seed="${seed % 97}"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 0.22"/></feComponentTransfer></filter><g transform="rotate(${rotation} 64 64)"><rect x="-48" y="-48" width="224" height="224" fill="${grainColor}" filter="url(#wood)"/></g></svg>`
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+}
+
+const WOOD_SQUARE_STYLES = Object.fromEntries(
+  Array.from({ length: 64 }, (_, index) => {
+    const fileIndex = index % 8
+    const rank = Math.floor(index / 8) + 1
+    const square = `${String.fromCharCode(97 + fileIndex)}${rank}`
+    const seed = (fileIndex * 17) + (rank * 29)
+    const angle = 76 + (seed % 29)
+    const knotX = 12 + ((seed * 7) % 77)
+    const knotY = 10 + ((seed * 11) % 81)
+    const isLightSquare = (fileIndex + rank) % 2 === 0
+    const grain = isLightSquare ? '105, 75, 43' : '65, 40, 23'
+    const sheen = isLightSquare ? '255, 247, 226' : '224, 196, 156'
+
+    return [square, {
+      backgroundImage: [
+        `radial-gradient(ellipse at ${knotX}% ${knotY}%, rgba(${grain}, 0.075), transparent 46%)`,
+        createWoodGrainTexture(seed, isLightSquare),
+        `linear-gradient(${angle}deg, transparent 0 16%, rgba(${grain}, 0.035) 28%, transparent 43%, rgba(${sheen}, 0.065) 58%, transparent 72%, rgba(${grain}, 0.03) 88%)`,
+        `radial-gradient(ellipse at ${100 - knotX}% ${100 - knotY}%, rgba(${sheen}, 0.09), transparent 58%)`,
+      ].join(', '),
+      backgroundPosition: `0 0, -${seed % 37}px -${seed % 31}px, 0 0, 0 0`,
+      backgroundSize: `100% 100%, ${132 + (seed % 61)}% ${116 + (seed % 53)}%, 100% 100%, 100% 100%`,
+    } satisfies CSSProperties]
+  }),
+) satisfies Record<string, CSSProperties>
 
 const WHITE_ON_BOTTOM_STORAGE_KEY = 'chessbadger.always-white-on-bottom.v1'
 const BOARD_THEME_STORAGE_KEY = 'chessbadger.board-theme.v1'
@@ -427,7 +460,7 @@ export default function PuzzleTrainer({
       window.history.pushState(
         {},
         '',
-        `/puzzles/${collectionSlug}/${sectionSlug}/puzzle/${nextPuzzle.id}`,
+        `/puzzles/${collectionSlug}/${sectionSlug}/puzzle/${nextPuzzle.id}${coachReviewMode ? '?review=coach' : ''}`,
       )
     }
     document.title = `${nextPuzzle.title} | ${sectionName} | ChessBadger`
@@ -446,7 +479,8 @@ export default function PuzzleTrainer({
     setOpponentReply('')
     setIsResponding(false)
     setBoardRevision((revision) => revision + 1)
-    timer.reset(isRestart)
+    if (coachReviewMode) timer.pause()
+    else timer.reset(isRestart)
   }
 
   useEffect(() => {
@@ -459,6 +493,28 @@ export default function PuzzleTrainer({
     window.addEventListener('popstate', syncPuzzleToUrl)
     return () => window.removeEventListener('popstate', syncPuzzleToUrl)
   }, [puzzles])
+
+  useEffect(() => {
+    const handlePuzzleArrowKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+
+      const target = event.target
+      if (
+        target instanceof HTMLElement
+        && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      ) return
+
+      const nextIndex = event.key === 'ArrowLeft' ? puzzleIndex - 1 : puzzleIndex + 1
+      if (nextIndex < 0 || nextIndex >= puzzles.length) return
+
+      event.preventDefault()
+      resetPuzzle(nextIndex)
+    }
+
+    window.addEventListener('keydown', handlePuzzleArrowKey)
+    return () => window.removeEventListener('keydown', handlePuzzleArrowKey)
+  }, [puzzleIndex, puzzles.length, coachReviewMode])
 
   const showAnswer = () => {
     if (replyTimerRef.current !== null) {
@@ -818,7 +874,7 @@ export default function PuzzleTrainer({
     : puzzle.type === 'composition'
       ? puzzle.placements.map(({ square }) => square)
       : []
-  const squareStyles = answerVisible && (puzzle.type === 'placement' || puzzle.type === 'composition')
+  const interactionSquareStyles = answerVisible && (puzzle.type === 'placement' || puzzle.type === 'composition')
     ? Object.fromEntries(answerSquares.map((answer) => [answer, {
         boxShadow: 'inset 0 0 0 5px rgba(217, 119, 6, 0.88)',
       }]))
@@ -828,6 +884,14 @@ export default function PuzzleTrainer({
         },
       }
     : {}
+  const themeSquareStyles = boardTheme === 'wood' ? WOOD_SQUARE_STYLES : {}
+  const squareStyles = {
+    ...themeSquareStyles,
+    ...Object.fromEntries(Object.entries(interactionSquareStyles).map(([square, style]) => [
+      square,
+      { ...themeSquareStyles[square], ...style },
+    ])),
+  }
 
   const collectionHref = `/puzzles/${collectionSlug}`
   const sectionHref = `/puzzles/${collectionSlug}/${sectionSlug}`
@@ -838,6 +902,17 @@ export default function PuzzleTrainer({
   const coachStatusClass = coachStatus === 'Missed'
     ? 'text-rose-800'
     : coachStatus === 'Not attempted' ? 'text-stone-600' : 'text-emerald-800'
+  const findReviewIndex = (direction: -1 | 1) => {
+    for (let index = puzzleIndex + direction; index >= 0 && index < puzzles.length; index += direction) {
+      const attempts = attemptHistory[puzzles[index].id] ?? []
+      const solvedCleanly = attempts.some((attempt) => attempt.result === 'correct')
+        && attempts.every((attempt) => attempt.result === 'correct')
+      if (attempts.length > 0 && !solvedCleanly) return index
+    }
+    return null
+  }
+  const previousReviewIndex = findReviewIndex(-1)
+  const nextReviewIndex = findReviewIndex(1)
 
   if (coachReviewMode) {
     return (
@@ -855,6 +930,7 @@ export default function PuzzleTrainer({
               arrows: coachReviewArrows,
               clearArrowsOnClick: false,
               clearArrowsOnPositionChange: false,
+              squareStyles: themeSquareStyles,
               lightSquareStyle: BOARD_THEMES[boardTheme].light,
               darkSquareStyle: BOARD_THEMES[boardTheme].dark,
               lightSquareNotationStyle: { color: BOARD_THEMES[boardTheme].lightNotation },
@@ -909,6 +985,50 @@ export default function PuzzleTrainer({
               </ol>
             )}
           </section>
+
+          <div className="mt-6 border-t border-stone-200 pt-5">
+            <div className="flex items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => resetPuzzle(puzzleIndex - 1)}
+                disabled={puzzleIndex === 0}
+                aria-keyshortcuts="ArrowLeft"
+                title="Previous puzzle (←)"
+                className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
+              >
+                <span aria-hidden="true">←</span> Previous puzzle
+              </button>
+              <button
+                type="button"
+                onClick={() => resetPuzzle(puzzleIndex + 1)}
+                disabled={puzzleIndex === puzzles.length - 1}
+                aria-keyshortcuts="ArrowRight"
+                title="Next puzzle (→)"
+                className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
+              >
+                Next puzzle <span aria-hidden="true">→</span>
+              </button>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => previousReviewIndex !== null && resetPuzzle(previousReviewIndex)}
+                disabled={previousReviewIndex === null}
+                className="cursor-pointer rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-bold text-stone-700 hover:border-amber-700 hover:text-amber-900 disabled:cursor-not-allowed disabled:text-stone-400"
+              >
+                Previous review
+              </button>
+              <button
+                type="button"
+                onClick={() => nextReviewIndex !== null && resetPuzzle(nextReviewIndex)}
+                disabled={nextReviewIndex === null}
+                className="cursor-pointer rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-bold text-stone-700 hover:border-amber-700 hover:text-amber-900 disabled:cursor-not-allowed disabled:text-stone-400"
+              >
+                Next review
+              </button>
+            </div>
+            <p className="mt-2 text-center text-xs text-stone-500">Review navigation skips clean and unattempted puzzles.</p>
+          </div>
         </div>
       </div>
     )
@@ -1328,6 +1448,8 @@ export default function PuzzleTrainer({
             type="button"
             onClick={() => resetPuzzle(puzzleIndex - 1)}
             disabled={puzzleIndex === 0}
+            aria-keyshortcuts="ArrowLeft"
+            title="Previous puzzle (←)"
             className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M18 12H6m5 5-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -1337,6 +1459,8 @@ export default function PuzzleTrainer({
             type="button"
             onClick={() => resetPuzzle(puzzleIndex + 1)}
             disabled={puzzleIndex === puzzles.length - 1}
+            aria-keyshortcuts="ArrowRight"
+            title="Next puzzle (→)"
             className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
           >
             Next puzzle
