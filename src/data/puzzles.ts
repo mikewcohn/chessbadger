@@ -488,8 +488,8 @@ export const puzzles: Puzzle[] = [
   {
     id: 'page-10-puzzle-12',
     title: 'Page 10, Puzzle 12',
-    fen: 'r1bqkb1r/pppp1pp1/8/5P1p/3q4/1B4n1/PPP3PP/RNB1K2R b - - 0 1',
-    answers: ['Qf2+'],
+    fen: 'r1bqkb1r/pppp1pp1/8/5P1p/3Q4/1B4n1/PPP3PP/RNB1K2R w - - 0 1',
+    answers: ['Qe3+'],
   },
   {
     id: 'page-11-puzzle-01',

@@ -203,6 +203,38 @@ const createAnswerArrows = (puzzle: Puzzle): Arrow[] => {
   })
 }
 
+const createAttemptArrow = (puzzle: Puzzle, attemptMove: string): Arrow[] => {
+  if (puzzle.type === 'placement' || puzzle.type === 'composition') return []
+
+  const firstMove = attemptMove.trim().split(/\s+/)[0]
+
+  if (puzzle.answerMoves) {
+    const answerIndex = puzzle.answers.findIndex(
+      (answer) => normalizeSan(answer) === normalizeSan(firstMove),
+    )
+    const coordinates = answerIndex >= 0 ? puzzle.answerMoves[answerIndex] : undefined
+
+    return coordinates ? [{
+      startSquare: coordinates.slice(0, 2) as Square,
+      endSquare: coordinates.slice(2, 4) as Square,
+      color: 'rgba(4, 120, 87, 0.9)',
+    }] : []
+  }
+
+  const game = new Chess(puzzle.fen)
+
+  try {
+    const move = game.move(normalizeSan(firstMove))
+    return [{
+      startSquare: move.from,
+      endSquare: move.to,
+      color: 'rgba(4, 120, 87, 0.9)',
+    }]
+  } catch {
+    return []
+  }
+}
+
 export default function PuzzleTrainer({
   puzzles,
   collectionName,
@@ -230,6 +262,7 @@ export default function PuzzleTrainer({
   const [alwaysWhiteOnBottom, setAlwaysWhiteOnBottom] = useState(true)
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
+  const [showHistoryArrow, setShowHistoryArrow] = useState(true)
   const [coachReviewMode, setCoachReviewMode] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
@@ -243,11 +276,17 @@ export default function PuzzleTrainer({
       ? puzzle.sideToMove === 'white' ? 'White' : 'Black'
       : new Chess(puzzle.fen).turn() === 'w' ? 'White' : 'Black'
   const boardOrientation = alwaysWhiteOnBottom || sideToMove !== 'Black' ? 'white' : 'black'
-  const answerArrows = useMemo(
-    () => answerVisible && puzzle.type !== 'placement' && puzzle.type !== 'composition'
-      ? createAnswerArrows(puzzle)
-      : [],
-    [answerVisible, puzzle],
+  const boardArrows = useMemo(
+    () => {
+      if (answerVisible && puzzle.type !== 'placement' && puzzle.type !== 'composition') {
+        return createAnswerArrows(puzzle)
+      }
+
+      if (!showHistoryArrow || attemptedMove !== null) return []
+      const correctAttempt = puzzleAttempts.findLast((attempt) => attempt.result === 'correct')
+      return correctAttempt ? createAttemptArrow(puzzle, correctAttempt.move) : []
+    },
+    [answerVisible, attemptedMove, puzzle, puzzleAttempts, showHistoryArrow],
   )
   const boardPosition = useMemo<string | PositionDataType>(() => {
     if (puzzle.type !== 'placement' && puzzle.type !== 'composition') return position
@@ -375,6 +414,7 @@ export default function PuzzleTrainer({
     }
     document.title = `${nextPuzzle.title} | ${sectionName} | ChessBadger`
     setPuzzleIndex(nextIndex)
+    setShowHistoryArrow(!isRestart)
     setPosition(puzzles[nextIndex].fen)
     setAttemptedMove(null)
     setResult(null)
@@ -505,6 +545,8 @@ export default function PuzzleTrainer({
       || isResponding
       || !timer.isRunning
     ) return false
+
+    setShowHistoryArrow(false)
 
     if (puzzle.playThrough && puzzle.solutionLines && typeof position === 'string') {
       const game = new Chess(position)
@@ -866,7 +908,7 @@ export default function PuzzleTrainer({
               showNotation: true,
               allowDragging: attemptedMove === null && timer.isRunning,
               allowDrawingArrows: false,
-              arrows: answerArrows,
+              arrows: boardArrows,
               clearArrowsOnClick: false,
               clearArrowsOnPositionChange: false,
               squareStyles,
