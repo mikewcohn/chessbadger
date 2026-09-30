@@ -1,0 +1,12 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import PlayerPage from '../components/PlayerPage'
+---
+
+<BaseLayout title="Players | ChessBadger" description="Sign in or view puzzle progress." robots="noindex, nofollow">
+  <section class="bg-stone-100">
+    <div class="mx-auto max-w-4xl px-5 py-10 sm:px-6 sm:py-14">
+      <PlayerPage client:load />
+    </div>
+  </section>
+</BaseLayout>

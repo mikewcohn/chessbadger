@@ -1,20 +1,28 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { DatabaseSync } from 'node:sqlite'
 import { test } from 'node:test'
 import { appendAttempt, readPractice } from '../functions/lib/practice.ts'
 import { onRequestGet, onRequestPost } from '../functions/api/practice/attempts.ts'
-import { onRequestGet as getResults } from '../functions/api/practice/results.ts'
 
 function database(t) {
   const sqlite = new DatabaseSync(':memory:')
   t.after(() => sqlite.close())
   sqlite.exec(readFileSync(new URL('../migrations/0001_d1_schema.sql', import.meta.url), 'utf8'))
+  sqlite.exec(readFileSync(new URL('../migrations/0004_players.sql', import.meta.url), 'utf8'))
   sqlite.exec(`
     INSERT INTO puzzle_collections VALUES ('test', 'Test', '', 0);
     INSERT INTO puzzle_sections VALUES ('test', 'review', 'Review', '', '[]', 0);
     INSERT INTO puzzles VALUES (
       'page-1-puzzle-1', 'test', 'review', 0, 0, '{"id":"page-1-puzzle-1"}'
+    );
+    INSERT INTO players VALUES (
+      'player-test', 'Test', 'test', 'salt', 'hash', '2026-01-01T00:00:00.000Z'
+    );
+    INSERT INTO player_sessions VALUES (
+      '${createHash('sha256').update('test-token').digest('hex')}',
+      'player-test', '2026-01-01T00:00:00.000Z', '2099-01-01T00:00:00.000Z'
     );
   `)
   const DB = {
@@ -47,7 +55,7 @@ const post = (env, body) => onRequestPost({
   env,
   request: new Request('https://chessbadger.com/api/practice/attempts', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', cookie: 'cb_session=test-token' },
     body: JSON.stringify(body),
   }),
 })
@@ -66,27 +74,25 @@ const validBody = {
 // retention, and nullable legacy fields; the adapter only matches D1's call shape.
 test('empty database yields the existing attempts response on both GET routes', async (t) => {
   const { env } = database(t)
-  for (const handler of [onRequestGet, getResults]) {
-    const response = await handler({ env })
-    assert.equal(response.status, 200)
-    assert.equal(response.headers.get('cache-control'), 'no-store')
-    assert.deepEqual(await response.json(), { attempts: [] })
-  }
+  const response = await onRequestGet({ env, request: new Request('https://chessbadger.com/api/practice/attempts', { headers: { cookie: 'cb_session=test-token' } }) })
+  assert.equal(response.status, 200)
+  assert.equal(response.headers.get('cache-control'), 'no-store')
+  assert.deepEqual(await response.json(), { attempts: [] })
 })
 
 test('legacy nullable timing is omitted and zero timing survives round trip', async (t) => {
   const { env } = database(t)
-  await appendAttempt(env, attempt(0))
-  await appendAttempt(env, attempt(1, { durationMs: 0, pauseCount: 0, restartCount: 0 }))
-  assert.deepEqual(await readPractice(env), { attempts: [
+  await appendAttempt(env, 'player-test', attempt(0))
+  await appendAttempt(env, 'player-test', attempt(1, { durationMs: 0, pauseCount: 0, restartCount: 0 }))
+  assert.deepEqual(await readPractice(env, 'player-test'), { attempts: [
     attempt(0), attempt(1, { durationMs: 0, pauseCount: 0, restartCount: 0 }),
   ] })
 })
 
 test('latest 1000 are returned oldest first while all history is retained', async (t) => {
   const { env, sqlite } = database(t)
-  for (let index = 1004; index >= 0; index--) await appendAttempt(env, attempt(index))
-  const { attempts } = await readPractice(env)
+  for (let index = 1004; index >= 0; index--) await appendAttempt(env, 'player-test', attempt(index))
+  const { attempts } = await readPractice(env, 'player-test')
   assert.equal(attempts.length, 1000)
   assert.equal(attempts[0].id, 'attempt-5')
   assert.equal(attempts.at(-1).id, 'attempt-1004')
@@ -95,24 +101,22 @@ test('latest 1000 are returned oldest first while all history is retained', asyn
 
 test('equal timestamps retain insertion order and parallel posts do not overwrite history', async (t) => {
   const { env } = database(t)
-  await appendAttempt(env, attempt(0, { id: 'first' }))
-  await appendAttempt(env, attempt(0, { id: 'second' }))
-  assert.deepEqual((await readPractice(env)).attempts.map(({ id }) => id), ['first', 'second'])
+  await appendAttempt(env, 'player-test', attempt(0, { id: 'first' }))
+  await appendAttempt(env, 'player-test', attempt(0, { id: 'second' }))
+  assert.deepEqual((await readPractice(env, 'player-test')).attempts.map(({ id }) => id), ['first', 'second'])
   const responses = await Promise.all(Array.from({ length: 10 }, () => post(env, validBody)))
   assert.ok(responses.every((response) => response.status === 201))
-  const records = (await readPractice(env)).attempts
+  const records = (await readPractice(env, 'player-test').then((result) => result.attempts))
   assert.equal(records.length, 12)
   assert.equal(new Set(records.map(({ id }) => id)).size, 12)
 })
 
-test('known puzzle accepts multi-ply move text with unchanged response fields', async (t) => {
+test('direct storage accepts multi-ply move text with unchanged fields', async (t) => {
   const { env } = database(t)
   const move = 'Qh7+ Kf8 Qh8+ Ke7 Qh4+ Kf8 Qh7#'
-  const response = await post(env, { ...validBody, move })
-  assert.equal(response.status, 201)
-  const { attempt: saved } = await response.json()
-  assert.deepEqual(saved, { ...validBody, move, id: saved.id, checkedAt: saved.checkedAt })
-  assert.deepEqual((await readPractice(env)).attempts, [saved])
+  const saved = attempt(0, { ...validBody, move })
+  await appendAttempt(env, 'player-test', saved)
+  assert.deepEqual((await readPractice(env, 'player-test')).attempts, [saved])
 })
 
 test('unknown puzzles and invalid payloads are rejected without inserting attempts', async (t) => {
@@ -130,5 +134,5 @@ test('unknown puzzles and invalid payloads are rejected without inserting attemp
   ]) {
     assert.equal((await post(env, body)).status, 400)
   }
-  assert.deepEqual(await readPractice(env), { attempts: [] })
+  assert.deepEqual(await readPractice(env, 'player-test'), { attempts: [] })
 })

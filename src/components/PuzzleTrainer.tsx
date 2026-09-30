@@ -204,7 +204,7 @@ export default function PuzzleTrainer({
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
   const [reviewMode, setReviewMode] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'signed-out' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
   const timer = usePuzzleTimer()
 
@@ -308,13 +308,16 @@ export default function PuzzleTrainer({
     const controller = new AbortController()
     setSaveStatus('loading')
 
-    void fetch('/api/practice/attempts', { signal: controller.signal })
-      .then(async (response) => {
-        const data = await response.json() as {
+    void Promise.all([
+      fetch('/api/practice/attempts', { signal: controller.signal }),
+      fetch('/api/players/me', { signal: controller.signal }),
+    ]).then(async ([attemptsResponse, playerResponse]) => {
+        const data = await attemptsResponse.json() as {
           attempts?: Array<Attempt & { puzzleId: string }>
           error?: string
         }
-        if (!response.ok || !data.attempts) throw new Error(data.error ?? 'Could not load practice history.')
+        const playerData = await playerResponse.json() as { player: { handle: string } | null }
+        if (!attemptsResponse.ok || !data.attempts) throw new Error(data.error ?? 'Could not load practice history.')
 
         const history = data.attempts.reduce<Record<string, Attempt[]>>(
           (grouped, attempt) => {
@@ -335,7 +338,7 @@ export default function PuzzleTrainer({
         )
 
         setAttemptHistory(history)
-        setSaveStatus('saved')
+        setSaveStatus(playerData.player ? 'saved' : 'signed-out')
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') return
@@ -467,14 +470,18 @@ export default function PuzzleTrainer({
       }),
     })
       .then(async (response) => {
+        if (response.status === 401) {
+          setSaveStatus('signed-out')
+          return
+        }
         if (!response.ok) {
           const data = await response.json() as { error?: string }
           throw new Error(data.error ?? 'Could not save attempt.')
         }
+        removeCachedPracticeAttempt(cachedAttemptId)
         setSaveStatus('saved')
       })
       .catch(() => {
-        removeCachedPracticeAttempt(cachedAttemptId)
         setSaveStatus('error')
       })
   }
@@ -1253,11 +1260,13 @@ export default function PuzzleTrainer({
         ) : null}
 
         {saveStatus !== 'idle' ? (
-          <p className={saveStatus === 'error' ? 'mt-2 text-sm font-bold text-rose-800' : 'mt-2 text-sm font-bold text-emerald-800'}>
+          <p className={saveStatus === 'error' ? 'mt-2 text-sm font-bold text-rose-800' : saveStatus === 'signed-out' ? 'mt-2 text-sm font-bold text-amber-900' : 'mt-2 text-sm font-bold text-emerald-800'}>
             {saveStatus === 'loading'
               ? 'Loading progress…'
               : saveStatus === 'saving'
                 ? 'Saving attempt…'
+                : saveStatus === 'signed-out'
+                  ? <><a href="/players" className="underline decoration-2 underline-offset-2 hover:text-amber-700">Sign in or claim a name</a> to save progress across devices.</>
                 : saveStatus === 'error'
                   ? 'This attempt could not be saved.'
                   : 'Progress is saved automatically'}

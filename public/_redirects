@@ -1,0 +1,2 @@
+/players /player-shell/ 200
+/players/* /player-shell/ 200

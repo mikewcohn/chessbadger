@@ -60,14 +60,15 @@ type AttemptRow = {
   restart_count: number | null
 }
 
-export const readPractice = async (env: PracticeEnv): Promise<PracticeRecord> => {
+export const readPractice = async (env: PracticeEnv, playerId: string): Promise<PracticeRecord> => {
   const { results } = await env.DB.prepare(`
     SELECT id, puzzle_id, puzzle_title, move, result, checked_at,
       duration_ms, pause_count, restart_count
     FROM practice_attempts
+    WHERE player_id = ?
     ORDER BY checked_at DESC, rowid DESC
     LIMIT 1000
-  `).all<AttemptRow>()
+  `).bind(playerId).all<AttemptRow>()
 
   return {
     attempts: results.reverse().map((row) => ({
@@ -87,14 +88,14 @@ export const readPractice = async (env: PracticeEnv): Promise<PracticeRecord> =>
 export const puzzleExists = async (env: PracticeEnv, puzzleId: string): Promise<boolean> =>
   (await env.DB.prepare('SELECT id FROM puzzles WHERE id = ?').bind(puzzleId).first()) !== null
 
-export const appendAttempt = (env: PracticeEnv, attempt: StoredAttempt) =>
+export const appendAttempt = (env: PracticeEnv, playerId: string, attempt: StoredAttempt) =>
   env.DB.prepare(`
     INSERT INTO practice_attempts (
       id, puzzle_id, puzzle_title, move, result, checked_at,
-      duration_ms, pause_count, restart_count
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      duration_ms, pause_count, restart_count, player_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     attempt.id, attempt.puzzleId, attempt.puzzleTitle, attempt.move,
     attempt.result, attempt.checkedAt, attempt.durationMs ?? null,
-    attempt.pauseCount ?? null, attempt.restartCount ?? null,
+    attempt.pauseCount ?? null, attempt.restartCount ?? null, playerId,
   ).run()

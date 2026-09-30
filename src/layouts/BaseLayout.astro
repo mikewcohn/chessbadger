@@ -1,14 +1,17 @@
 ---
 import '../styles/global.css'
+import PlayerNav from '../components/PlayerNav'
 
 type Props = {
   title?: string
   description?: string
+  robots?: string
 }
 
 const {
   title = 'ChessBadger',
   description = 'Chess improvement, games, openings, and practical lessons.',
+  robots,
 } = Astro.props
 ---
 
@@ -17,6 +20,7 @@ const {
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
+    {robots ? <meta name="robots" content={robots} /> : null}
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-badger-32.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/favicon-badger.png" />
@@ -38,6 +42,7 @@ const {
           <a class="font-bold text-amber-900 hover:text-amber-700" href="/puzzles">Do Puzzles</a>
           <a class="hover:text-stone-950" href="/about">About</a>
           <a class="hover:text-stone-950" href="/admin">Admin</a>
+          <PlayerNav client:load />
         </nav>
 
         <details class="relative lg:hidden">
@@ -53,6 +58,7 @@ const {
             <a class="px-4 py-2.5 font-bold text-amber-900 hover:bg-amber-50 hover:text-amber-700" href="/puzzles">Do Puzzles</a>
             <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/about">About</a>
             <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/admin">Admin</a>
+            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/players">Player sign in</a>
           </nav>
         </details>
       </div>

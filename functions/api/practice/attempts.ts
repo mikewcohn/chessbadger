@@ -8,6 +8,7 @@ import {
   type FunctionContext,
   type StoredAttempt,
 } from '../../lib/practice.ts'
+import { currentPlayer } from '../../lib/players.ts'
 
 type SaveAttemptBody = {
   puzzleId?: string
@@ -19,12 +20,16 @@ type SaveAttemptBody = {
   restartCount?: number
 }
 
-export const onRequestGet = async ({ env }: FunctionContext) => {
-  const practice = await readPractice(env)
+export const onRequestGet = async ({ request, env }: FunctionContext) => {
+  const player = await currentPlayer(env, request)
+  if (!player) return json({ attempts: [] })
+  const practice = await readPractice(env, player.id)
   return json({ attempts: practice.attempts })
 }
 
 export const onRequestPost = async ({ request, env }: FunctionContext) => {
+  const player = await currentPlayer(env, request)
+  if (!player) return json({ error: 'Sign in to save puzzle progress.' }, 401)
   const body = await readJson<SaveAttemptBody>(request)
   if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ error: 'Invalid request.' }, 400)
 
@@ -71,7 +76,7 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
     restartCount,
   }
 
-  await appendAttempt(env, attempt)
+  await appendAttempt(env, player.id, attempt)
 
   return json({ attempt }, 201)
 }
