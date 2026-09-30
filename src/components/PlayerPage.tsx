@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type SyntheticEvent } from 'react'
+import { playerProgressUrl } from '../lib/playerLinks'
 
 type Player = { handle: string; slug: string }
 type SectionProgress = {
@@ -11,6 +12,38 @@ type SectionProgress = {
   clean: number
   retried: number
   missed: number
+}
+
+async function copyText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    let timeoutId: number | undefined
+    try {
+      await Promise.race([
+        navigator.clipboard.writeText(text),
+        new Promise<never>((_, reject) => {
+          timeoutId = window.setTimeout(() => reject(new Error('Clipboard timed out.')), 1500)
+        }),
+      ])
+      return true
+    } catch {
+      // Fall back for browsers that block the async Clipboard API.
+    } finally {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+    }
+  }
+
+  const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.readOnly = true
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.append(textarea)
+  textarea.select()
+  const copied = (document as unknown as { execCommand(commandId: string): boolean }).execCommand('copy')
+  textarea.remove()
+  activeElement?.focus()
+  return copied
 }
 
 function AccountForm() {
@@ -62,8 +95,8 @@ function AccountForm() {
           </h2>
           <p className="mt-2 text-stone-600">
             {mode === 'login'
-              ? 'Use the same name and PIN on any device.'
-              : 'Names are unique. Your PIN keeps other people from adding to your results.'}
+              ? 'Use the same name and private PIN on any device.'
+              : 'Your progress page will be public. Your private PIN is only for signing in and adding results.'}
           </p>
         </div>
         <label className="grid gap-2 text-sm font-bold text-stone-800">
@@ -79,7 +112,7 @@ function AccountForm() {
           />
         </label>
         <label className="grid gap-2 text-sm font-bold text-stone-800">
-          PIN or short passphrase
+          Private PIN or short passphrase
           <input
             type="password"
             value={pin}
@@ -95,7 +128,11 @@ function AccountForm() {
         <button disabled={submitting} className="cursor-pointer rounded-lg bg-amber-800 px-5 py-3 font-bold text-white transition hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60">
           {submitting ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Claim this name'}
         </button>
-        <p className="text-sm text-stone-500">There is no email recovery yet. Ask the site owner if you forget your PIN.</p>
+        <p className="text-sm text-stone-500">
+          {mode === 'claim'
+            ? 'Share your progress link with a coach or friend—never your PIN. There is no email recovery yet.'
+            : 'There is no email recovery yet. Ask the site owner if you forget your PIN.'}
+        </p>
       </form>
     </section>
   )
@@ -105,6 +142,7 @@ function Profile({ slug }: { slug: string }) {
   const [profile, setProfile] = useState<{ player: Player; sections: SectionProgress[] } | null>(null)
   const [viewer, setViewer] = useState<Player | null>(null)
   const [error, setError] = useState('')
+  const [copyStatus, setCopyStatus] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -138,6 +176,17 @@ function Profile({ slug }: { slug: string }) {
 
   const isOwner = viewer?.slug === profile.player.slug
   const availableSections = profile.sections.filter((section) => section.total > 0)
+  const copyProgressLink = async () => {
+    setCopyStatus('Copying…')
+    try {
+      const copied = await copyText(playerProgressUrl(window.location.origin, profile.player.slug))
+      if (!copied) throw new Error('Clipboard unavailable.')
+      setCopyStatus('Link copied')
+    } catch {
+      setCopyStatus('Could not copy the link')
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
@@ -147,10 +196,15 @@ function Profile({ slug }: { slug: string }) {
             <h1 className="mt-2 text-4xl font-bold tracking-[-0.025em] text-stone-950">{profile.player.handle}</h1>
             <p className="mt-2 text-stone-600">{totals.attempted} of {totals.total} puzzles attempted</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <a href="/puzzles" className="rounded-lg bg-amber-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-700">Do puzzles</a>
+            <button type="button" onClick={() => void copyProgressLink()} className="cursor-pointer rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-bold text-stone-700 hover:border-stone-500">Copy progress link</button>
             {isOwner ? <button type="button" onClick={() => void fetch('/api/players/logout', { method: 'POST' }).then(() => window.location.assign('/players'))} className="cursor-pointer rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-bold text-stone-700 hover:border-stone-500">Sign out</button> : null}
           </div>
+        </div>
+        <div className="mt-5 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          Anyone with this link can view {isOwner ? 'your' : `${profile.player.handle}'s`} progress. Only {isOwner ? 'you can' : `${profile.player.handle} can`} add results.
+          <span className="ml-2 font-bold" aria-live="polite">{copyStatus}</span>
         </div>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {([[totals.attempted, 'Attempted', 'text-stone-950'], [totals.clean, 'First try', 'text-emerald-800'], [totals.retried, 'After retry', 'text-emerald-700'], [totals.missed, 'Not solved', 'text-rose-800']] as const).map(([value, label, color]) => (
