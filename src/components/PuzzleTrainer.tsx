@@ -203,7 +203,7 @@ export default function PuzzleTrainer({
   const [alwaysWhiteOnBottom, setAlwaysWhiteOnBottom] = useState(true)
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
-  const [coachReviewMode, setCoachReviewMode] = useState(false)
+  const [reviewMode, setReviewMode] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
   const timer = usePuzzleTimer()
@@ -228,7 +228,7 @@ export default function PuzzleTrainer({
     },
     [answerVisible, attemptedMove, puzzle, puzzleAttempts, result],
   )
-  const coachReviewArrows = useMemo(
+  const reviewArrows = useMemo(
     () => puzzleAttempts.flatMap((attempt) => {
       if (attempt.result === 'correct') return createAttemptArrow(puzzle, attempt.move)
       if (attempt.result === 'incorrect') {
@@ -296,9 +296,9 @@ export default function PuzzleTrainer({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const isCoachReview = params.get('review') === 'coach'
-    setCoachReviewMode(isCoachReview)
-    if (isCoachReview) timer.pause()
+    const nextReviewMode = params.get('review') === 'student'
+    setReviewMode(nextReviewMode)
+    if (nextReviewMode) timer.pause()
     const requestedPuzzle = Number(params.get('puzzle'))
     if (Number.isInteger(requestedPuzzle) && requestedPuzzle >= 1 && requestedPuzzle <= puzzles.length) {
       setPuzzleIndex(requestedPuzzle - 1)
@@ -359,7 +359,7 @@ export default function PuzzleTrainer({
       window.history.pushState(
         {},
         '',
-        `/puzzles/${collectionSlug}/${sectionSlug}/puzzle/${nextPuzzle.id}${coachReviewMode ? '?review=coach' : ''}`,
+        `/puzzles/${collectionSlug}/${sectionSlug}/puzzle/${nextPuzzle.id}${reviewMode ? '?review=student' : ''}`,
       )
     }
     document.title = `${nextPuzzle.title} | ${sectionName} | ChessBadger`
@@ -378,7 +378,7 @@ export default function PuzzleTrainer({
     setOpponentReply('')
     setIsResponding(false)
     setBoardRevision((revision) => revision + 1)
-    if (coachReviewMode) timer.pause()
+    if (reviewMode) timer.pause()
     else timer.reset(isRestart)
   }
 
@@ -413,7 +413,7 @@ export default function PuzzleTrainer({
 
     window.addEventListener('keydown', handlePuzzleArrowKey)
     return () => window.removeEventListener('keydown', handlePuzzleArrowKey)
-  }, [puzzleIndex, puzzles.length, coachReviewMode])
+  }, [puzzleIndex, puzzles.length, reviewMode])
 
   const showAnswer = () => {
     if (replyTimerRef.current !== null) {
@@ -794,39 +794,39 @@ export default function PuzzleTrainer({
 
   const collectionHref = `/puzzles/${collectionSlug}`
   const sectionHref = `/puzzles/${collectionSlug}/${sectionSlug}`
-  const coachReturnHref = `/coach/?book=${encodeURIComponent(collectionSlug)}&section=${encodeURIComponent(sectionSlug)}`
-  const coachStatus = puzzleAttempts.some((attempt) => attempt.result === 'correct')
-    ? puzzleAttempts.some((attempt) => attempt.result !== 'correct') ? 'Solved after retry' : 'Solved cleanly'
-    : puzzleAttempts.length > 0 ? 'Missed' : 'Not attempted'
-  const coachStatusClass = coachStatus === 'Missed'
+  const reviewReturnHref = `/puzzles/${collectionSlug}/${sectionSlug}#attempt-details`
+  const reviewStatus = puzzleAttempts.some((attempt) => attempt.result === 'correct')
+    ? puzzleAttempts.some((attempt) => attempt.result !== 'correct') ? 'After retry' : 'First try'
+    : puzzleAttempts.length > 0 ? 'Not solved' : 'Not attempted'
+  const reviewStatusClass = reviewStatus === 'Not solved'
     ? 'text-rose-800'
-    : coachStatus === 'Not attempted' ? 'text-stone-600' : 'text-emerald-800'
+    : reviewStatus === 'Not attempted' ? 'text-stone-600' : 'text-emerald-800'
   const findReviewIndex = (direction: -1 | 1) => {
     for (let index = puzzleIndex + direction; index >= 0 && index < puzzles.length; index += direction) {
       const attempts = attemptHistory[puzzles[index].id] ?? []
-      const solvedCleanly = attempts.some((attempt) => attempt.result === 'correct')
+      const solvedOnFirstTry = attempts.some((attempt) => attempt.result === 'correct')
         && attempts.every((attempt) => attempt.result === 'correct')
-      if (attempts.length > 0 && !solvedCleanly) return index
+      if (attempts.length > 0 && !solvedOnFirstTry) return index
     }
     return null
   }
   const previousReviewIndex = findReviewIndex(-1)
   const nextReviewIndex = findReviewIndex(1)
 
-  if (coachReviewMode) {
+  if (reviewMode) {
     return (
       <div className="grid gap-6 md:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] md:items-start lg:gap-8">
         <div className="w-full max-w-[560px] rounded-2xl border border-stone-300 bg-white p-2 shadow-sm sm:p-3">
           <ChessboardProvider
-            key={`coach-${puzzle.id}-${boardTheme}`}
+            key={`review-${puzzle.id}-${boardTheme}`}
             options={{
-              id: `coach-puzzle-board-${puzzle.id}`,
+              id: `review-puzzle-board-${puzzle.id}`,
               position: puzzle.fen,
               boardOrientation,
               showNotation: true,
               allowDragging: false,
               allowDrawingArrows: false,
-              arrows: coachReviewArrows,
+              arrows: reviewArrows,
               clearArrowsOnClick: false,
               clearArrowsOnPositionChange: false,
               squareStyles: themeSquareStyles,
@@ -854,20 +854,23 @@ export default function PuzzleTrainer({
         </div>
 
         <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
-          <a href={coachReturnHref} className="inline-flex items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700">
-            <span aria-hidden="true">←</span> Back to coach review
-          </a>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <a href={reviewReturnHref} className="inline-flex items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700">
+              <span aria-hidden="true">←</span> Back to your results
+            </a>
+            <a href={`/puzzles/${collectionSlug}/${sectionSlug}/puzzle/${puzzle.id}`} className="inline-flex rounded-lg bg-amber-800 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700">Try again</a>
+          </div>
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.12em] text-stone-500">{collectionName} · {sectionName}</p>
           <h1 className="mt-2 text-2xl font-bold tracking-[-0.015em] text-stone-950 sm:text-3xl">{puzzle.title}</h1>
           <p className="mt-2 text-stone-600">{sideToMove ? `${sideToMove} to move` : puzzle.instruction}</p>
 
           <div className="mt-5 grid gap-3 rounded-xl bg-stone-50 p-4 sm:grid-cols-2">
-            <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-stone-500">Result</p><p className={`mt-1 font-bold ${coachStatusClass}`}>{coachStatus}</p></div>
+            <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-stone-500">Result</p><p className={`mt-1 font-bold ${reviewStatusClass}`}>{reviewStatus}</p></div>
             <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-stone-500">Answer</p><p className="mt-1 font-bold text-stone-900">{formatAnswers(puzzle)}</p></div>
           </div>
 
-          <section className="mt-6 border-t border-stone-200 pt-5" aria-labelledby="coach-attempt-history-heading">
-            <h2 id="coach-attempt-history-heading" className="text-lg font-bold text-stone-950">Student attempts</h2>
+          <section className="mt-6 border-t border-stone-200 pt-5" aria-labelledby="review-attempt-history-heading">
+            <h2 id="review-attempt-history-heading" className="text-lg font-bold text-stone-950">Your attempts</h2>
             {saveStatus === 'loading' ? <p className="mt-3 text-sm text-stone-500">Loading attempts…</p> : puzzleAttempts.length === 0 ? (
               <p className="mt-3 rounded-xl bg-stone-50 px-4 py-5 text-sm text-stone-600">No attempts have been recorded for this puzzle.</p>
             ) : (
@@ -926,7 +929,7 @@ export default function PuzzleTrainer({
                 Next review
               </button>
             </div>
-            <p className="mt-2 text-center text-xs text-stone-500">Review navigation skips clean and unattempted puzzles.</p>
+            <p className="mt-2 text-center text-xs text-stone-500">Review navigation focuses on retries and unsolved puzzles.</p>
           </div>
         </div>
       </div>

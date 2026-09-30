@@ -86,9 +86,9 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
             <p className="mt-1.5 text-xs font-medium text-stone-500">{bookProgress.attempted} of {bookProgress.total} puzzles attempted</p>
           </div>
           {([
-            [bookProgress.clean, 'Clean', 'text-emerald-800'],
-            [bookProgress.retried, 'Retried', 'text-emerald-700'],
-            [bookProgress.missed, 'Missed', 'text-rose-800'],
+            [bookProgress.clean, 'First try', 'text-emerald-800'],
+            [bookProgress.retried, 'After retry', 'text-emerald-700'],
+            [bookProgress.missed, 'Not solved', 'text-rose-800'],
           ] as const).map(([value, label, color]) => (
             <div key={label} className="border-l border-stone-200 pl-4">
               <p className={`text-2xl font-bold ${color}`}>{value}</p>
@@ -134,9 +134,9 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
                     <PuzzleProgressBar progress={progress} className="h-2" />
                     <p className="mt-1.5 text-xs font-medium text-stone-500">{progress.attempted} of {progress.total} attempted · {percent}%</p>
                     <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-stone-600">
-                      <span><strong className="text-emerald-800">{progress.clean}</strong> clean</span>
-                      <span><strong className="text-emerald-700">{progress.retried}</strong> retried</span>
-                      <span><strong className="text-rose-800">{progress.missed}</strong> missed</span>
+                      <span><strong className="text-emerald-800">{progress.clean}</strong> first try</span>
+                      <span><strong className="text-emerald-700">{progress.retried}</strong> after retry</span>
+                      <span><strong className="text-rose-800">{progress.missed}</strong> not solved</span>
                     </p>
                   </div>
                 ) : (

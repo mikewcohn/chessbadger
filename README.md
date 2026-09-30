@@ -65,6 +65,15 @@ individual attempts. Definition JSON preserves all existing puzzle variants.
 data files, not a runtime data source. Do not edit an applied migration; use a new
 migration or a deliberate D1 content update for subsequent changes.
 
+Use **Do Puzzles** to practice and each section's **Attempt details** disclosure to
+review the shared attempt history. This pilot intentionally has one learner and no
+accounts or private links.
+
+Each puzzle records active solving time with the attempt. Students can pause and
+resume the timer, restart a puzzle, or view the answer; attempt details show the
+elapsed time plus pause and restart counts. The timer pauses automatically when the
+tab is hidden and, after five minutes without activity, asks whether to continue.
+
 Each attempt retains its ID, puzzle, move/result, timestamp, active solving time,
 pause count, and restart count. Attempts are inserted individually, avoiding the
 old KV read/modify/write race. All rows are retained; the existing API/UI window

@@ -8,6 +8,7 @@ import {
   type PuzzleProgressStatus,
 } from '../lib/puzzleProgress'
 import PuzzleProgressBar from './PuzzleProgressBar'
+import StudentPuzzleResults from './StudentPuzzleResults'
 
 type PuzzleSectionProgressProps = {
   collection: PuzzleCollection
@@ -17,9 +18,9 @@ type PuzzleSectionProgressProps = {
 const RANGE_SIZE = 100
 
 const statusLabel: Record<PuzzleProgressStatus, string> = {
-  clean: 'Solved cleanly',
-  retried: 'Solved after retry',
-  missed: 'Missed',
+  clean: 'First try',
+  retried: 'After retry',
+  missed: 'Not solved',
   'not-attempted': 'Not attempted',
 }
 
@@ -66,7 +67,6 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rangeStart, setRangeStart] = useState(0)
-  const [statusFilter, setStatusFilter] = useState<PuzzleProgressStatus | 'all'>('all')
   const [jumpValue, setJumpValue] = useState('')
   const [jumpError, setJumpError] = useState('')
 
@@ -134,7 +134,6 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   )
   const rangeEnd = Math.min(rangeStart + RANGE_SIZE, section.puzzles.length)
   const visiblePuzzleIndices = Array.from({ length: rangeEnd - rangeStart }, (_, index) => rangeStart + index)
-    .filter((index) => statusFilter === 'all' || statuses[index] === statusFilter)
   const firstBookProblem = Number(section.puzzles[0]?.title.match(/\d+$/)?.[0])
   const jumpPlaceholder = Number.isFinite(firstBookProblem) ? `e.g. ${firstBookProblem}` : 'e.g. 1'
 
@@ -183,9 +182,9 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
             <p className="mt-1.5 text-xs font-medium text-stone-500">{progress.attempted} of {progress.total} puzzles attempted</p>
           </div>
           {([
-            [progress.clean, 'Clean', 'text-emerald-800'],
-            [progress.retried, 'Retried', 'text-emerald-700'],
-            [progress.missed, 'Missed', 'text-rose-800'],
+            [progress.clean, 'First try', 'text-emerald-800'],
+            [progress.retried, 'After retry', 'text-emerald-700'],
+            [progress.missed, 'Not solved', 'text-rose-800'],
           ] as const).map(([value, label, color]) => (
             <div key={label} className="border-l border-stone-200 pl-4">
               <p className={`text-2xl font-bold ${color}`}>{value}</p>
@@ -201,55 +200,46 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
             <p className="text-xs font-bold uppercase tracking-[0.11em] text-stone-500">Continue where you left off</p>
             <p className="mt-1 font-semibold text-stone-900">{section.puzzles[continueIndex].title}</p>
           </div>
-          <a href={puzzleHref(continueIndex)} className="inline-flex w-fit items-center gap-2 rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">
-            {continueCopy}
-            <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M6 12h12m-5-5 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </a>
-        </div>
-      </div>
-
-      <div className="grid min-w-0 gap-5 border-y border-stone-200 bg-white px-1 py-5 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end sm:px-6">
-        <div className="min-w-0">
-          <p className="mb-2 text-sm font-bold text-amber-900">Browse by range</p>
-          <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
-            {rangeStarts.map((start) => {
-              const end = Math.min(start + RANGE_SIZE, section.puzzles.length)
-              return (
-                <button key={start} type="button" onClick={() => setRangeStart(start)} aria-pressed={rangeStart === start} className={`shrink-0 cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold transition ${rangeStart === start ? 'border-amber-800 bg-amber-800 text-white' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-500'}`}>
-                  {start + 1}–{end}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <form onSubmit={handleJump} className="min-w-56">
-          <label htmlFor="puzzle-jump" className="mb-2 block text-sm font-bold text-amber-900">Go to problem</label>
-          <div className="flex gap-2">
-            <input id="puzzle-jump" inputMode="numeric" value={jumpValue} onChange={(event) => { setJumpValue(event.target.value); setJumpError('') }} placeholder={jumpPlaceholder} className="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-amber-700 focus:ring-2 focus:ring-amber-200" />
-            <button type="submit" className="cursor-pointer rounded-lg bg-amber-800 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700">Go</button>
-          </div>
-          {jumpError ? <p className="mt-1 text-xs font-semibold text-rose-800" role="alert">{jumpError}</p> : null}
-        </form>
-        <div>
-          <p className="mb-2 text-sm font-bold text-amber-900">Filter by status</p>
-          <div className="flex flex-wrap gap-2">
-            {([['all', 'All'], ['not-attempted', 'Unattempted'], ['clean', 'Clean'], ['retried', 'Retried'], ['missed', 'Missed']] as const).map(([value, label]) => (
-              <button key={value} type="button" onClick={() => setStatusFilter(value)} aria-pressed={statusFilter === value} className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold transition ${statusFilter === value ? 'border-amber-800 bg-amber-800 text-white' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-500'}`}>
-                {label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-3">
+            <a href="#attempt-details" className="inline-flex items-center gap-1.5 text-sm font-bold text-amber-900 hover:text-amber-700">
+              Jump to attempt details <span aria-hidden="true">↓</span>
+            </a>
+            <a href={puzzleHref(continueIndex)} className="inline-flex w-fit items-center gap-2 rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">
+              {continueCopy}
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M6 12h12m-5-5 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </a>
           </div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-          <h2 className="text-xl font-bold tracking-[-0.015em] text-stone-950">Puzzles {rangeStart + 1}–{rangeEnd}</h2>
-          <p className="text-sm text-stone-500">Showing {visiblePuzzleIndices.length} of {section.puzzles.length} puzzles</p>
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold tracking-[-0.015em] text-stone-950">Puzzles {rangeStart + 1}–{rangeEnd}</h2>
+            {rangeStarts.length > 1 ? (
+              <div className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-1" aria-label="Browse puzzle ranges">
+                {rangeStarts.map((start) => {
+                  const end = Math.min(start + RANGE_SIZE, section.puzzles.length)
+                  return (
+                    <button key={start} type="button" onClick={() => setRangeStart(start)} aria-pressed={rangeStart === start} className={`shrink-0 cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold transition ${rangeStart === start ? 'border-amber-800 bg-amber-800 text-white' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-500'}`}>
+                      {start + 1}–{end}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
+          </div>
+          <form onSubmit={handleJump} className="w-full sm:w-56">
+            <label htmlFor="puzzle-jump" className="mb-2 block text-sm font-bold text-amber-900">Go to problem</label>
+            <div className="flex gap-2">
+              <input id="puzzle-jump" inputMode="numeric" value={jumpValue} onChange={(event) => { setJumpValue(event.target.value); setJumpError('') }} placeholder={jumpPlaceholder} className="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-amber-700 focus:ring-2 focus:ring-amber-200" />
+              <button type="submit" className="cursor-pointer rounded-lg bg-amber-800 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700">Go</button>
+            </div>
+            {jumpError ? <p className="mt-1 text-xs font-semibold text-rose-800" role="alert">{jumpError}</p> : null}
+          </form>
         </div>
-        {visiblePuzzleIndices.length > 0 ? (
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-8 md:grid-cols-10">
-            {visiblePuzzleIndices.map((index) => {
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-8 lg:grid-cols-12">
+          {visiblePuzzleIndices.map((index) => {
           const puzzle = section.puzzles[index]
           const status = statuses[index]
           const style = status === 'clean'
@@ -273,19 +263,23 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
               </span>
             </a>
           )
-            })}
-          </div>
-        ) : (
-          <p className="rounded-lg bg-stone-50 px-4 py-8 text-center text-sm text-stone-600">No puzzles in this range match that status.</p>
-        )}
+          })}
+        </div>
 
-        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-stone-200 pt-4">
-          <LegendItem status="clean">Solved cleanly</LegendItem>
-          <LegendItem status="retried">Solved after retry</LegendItem>
-          <LegendItem status="missed">Missed</LegendItem>
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-stone-200 pt-4">
+          <LegendItem status="clean">First try</LegendItem>
+          <LegendItem status="retried">After retry</LegendItem>
+          <LegendItem status="missed">Not solved</LegendItem>
           <LegendItem status="not-attempted">Not attempted</LegendItem>
         </div>
       </div>
+
+      <StudentPuzzleResults
+        collectionSlug={collection.slug}
+        sectionSlug={section.slug}
+        puzzles={section.puzzles}
+        attempts={attempts}
+      />
     </section>
   )
 }

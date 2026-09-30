@@ -17,7 +17,7 @@ export default function PuzzleProgressBar({
     <div
       className={`flex overflow-hidden rounded-full bg-stone-200 ${className}`}
       role="img"
-      aria-label={`${progress.attempted} of ${progress.total} attempted: ${progress.clean} solved cleanly, ${progress.retried} solved after retry, ${progress.missed} missed`}
+      aria-label={`${progress.attempted} of ${progress.total} attempted: ${progress.clean} solved on the first try, ${progress.retried} solved after a retry, ${progress.missed} not solved`}
     >
       <span className="bg-emerald-800" style={{ width: segment(progress.clean) }} />
       <span className="bg-emerald-300" style={{ width: segment(progress.retried) }} />

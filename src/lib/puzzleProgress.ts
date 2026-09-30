@@ -1,6 +1,11 @@
 export type PracticeAttempt = {
   puzzleId: string
   result: 'correct' | 'incorrect' | 'answer-viewed'
+  move?: string
+  checkedAt?: string
+  durationMs?: number
+  pauseCount?: number
+  restartCount?: number
 }
 
 export type PuzzleProgressStatus = 'clean' | 'retried' | 'missed' | 'not-attempted'
