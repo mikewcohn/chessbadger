@@ -14,22 +14,25 @@ type PuzzleCollectionProgressProps = {
 
 export default function PuzzleCollectionProgress({ collection }: PuzzleCollectionProgressProps) {
   const [attempts, setAttempts] = useState<PracticeAttempt[]>([])
+  const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
-    void fetch(
-      '/api/practice/attempts',
-      { signal: controller.signal },
-    )
-      .then(async (response) => {
-        const data = await response.json() as {
+    void Promise.all([
+      fetch('/api/practice/attempts', { signal: controller.signal }),
+      fetch('/api/players/me', { signal: controller.signal }),
+    ])
+      .then(async ([attemptsResponse, playerResponse]) => {
+        const data = await attemptsResponse.json() as {
           attempts?: PracticeAttempt[]
           error?: string
         }
-        if (!response.ok || !data.attempts) throw new Error(data.error ?? 'Could not load puzzle progress.')
+        const playerData = await playerResponse.json() as { player: { handle: string } | null }
+        if (!attemptsResponse.ok || !data.attempts) throw new Error(data.error ?? 'Could not load puzzle progress.')
         setAttempts([...data.attempts, ...getCachedPracticeAttempts()])
+        setSignedIn(Boolean(playerData.player))
       })
       .catch((caught: unknown) => {
         if (caught instanceof DOMException && caught.name === 'AbortError') return
@@ -61,22 +64,29 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
   const bookPercent = bookProgress.total === 0
     ? 0
     : Math.round((bookProgress.attempted / bookProgress.total) * 100)
+  const showSavedProgress = signedIn !== false || attempts.length > 0
 
   return (
     <div className="grid gap-6">
       <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
-        <div className="border-b border-stone-200 px-5 py-5 sm:px-7">
+        <div className={`${showSavedProgress ? 'border-b border-stone-200' : ''} px-5 py-5 sm:px-7`}>
           <div>
             <div className="min-h-7">
               {loading
                 ? <span className="block h-5 w-44 animate-pulse rounded bg-stone-200"><span className="sr-only">Loading progress</span></span>
-                : <h2 className="text-2xl font-bold tracking-[-0.02em] text-stone-950">Your book progress</h2>}
+                : <h2 className="text-2xl font-bold tracking-[-0.02em] text-stone-950">{signedIn === false ? attempts.length > 0 ? 'This session’s progress' : 'See your saved progress' : 'Your book progress'}</h2>}
             </div>
-            <p className="mt-1 text-sm text-stone-500">Progress across {availableCount} available sections.</p>
+            {signedIn === false ? (
+              <p className="mt-2 text-sm leading-relaxed text-stone-600">
+                {attempts.length > 0 ? 'These results are only saved in this browser session. ' : null}
+                <a href="/players" className="font-bold text-amber-900 underline decoration-2 underline-offset-2 hover:text-amber-700">Sign in or claim a name</a>{' '}
+                {attempts.length > 0 ? 'to keep them and see your full history.' : 'to see your puzzle history and continue where you left off.'}
+              </p>
+            ) : <p className="mt-1 text-sm text-stone-500">Progress across {availableCount} available sections.</p>}
             {error ? <p className="mt-1 text-sm font-semibold text-rose-800">{error}</p> : null}
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4 px-5 py-5 sm:grid-cols-[minmax(260px,1.4fr)_repeat(3,minmax(90px,0.6fr))] sm:items-center sm:px-7">
+        {showSavedProgress ? <div className="grid grid-cols-3 gap-4 px-5 py-5 sm:grid-cols-[minmax(260px,1.4fr)_repeat(3,minmax(90px,0.6fr))] sm:items-center sm:px-7">
           <div className="col-span-3 sm:col-span-1">
             <div className="flex items-baseline justify-between gap-3">
               <p className="font-bold text-stone-950">Overall completion</p>
@@ -95,7 +105,7 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
               <p className="text-sm text-stone-500">{label}</p>
             </div>
           ))}
-        </div>
+        </div> : null}
       </section>
 
       <ol className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm divide-y divide-stone-200">
@@ -129,7 +139,7 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
                     <p className="mt-1 text-sm leading-relaxed text-stone-600">{section.description}</p>
                   </div>
                 </div>
-                {isAvailable ? (
+                {isAvailable && showSavedProgress ? (
                   <div className="z-10 min-w-0">
                     <PuzzleProgressBar progress={progress} className="h-2" />
                     <p className="mt-1.5 text-xs font-medium text-stone-500">{progress.attempted} of {progress.total} attempted · {percent}%</p>
@@ -139,9 +149,9 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
                       <span><strong className="text-rose-800">{progress.missed}</strong> not solved</span>
                     </p>
                   </div>
-                ) : (
+                ) : !isAvailable ? (
                   <span className="text-sm font-semibold text-stone-500 lg:text-right">Coming soon</span>
-                )}
+                ) : <span className="z-10 text-sm font-semibold text-stone-500">{section.puzzles.length} puzzles</span>}
                 {isAvailable ? (
                   <a href={continueHref} className="z-10 inline-flex w-fit items-center gap-2 rounded-lg bg-amber-800 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">
                     {actionLabel}

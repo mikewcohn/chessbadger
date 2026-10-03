@@ -64,6 +64,7 @@ function LegendItem({ status, children }: { status: PuzzleProgressStatus; childr
 
 export default function PuzzleSectionProgress({ collection, section }: PuzzleSectionProgressProps) {
   const [attempts, setAttempts] = useState<PracticeAttempt[]>([])
+  const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rangeStart, setRangeStart] = useState(0)
@@ -72,17 +73,19 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
 
   useEffect(() => {
     const controller = new AbortController()
-    void fetch(
-      '/api/practice/attempts',
-      { signal: controller.signal },
-    )
-      .then(async (response) => {
-        const data = await response.json() as {
+    void Promise.all([
+      fetch('/api/practice/attempts', { signal: controller.signal }),
+      fetch('/api/players/me', { signal: controller.signal }),
+    ])
+      .then(async ([attemptsResponse, playerResponse]) => {
+        const data = await attemptsResponse.json() as {
           attempts?: PracticeAttempt[]
           error?: string
         }
-        if (!response.ok || !data.attempts) throw new Error(data.error ?? 'Could not load puzzle progress.')
+        const playerData = await playerResponse.json() as { player: { handle: string } | null }
+        if (!attemptsResponse.ok || !data.attempts) throw new Error(data.error ?? 'Could not load puzzle progress.')
         setAttempts([...data.attempts, ...getCachedPracticeAttempts()])
+        setSignedIn(Boolean(playerData.player))
       })
       .catch((caught: unknown) => {
         if (caught instanceof DOMException && caught.name === 'AbortError') return
@@ -102,6 +105,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   const firstMissedIndex = statuses.findIndex((status) => status === 'missed')
   const firstNotAttemptedIndex = statuses.findIndex((status) => status === 'not-attempted')
   const continueIndex = firstMissedIndex >= 0 ? firstMissedIndex : firstNotAttemptedIndex >= 0 ? firstNotAttemptedIndex : 0
+  const showSavedProgress = signedIn !== false || attempts.length > 0
 
   const puzzleHref = (index: number) => {
     const puzzle = section.puzzles[index]
@@ -163,16 +167,22 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   return (
     <section className="grid min-w-0 gap-6">
       <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
-        <div className="border-b border-stone-200 px-5 py-5 sm:px-7">
+        <div className={`${showSavedProgress ? 'border-b border-stone-200' : ''} px-5 py-5 sm:px-7`}>
           <div className="min-h-7">
             {loading
               ? <span className="block h-5 w-48 animate-pulse rounded bg-stone-200"><span className="sr-only">Loading progress</span></span>
-              : <h2 className="text-2xl font-bold tracking-[-0.02em] text-stone-950">Your section progress</h2>}
+              : <h2 className="text-2xl font-bold tracking-[-0.02em] text-stone-950">{signedIn === false ? attempts.length > 0 ? 'This session’s progress' : 'See your saved progress' : 'Your section progress'}</h2>}
             {error ? <p className="mt-1 text-sm font-semibold text-rose-800">{error}</p> : null}
           </div>
-          <p className="mt-1 text-sm text-stone-500">Progress shows both completion and outcome.</p>
+          {signedIn === false ? (
+            <p className="mt-2 text-sm leading-relaxed text-stone-600">
+              {attempts.length > 0 ? 'These results are only saved in this browser session. ' : null}
+              <a href="/players" className="font-bold text-amber-900 underline decoration-2 underline-offset-2 hover:text-amber-700">Sign in or claim a name</a>{' '}
+              {attempts.length > 0 ? 'to keep them and see your full history.' : 'to see your puzzle history and continue where you left off.'}
+            </p>
+          ) : <p className="mt-1 text-sm text-stone-500">Progress shows both completion and outcome.</p>}
         </div>
-        <div className="grid grid-cols-3 gap-4 px-5 py-5 sm:grid-cols-[minmax(260px,1.4fr)_repeat(3,minmax(90px,0.6fr))] sm:items-center sm:px-7">
+        {showSavedProgress ? <div className="grid grid-cols-3 gap-4 px-5 py-5 sm:grid-cols-[minmax(260px,1.4fr)_repeat(3,minmax(90px,0.6fr))] sm:items-center sm:px-7">
           <div className="col-span-3 sm:col-span-1">
             <div className="flex items-baseline justify-between gap-3">
               <p className="font-bold text-stone-950">Overall completion</p>
@@ -191,10 +201,10 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
               <p className="text-sm text-stone-500">{label}</p>
             </div>
           ))}
-        </div>
+        </div> : null}
       </div>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      {showSavedProgress ? <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.11em] text-stone-500">Continue where you left off</p>
@@ -210,7 +220,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
             </a>
           </div>
         </div>
-      </div>
+      </div> : null}
 
       <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -241,7 +251,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-8 lg:grid-cols-12">
           {visiblePuzzleIndices.map((index) => {
           const puzzle = section.puzzles[index]
-          const status = statuses[index]
+          const status = showSavedProgress ? statuses[index] : 'not-attempted'
           const style = status === 'clean'
             ? 'border-emerald-800 bg-emerald-800 text-white hover:bg-emerald-700'
             : status === 'retried'
@@ -251,7 +261,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
                 : 'border-stone-300 bg-stone-100 text-stone-700 hover:border-stone-500 hover:bg-white'
 
           return (
-            <a key={puzzle.id} href={puzzleHref(index)} className={`grid min-h-11 place-items-center rounded-lg border px-2 py-2 text-center transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 ${style}`} aria-label={`${puzzle.title}: ${statusLabel[status]}`}>
+            <a key={puzzle.id} href={puzzleHref(index)} className={`grid min-h-11 place-items-center rounded-lg border px-2 py-2 text-center transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 ${style}`} aria-label={showSavedProgress ? `${puzzle.title}: ${statusLabel[status]}` : puzzle.title}>
               <span className="flex items-center justify-center gap-1.5">
                 <span className="group relative inline-flex">
                   <strong className="text-sm font-bold">{index + 1}</strong>
@@ -266,20 +276,20 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
           })}
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-stone-200 pt-4">
+        {showSavedProgress ? <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-stone-200 pt-4">
           <LegendItem status="clean">First try</LegendItem>
           <LegendItem status="retried">After retry</LegendItem>
           <LegendItem status="missed">Not solved</LegendItem>
           <LegendItem status="not-attempted">Not attempted</LegendItem>
-        </div>
+        </div> : null}
       </div>
 
-      <StudentPuzzleResults
+      {showSavedProgress ? <StudentPuzzleResults
         collectionSlug={collection.slug}
         sectionSlug={section.slug}
         puzzles={section.puzzles}
         attempts={attempts}
-      />
+      /> : null}
     </section>
   )
 }

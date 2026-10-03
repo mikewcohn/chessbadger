@@ -1,0 +1,17 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import Leaderboard from '../components/Leaderboard'
+---
+
+<BaseLayout title="Leaderboard | ChessBadger" description="See who has been solving ChessBadger puzzles.">
+  <section class="mx-auto max-w-5xl px-5 py-10 sm:px-6 sm:py-14">
+    <div class="max-w-2xl">
+      <p class="text-sm font-bold uppercase tracking-[0.12em] text-amber-800">Friendly competition</p>
+      <h1 class="mt-2 text-4xl font-black tracking-[-0.035em] text-stone-950 sm:text-5xl">Leaderboard</h1>
+      <p class="mt-4 text-lg leading-relaxed text-stone-600">See who is making progress—and getting puzzles right on the first try.</p>
+    </div>
+    <div class="mt-8">
+      <Leaderboard client:load />
+    </div>
+  </section>
+</BaseLayout>

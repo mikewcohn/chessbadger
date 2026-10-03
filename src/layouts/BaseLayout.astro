@@ -13,6 +13,16 @@ const {
   description = 'Chess improvement, games, openings, and practical lessons.',
   robots,
 } = Astro.props
+
+const navItems = [
+  { href: '/puzzles', label: 'Do Puzzles', primary: true },
+  { href: '/leaderboard', label: 'Leaderboard' },
+  { href: '/games', label: 'Games' },
+  { href: '/articles', label: 'Articles' },
+  { href: '/about', label: 'About' },
+]
+
+const isCurrent = (href: string) => Astro.url.pathname === href || Astro.url.pathname.startsWith(`${href}/`)
 ---
 
 <!doctype html>
@@ -35,13 +45,20 @@ const {
           ChessBadger
         </a>
 
-        <nav class="hidden items-center gap-6 text-sm font-semibold text-stone-700 lg:flex">
-          <a class="hover:text-stone-950" href="/">Home</a>
-          <a class="hover:text-stone-950" href="/articles">Articles</a>
-          <a class="hover:text-stone-950" href="/games">Games</a>
-          <a class="font-bold text-amber-900 hover:text-amber-700" href="/puzzles">Do Puzzles</a>
-          <a class="hover:text-stone-950" href="/about">About</a>
-          <a class="hover:text-stone-950" href="/admin">Admin</a>
+        <nav class="hidden items-center gap-3 text-sm font-semibold text-stone-700 lg:flex">
+          {navItems.map((item) => (
+            <a
+              href={item.href}
+              aria-current={isCurrent(item.href) ? 'page' : undefined}
+              class:list={[
+                'rounded-md px-2.5 py-1.5 transition',
+                item.primary ? 'font-bold text-amber-900 hover:text-amber-700' : 'hover:text-stone-950',
+                isCurrent(item.href) && (item.primary ? 'bg-amber-50' : 'bg-stone-100 text-stone-950'),
+              ]}
+            >
+              {item.label}
+            </a>
+          ))}
           <PlayerNav client:load />
         </nav>
 
@@ -52,12 +69,19 @@ const {
             </svg>
           </summary>
           <nav class="absolute right-0 z-30 mt-2 grid min-w-48 overflow-hidden rounded-xl border border-stone-200 bg-white py-2 text-sm font-semibold text-stone-800 shadow-xl shadow-stone-900/10">
-            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/">Home</a>
-            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/articles">Articles</a>
-            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/games">Games</a>
-            <a class="px-4 py-2.5 font-bold text-amber-900 hover:bg-amber-50 hover:text-amber-700" href="/puzzles">Do Puzzles</a>
-            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/about">About</a>
-            <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/admin">Admin</a>
+            {navItems.map((item) => (
+              <a
+                href={item.href}
+                aria-current={isCurrent(item.href) ? 'page' : undefined}
+                class:list={[
+                  'px-4 py-2.5 transition hover:bg-stone-50 hover:text-stone-950',
+                  item.primary && 'font-bold text-amber-900 hover:bg-amber-50 hover:text-amber-700',
+                  isCurrent(item.href) && (item.primary ? 'bg-amber-50' : 'bg-stone-100 text-stone-950'),
+                ]}
+              >
+                {item.label}
+              </a>
+            ))}
             <a class="px-4 py-2.5 hover:bg-stone-50 hover:text-stone-950" href="/players">Player sign in</a>
           </nav>
         </details>
@@ -69,8 +93,9 @@ const {
     </main>
 
     <footer class="mt-20 border-t border-stone-200 bg-white">
-      <div class="mx-auto max-w-6xl px-6 py-8 text-sm text-stone-500">
-        © {new Date().getFullYear()} ChessBadger
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-8 text-sm text-stone-500">
+        <span>© {new Date().getFullYear()} ChessBadger</span>
+        <a href="/admin" class="hover:text-stone-800">Admin</a>
       </div>
     </footer>
   </body>

@@ -129,3 +129,12 @@ test('follow-up migration preserves the upstream page 10 puzzle 12 correction', 
   }
   assert.deepEqual(after, expected)
 })
+
+test('follow-up migration adds the missing queen to page 16 puzzle 8', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0006_correct_steps_page_16_puzzle_08.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-16-puzzle-08')
+
+  assert.equal(puzzle?.fen, '6b1/8/8/8/7r/8/2K5/2Q5 b - - 0 1')
+})
