@@ -15,6 +15,11 @@ import {
   removeCachedPracticeAttempt,
 } from '../lib/practiceClient'
 import {
+  applyPseudoLegalMove,
+  isPseudoLegalMove,
+  pseudoLegalMoveContextFromFen,
+} from '../lib/pseudoLegalMove'
+import {
   BOARD_THEMES,
   BOARD_THEME_STORAGE_KEY,
   WOOD_SQUARE_STYLES,
@@ -553,6 +558,37 @@ export default function PuzzleTrainer({
       || !timer.isRunning
     ) return false
 
+    const currentPosition = typeof position === 'string'
+      ? fenStringToPositionObject(position, 8, 8)
+      : position
+    const moveContext = typeof position === 'string'
+      ? pseudoLegalMoveContextFromFen(position)
+      : {
+          sideToMove: puzzle.sideToMove === 'black' ? 'b' as const : 'w' as const,
+          castlingRights: '-',
+          enPassantSquare: null,
+        }
+    const sideToMove = puzzle.answerMoves
+      ? puzzle.sideToMove === 'black' ? 'b' : 'w'
+      : moveContext.sideToMove
+
+    if (!isPseudoLegalMove({
+      position: currentPosition,
+      sourceSquare,
+      targetSquare,
+      sideToMove,
+      castlingRights: moveContext.castlingRights,
+      enPassantSquare: moveContext.enPassantSquare,
+    })) return false
+
+    const applyMoveWithoutKingSafety = () => applyPseudoLegalMove(
+      currentPosition,
+      sourceSquare,
+      targetSquare,
+      moveContext,
+    )
+    const coordinateLabel = `${sourceSquare}–${targetSquare}`
+
     if (puzzle.playThrough && puzzle.solutionLines && typeof position === 'string') {
       const game = new Chess(position)
 
@@ -596,28 +632,22 @@ export default function PuzzleTrainer({
         continueSolutionLine(game, matchingLine, 1)
         return true
       } catch {
-        return false
+        setPosition(applyMoveWithoutKingSafety())
+        setAttemptedMove(coordinateLabel)
+        setSelectedSquare(null)
+        recordAttempt(coordinateLabel, 'incorrect')
+        return true
       }
     }
 
     if (puzzle.answerMoves) {
-      const currentPosition = typeof position === 'string'
-        ? fenStringToPositionObject(position, 8, 8)
-        : position
-      const piece = currentPosition[sourceSquare]
-      const expectedColor = puzzle.sideToMove === 'black' ? 'b' : 'w'
-      if (!piece || !piece.pieceType.startsWith(expectedColor)) return false
-
-      const nextPosition = { ...currentPosition }
-      delete nextPosition[sourceSquare]
-      nextPosition[targetSquare] = piece
       const attemptedCoordinates = `${sourceSquare}${targetSquare}`.toLowerCase()
       const answerIndex = puzzle.answerMoves.findIndex((move) => move.toLowerCase() === attemptedCoordinates)
       const attemptLabel = answerIndex >= 0
         ? puzzle.answers[answerIndex]
-        : `${sourceSquare}–${targetSquare}`
+        : coordinateLabel
 
-      setPosition(nextPosition)
+      setPosition(applyMoveWithoutKingSafety())
       setAttemptedMove(attemptLabel)
       setSelectedSquare(null)
       recordAttempt(attemptLabel, answerIndex >= 0 ? 'correct' : 'incorrect')
@@ -637,7 +667,11 @@ export default function PuzzleTrainer({
       checkMoveAttempt(move.san)
       return true
     } catch {
-      return false
+      setPosition(applyMoveWithoutKingSafety())
+      setAttemptedMove(coordinateLabel)
+      setSelectedSquare(null)
+      recordAttempt(coordinateLabel, 'incorrect')
+      return true
     }
   }
 

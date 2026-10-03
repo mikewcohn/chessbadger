@@ -179,10 +179,12 @@ test('page 17 positions match the workbook reference', async (t) => {
 test('page 18 and 19 positions match the rendered workbook pages', async (t) => {
   const { db, query } = database(t)
   db.exec(readFileSync(new URL('../migrations/0011_correct_steps_pages_18_19_positions.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0014_correct_steps_page_18_puzzle_04_queen.sql', import.meta.url), 'utf8'))
   const catalog = await readPuzzleCatalog(query)
   const puzzles = new Map(catalog.flatMap(({ puzzles }) => puzzles.map((puzzle) => [puzzle.id, puzzle])))
   const expected = {
     'page-18-puzzle-01': ['k6r/p4p2/3p2p1/3r3p/8/2P2PP1/1P2Q2P/6K1 w - - 0 1', 'Qe4'],
+    'page-18-puzzle-04': ['4r3/3q1kpp/p3rp2/2R5/3pP3/1RbP2QP/P4BP1/7K w - - 0 1', 'Rc7'],
     'page-19-puzzle-04': ['r4rk1/pp3ppp/8/2PR4/b4B2/6P1/1P3PKP/5R2 b - - 0 1', 'Bc6'],
     'page-19-puzzle-05': ['7k/1p4p1/p6p/2b1pP2/2Pq4/1B6/P4QPP/5RK1 b - - 0 1', 'Qd6'],
     'page-19-puzzle-06': ['4r1k1/2q1bppp/p7/1p3P2/2p5/P1P1QB1P/1P4P1/5RK1 b - - 0 1', 'Bc5'],
