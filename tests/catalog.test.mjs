@@ -130,11 +130,88 @@ test('follow-up migration preserves the upstream page 10 puzzle 12 correction', 
   assert.deepEqual(after, expected)
 })
 
-test('follow-up migration adds the missing queen to page 16 puzzle 8', async (t) => {
+test('follow-up migrations put the queen on c2 and king on c1 in page 16 puzzle 8', async (t) => {
   const { db, query } = database(t)
   db.exec(readFileSync(new URL('../migrations/0006_correct_steps_page_16_puzzle_08.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0008_correct_steps_page_16_puzzle_08_piece_order.sql', import.meta.url), 'utf8'))
   const catalog = await readPuzzleCatalog(query)
   const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-16-puzzle-08')
 
-  assert.equal(puzzle?.fen, '6b1/8/8/8/7r/8/2K5/2Q5 b - - 0 1')
+  assert.equal(puzzle?.fen, '6b1/8/8/8/7r/8/2Q5/2K5 b - - 0 1')
+})
+
+test('follow-up migration makes the queen on g3 White in page 16 puzzle 11', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0009_correct_steps_page_16_puzzle_11_queen.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-16-puzzle-11')
+
+  assert.equal(puzzle?.fen, '8/6b1/2n5/8/8/6Q1/7K/8 b - - 0 1')
+})
+
+test('page 17 positions match the workbook reference', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0007_correct_steps_page_17_positions.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0010_correct_steps_page_17_puzzle_05_queen.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzles = new Map(catalog.flatMap(({ puzzles }) => puzzles.map((puzzle) => [puzzle.id, puzzle])))
+  const expected = {
+    'page-17-puzzle-01': ['1n2k1nr/5ppp/4p3/3p4/3P4/2PB1N2/5PPP/6K1 w - - 0 1', 'wR'],
+    'page-17-puzzle-02': ['7k/pp1b2rp/2p5/3p1q2/3P4/3Q4/PPP4P/2KR4 w - - 0 1', 'wB'],
+    'page-17-puzzle-03': ['8/ppk1nppp/8/8/4BP2/8/PP4PP/R3K2R b - - 0 1', 'bQ'],
+    'page-17-puzzle-04': ['5bk1/pp1R2p1/2n4p/8/5P2/2N3P1/PP1K2B1/8 b - - 0 1', 'bR'],
+    'page-17-puzzle-05': ['2q2r1k/p5p1/1p5p/4p3/7P/5N2/PP2RQP1/6K1 b - - 0 1', 'bB'],
+    'page-17-puzzle-06': ['6k1/1R3p2/p5p1/7p/8/6P1/1P3PKP/R7 b - - 0 1', 'bQ'],
+    'page-17-puzzle-07': ['k7/p7/1pr1p3/5p1b/8/6Pp/PP3P1P/5RK1 w - - 0 1', 'wB'],
+    'page-17-puzzle-08': ['2R5/1p2kppp/4b3/3p4/1n1P3P/1P3BP1/5PK1/8 w - - 0 1', 'wQ'],
+    'page-17-puzzle-09': ['2k4r/pb3ppp/8/2b2B2/8/2N4P/PP4P1/7K w - - 0 1', 'wR'],
+    'page-17-puzzle-10': ['4k2r/1p2pp1p/3p1np1/1rp5/4Pq2/5N2/PP3PPP/R4RK1 w - - 0 1', 'wQ'],
+    'page-17-puzzle-11': ['5r2/5pk1/1p4pp/pP3n2/P1B2N2/5P2/5P1P/2R3K1 b - - 0 1', 'bB'],
+    'page-17-puzzle-12': ['k2r4/qp3pp1/2p1bn2/7r/8/P1B2N2/1PQ2PPP/5RK1 w - - 0 1', 'wR'],
+  }
+
+  for (const [id, [fen, piece]] of Object.entries(expected)) {
+    const puzzle = puzzles.get(id)
+    assert.deepEqual([puzzle?.fen, puzzle?.piece], [fen, piece], id)
+  }
+})
+
+test('page 18 and 19 positions match the rendered workbook pages', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0011_correct_steps_pages_18_19_positions.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzles = new Map(catalog.flatMap(({ puzzles }) => puzzles.map((puzzle) => [puzzle.id, puzzle])))
+  const expected = {
+    'page-18-puzzle-01': ['k6r/p4p2/3p2p1/3r3p/8/2P2PP1/1P2Q2P/6K1 w - - 0 1', 'Qe4'],
+    'page-19-puzzle-04': ['r4rk1/pp3ppp/8/2PR4/b4B2/6P1/1P3PKP/5R2 b - - 0 1', 'Bc6'],
+    'page-19-puzzle-05': ['7k/1p4p1/p6p/2b1pP2/2Pq4/1B6/P4QPP/5RK1 b - - 0 1', 'Qd6'],
+    'page-19-puzzle-06': ['4r1k1/2q1bppp/p7/1p3P2/2p5/P1P1QB1P/1P4P1/5RK1 b - - 0 1', 'Bc5'],
+    'page-19-puzzle-08': ['7r/1r2npp1/k2p3p/pq1Pp3/1p2P3/7B/PP2QP1P/2R1R1K1 w - - 0 1', 'Bf1'],
+    'page-19-puzzle-10': ['5rk1/ppq2ppp/2pn4/6N1/2P5/3r1P2/PP3RPP/R3Q1K1 w - - 0 1', 'Qb1'],
+  }
+
+  for (const [id, [fen, answer]] of Object.entries(expected)) {
+    const puzzle = puzzles.get(id)
+    assert.deepEqual([puzzle?.fen, puzzle?.answers[0]], [fen, answer], id)
+  }
+})
+
+test('page 24 puzzle 1 has the White rook shown on a1', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0012_correct_steps_page_24_puzzle_01_rook.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-24-puzzle-01')
+
+  assert.equal(puzzle?.fen, '1r3rk1/1pb2ppp/8/1P2n3/2p5/2B4P/5PP1/R2R1BK1 w - - 0 1')
+})
+
+test('page 40 puzzle 12 answers the check from the queen on e3', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0013_correct_steps_page_40_puzzle_12_answer.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-40-puzzle-12')
+
+  assert.deepEqual(puzzle?.answers, ['Rxe3'])
+  assert.deepEqual(puzzle?.answerMoves, ['e1e3'])
+  assert.equal(puzzle?.sideToMove, 'white')
 })
