@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { DatabaseSync } from 'node:sqlite'
 import { test } from 'node:test'
 import { readPuzzleCatalog } from '../src/lib/puzzleCatalog.ts'
@@ -227,4 +227,42 @@ test('page 40 puzzle 12 answers the check from the queen on e3', async (t) => {
   assert.deepEqual(puzzle?.answers, ['Rxe3'])
   assert.deepEqual(puzzle?.answerMoves, ['e1e3'])
   assert.equal(puzzle?.sideToMove, 'white')
+})
+
+test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t) => {
+  const { db, query } = database(t)
+  const migrationDirectory = new URL('../migrations/', import.meta.url)
+  for (const migration of readdirSync(migrationDirectory)
+    .filter((name) => name.endsWith('.sql') && name > '0002_seed_puzzles.sql')
+    .sort()) {
+    db.exec(readFileSync(new URL(migration, migrationDirectory), 'utf8'))
+  }
+
+  const catalog = await readPuzzleCatalog(query)
+  const auditedPuzzles = catalog
+    .find(({ slug }) => slug === 'steps-2-workbook')
+    .puzzles
+    .filter(({ id }) => {
+      const page = Number(id.split('-')[1])
+      return page >= 21 && page <= 56
+    })
+    .map((puzzle) => [puzzle.id, puzzle])
+    .sort(([left], [right]) => left.localeCompare(right))
+
+  assert.equal(auditedPuzzles.length, 368)
+  const hash = createHash('sha256')
+    .update(JSON.stringify(canonical(auditedPuzzles)))
+    .digest('hex')
+  assert.equal(hash, '689f456f0d3ee6e897e30b6d08dfd8466beae75d461febb2e01d46e637832f64')
+
+  const puzzles = new Map(auditedPuzzles)
+  assert.deepEqual(
+    [puzzles.get('page-46-puzzle-01')?.fen, puzzles.get('page-46-puzzle-01')?.answerMoves],
+    ['8/1r6/1B6/4k3/8/8/4K3/1R6 w - - 0 1', ['b6d4']],
+  )
+  assert.deepEqual(puzzles.get('page-50-puzzle-02')?.answers, ['Qd5'])
+  assert.deepEqual(puzzles.get('page-51-puzzle-07')?.answers, ['e8=N+'])
+  assert.deepEqual(puzzles.get('page-54-puzzle-08')?.answers, ['Qh4+'])
+  assert.deepEqual(puzzles.get('page-55-puzzle-10')?.answers, ['Nxg3+'])
+  assert.deepEqual(puzzles.get('page-56-puzzle-12')?.answers, ['Nf3+'])
 })
