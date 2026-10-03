@@ -198,6 +198,17 @@ test('page 18 and 19 positions match the rendered workbook pages', async (t) => 
   }
 })
 
+test('page 21 puzzles 4 and 5 match the workbook reference', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0015_correct_steps_page_21_puzzle_04_bishop.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0016_correct_steps_page_21_puzzle_05_rook.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzles = new Map(catalog.flatMap(({ puzzles }) => puzzles.map((puzzle) => [puzzle.id, puzzle])))
+
+  assert.equal(puzzles.get('page-21-puzzle-04')?.fen, '8/1p4Bk/2p4p/2Pn4/8/1P6/r5RP/7K b - - 0 1')
+  assert.equal(puzzles.get('page-21-puzzle-05')?.fen, '6k1/6pb/1p3p2/8/4r3/2P2KB1/1P3P2/7R w - - 0 1')
+})
+
 test('page 24 puzzle 1 has the White rook shown on a1', async (t) => {
   const { db, query } = database(t)
   db.exec(readFileSync(new URL('../migrations/0012_correct_steps_page_24_puzzle_01_rook.sql', import.meta.url), 'utf8'))
