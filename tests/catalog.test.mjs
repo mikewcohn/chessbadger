@@ -99,6 +99,17 @@ test('solution variants remain available to the trainer', async (t) => {
   assert.deepEqual(puzzles.get('polgar-puzzle-0307').solutionLines, [['Kc3', 'Ka2', 'Qb2#']])
 })
 
+test('page 27 placement puzzles match the workbook instructions and piece colors', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0020_correct_steps_page_27_placement_puzzles.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzles = new Map(catalog.flatMap(({ puzzles }) => puzzles.map((puzzle) => [puzzle.id, puzzle])))
+
+  assert.equal(puzzles.get('page-27-puzzle-02')?.instruction, 'Set up a pin.')
+  assert.equal(puzzles.get('page-27-puzzle-02')?.piece, 'wR')
+  assert.equal(puzzles.get('page-27-puzzle-06')?.piece, 'wQ')
+})
+
 test('catalog reads all D1 pages using bounded 500-row queries', async (t) => {
   const { query, calls } = database(t)
   const catalog = await readPuzzleCatalog(query)
@@ -293,7 +304,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, '4409e932fba932b714fa1446ee8398a17aa19ea1dc8c525de38c1a3b01ab701b')
+  assert.equal(hash, '1ec1b06c1754d731ec7c566ebedc948f180f9304de9a7de8f293d14da55f16fa')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(
