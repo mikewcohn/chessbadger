@@ -218,6 +218,11 @@ export default function PuzzleTrainer({
 
   const puzzle = puzzles[puzzleIndex]
   const puzzleAttempts = attemptHistory[puzzle.id] ?? []
+  const solutionEndsInMate = activeSolutionLine
+    ? activeSolutionLine.at(-1)?.endsWith('#') ?? false
+    : puzzle.type !== 'placement'
+      && puzzle.type !== 'composition'
+      && puzzle.solutionLines?.every((line) => line.at(-1)?.endsWith('#')) === true
   const sideToMove = puzzle.type === 'placement' || puzzle.type === 'composition'
     ? null
     : puzzle.sideToMove
@@ -935,7 +940,13 @@ export default function PuzzleTrainer({
 
           <div className="mt-5 grid gap-3 rounded-xl bg-stone-50 p-4 sm:grid-cols-2">
             <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-stone-500">Result</p><p className={`mt-1 font-bold ${reviewStatusClass}`}>{reviewStatus}</p></div>
-            <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-stone-500">Answer</p><p className="mt-1 font-bold text-stone-900">{formatAnswers(puzzle)}</p></div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-stone-500">Answer</p>
+              <p className="mt-1 font-bold text-stone-900">{formatAnswers(puzzle)}</p>
+              {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.solutionNote ? (
+                <p className="mt-1 text-sm text-stone-600">{puzzle.solutionNote}</p>
+              ) : null}
+            </div>
           </div>
 
           <section className="mt-6 border-t border-stone-200 pt-5" aria-labelledby="review-attempt-history-heading">
@@ -1200,6 +1211,9 @@ export default function PuzzleTrainer({
                 <p className={`${focusMode ? 'mt-1' : 'mt-2'} text-sm text-amber-50`}>
                   Answer: <strong>{formatAnswers(puzzle)}</strong>
                 </p>
+                {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.solutionNote ? (
+                  <p className="mt-1 text-sm text-amber-100">{puzzle.solutionNote}</p>
+                ) : null}
                 {!focusMode ? <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -1222,9 +1236,12 @@ export default function PuzzleTrainer({
               <div>
                 <p className={`${focusMode ? 'text-lg' : 'text-2xl sm:text-3xl'} font-bold`}>Not quite—try again.</p>
                 {answerVisible ? (
-                  <p className="mt-2 text-sm text-rose-100">
-                    Answer: <strong>{formatAnswers(puzzle)}</strong>
-                  </p>
+                  <div className="mt-2 text-sm text-rose-100">
+                    <p>Answer: <strong>{formatAnswers(puzzle)}</strong></p>
+                    {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.solutionNote ? (
+                      <p className="mt-1">{puzzle.solutionNote}</p>
+                    ) : null}
+                  </div>
                 ) : null}
                 {!focusMode ? <div className="mt-4 flex flex-wrap gap-2">
                   <button
@@ -1419,10 +1436,10 @@ export default function PuzzleTrainer({
             {isResponding
               ? 'Opponent is replying…'
               : opponentReply
-                ? `${sideToMove === 'White' ? 'Black' : 'White'} replied ${opponentReply}. ${activeSolutionLine && nextSolutionPly === activeSolutionLine.length - 1 ? 'Finish the mate.' : 'Continue the combination.'}`
+                ? `${sideToMove === 'White' ? 'Black' : 'White'} replied ${opponentReply}. ${activeSolutionLine && nextSolutionPly === activeSolutionLine.length - 1 && solutionEndsInMate ? 'Finish the mate.' : 'Continue the combination.'}`
                 : puzzle.solutionLines?.some((line) => line.length > 3)
-                  ? 'Find the first move. Play the combination through to mate.'
-                  : 'Find the first move. After the reply, finish the mate.'}
+                  ? `Find the first move. Play the combination through${solutionEndsInMate ? ' to mate' : ''}.`
+                  : `Find the first move. After the reply, finish the ${solutionEndsInMate ? 'mate' : 'combination'}.`}
           </p>
         ) : null}
 
@@ -1445,6 +1462,9 @@ export default function PuzzleTrainer({
             <p className="text-stone-800">
               Answer: <strong>{formatAnswers(puzzle)}</strong>
             </p>
+            {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.solutionNote ? (
+              <p className="mt-2 text-sm text-stone-600">{puzzle.solutionNote}</p>
+            ) : null}
           </div>
         ) : null}
 

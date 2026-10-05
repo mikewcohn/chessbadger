@@ -218,6 +218,30 @@ test('page 24 puzzle 1 has the White rook shown on a1', async (t) => {
   assert.equal(puzzle?.fen, '1r3rk1/1pb2ppp/8/1P2n3/2p5/2B4P/5PP1/R2R1BK1 w - - 0 1')
 })
 
+test('page 24 puzzles 7 through 12 require the complete workbook combinations', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0017_audit_steps_pages_21_56.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0018_add_page_24_solution_lines.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzles = new Map(catalog.flatMap(({ puzzles }) => puzzles.map((puzzle) => [puzzle.id, puzzle])))
+
+  const expectedLines = {
+    'page-24-puzzle-07': [['Bxc5', 'dxc5', 'Rxe5']],
+    'page-24-puzzle-08': [['Rxf2', 'Bxf2', 'Kxg5']],
+    'page-24-puzzle-09': [['Rxd1', 'Qxd1', 'Qxf2']],
+    'page-24-puzzle-10': [['b5', 'Qxb5', 'Rxe4']],
+    'page-24-puzzle-11': [['Ra1+', 'Bxa1', 'Qxc5'], ['Ra1+', 'Bg1', 'Qxc5']],
+    'page-24-puzzle-12': [['Ng5+', 'Bxg5', 'Rxc7+']],
+  }
+
+  for (const [id, solutionLines] of Object.entries(expectedLines)) {
+    assert.equal(puzzles.get(id)?.playThrough, true)
+    assert.deepEqual(puzzles.get(id)?.solutionLines, solutionLines)
+  }
+  assert.equal(puzzles.get('page-24-puzzle-11')?.solutionNote, 'Also shown: 1...Qxc5? 2.Bxc5 Ra1+ 3.Bg1.')
+  assert.equal(puzzles.get('page-24-puzzle-12')?.solutionNote, 'If Black does not play 1...Bxg5, White continues with 2.Nxe6.')
+})
+
 test('page 40 puzzle 12 answers the check from the queen on e3', async (t) => {
   const { db, query } = database(t)
   db.exec(readFileSync(new URL('../migrations/0013_correct_steps_page_40_puzzle_12_answer.sql', import.meta.url), 'utf8'))
@@ -253,7 +277,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, '689f456f0d3ee6e897e30b6d08dfd8466beae75d461febb2e01d46e637832f64')
+  assert.equal(hash, '9fa59f39fdcd6d9edb66b49afaa53158819cb1f4c526fed3a2e149ed2b8ecc47')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(

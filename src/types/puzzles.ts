@@ -17,6 +17,7 @@ type MovePuzzle = PuzzleBase & {
   instruction?: string
   canAnswerNo?: boolean
   solutionLines?: string[][]
+  solutionNote?: string
   playThrough?: boolean
   answerMoves?: string[]
   sideToMove?: 'white' | 'black'
@@ -36,4 +37,3 @@ export type CompositionPuzzle = PuzzleBase & {
 }
 
 export type Puzzle = MovePuzzle | PlacementPuzzle | CompositionPuzzle
-
