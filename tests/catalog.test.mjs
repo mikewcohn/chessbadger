@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync } from 'node:fs'
 import { DatabaseSync } from 'node:sqlite'
 import { test } from 'node:test'
+import { Chess } from 'chess.js'
 import { readPuzzleCatalog } from '../src/lib/puzzleCatalog.ts'
 
 function database(t, seed = true) {
@@ -218,6 +219,16 @@ test('page 24 puzzle 1 has the White rook shown on a1', async (t) => {
   assert.equal(puzzle?.fen, '1r3rk1/1pb2ppp/8/1P2n3/2p5/2B4P/5PP1/R2R1BK1 w - - 0 1')
 })
 
+test('page 24 puzzle 6 accepts d4 without a check suffix', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0017_audit_steps_pages_21_56.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0019_correct_steps_page_24_puzzle_06_answer.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-24-puzzle-06')
+
+  assert.deepEqual(puzzle?.answers, ['d4'])
+})
+
 test('page 24 puzzles 7 through 12 require the complete workbook combinations', async (t) => {
   const { db, query } = database(t)
   db.exec(readFileSync(new URL('../migrations/0017_audit_steps_pages_21_56.sql', import.meta.url), 'utf8'))
@@ -235,8 +246,13 @@ test('page 24 puzzles 7 through 12 require the complete workbook combinations', 
   }
 
   for (const [id, solutionLines] of Object.entries(expectedLines)) {
-    assert.equal(puzzles.get(id)?.playThrough, true)
-    assert.deepEqual(puzzles.get(id)?.solutionLines, solutionLines)
+    const puzzle = puzzles.get(id)
+    assert.equal(puzzle?.playThrough, true)
+    assert.deepEqual(puzzle?.solutionLines, solutionLines)
+    for (const line of solutionLines) {
+      const game = new Chess(puzzle.fen)
+      assert.deepEqual(line.map((move) => game.move(move).san), line)
+    }
   }
   assert.equal(puzzles.get('page-24-puzzle-11')?.solutionNote, 'Also shown: 1...Qxc5? 2.Bxc5 Ra1+ 3.Bg1.')
   assert.equal(puzzles.get('page-24-puzzle-12')?.solutionNote, 'If Black does not play 1...Bxg5, White continues with 2.Nxe6.')
@@ -277,7 +293,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, '9fa59f39fdcd6d9edb66b49afaa53158819cb1f4c526fed3a2e149ed2b8ecc47')
+  assert.equal(hash, '4409e932fba932b714fa1446ee8398a17aa19ea1dc8c525de38c1a3b01ab701b')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(

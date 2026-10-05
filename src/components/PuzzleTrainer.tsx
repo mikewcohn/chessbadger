@@ -1234,7 +1234,17 @@ export default function PuzzleTrainer({
               </div>
             ) : (
               <div>
-                <p className={`${focusMode ? 'text-lg' : 'text-2xl sm:text-3xl'} font-bold`}>Not quite—try again.</p>
+                <p className={`${focusMode ? 'text-lg' : 'text-2xl sm:text-3xl'} font-bold`}>
+                  Not quite—
+                  <button
+                    type="button"
+                    onClick={() => resetPuzzle(puzzleIndex, true, true)}
+                    className="cursor-pointer underline decoration-rose-300 underline-offset-4 hover:text-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  >
+                    try again
+                  </button>
+                  .
+                </p>
                 {answerVisible ? (
                   <div className="mt-2 text-sm text-rose-100">
                     <p>Answer: <strong>{formatAnswers(puzzle)}</strong></p>
