@@ -229,27 +229,32 @@ export default function PuzzleTrainer({
       ? puzzle.sideToMove === 'white' ? 'White' : 'Black'
       : new Chess(puzzle.fen).turn() === 'w' ? 'White' : 'Black'
   const boardOrientation = alwaysWhiteOnBottom || sideToMove !== 'Black' ? 'white' : 'black'
+  const isMultiMovePuzzle = puzzle.type !== 'placement'
+    && puzzle.type !== 'composition'
+    && puzzle.playThrough
+    && puzzle.solutionLines?.some((line) => line.length > 1) === true
   const boardArrows = useMemo(
     () => {
       if (answerVisible && puzzle.type !== 'placement' && puzzle.type !== 'composition') {
         return createAnswerArrows(puzzle)
       }
 
+      if (isMultiMovePuzzle) return []
       if (attemptedMove !== null && result !== 'correct') return []
       const correctAttempt = puzzleAttempts.findLast((attempt) => attempt.result === 'correct')
       return correctAttempt ? createAttemptArrow(puzzle, correctAttempt.move) : []
     },
-    [answerVisible, attemptedMove, puzzle, puzzleAttempts, result],
+    [answerVisible, attemptedMove, isMultiMovePuzzle, puzzle, puzzleAttempts, result],
   )
   const reviewArrows = useMemo(
-    () => puzzleAttempts.flatMap((attempt) => {
+    () => isMultiMovePuzzle ? [] : puzzleAttempts.flatMap((attempt) => {
       if (attempt.result === 'correct') return createAttemptArrow(puzzle, attempt.move)
       if (attempt.result === 'incorrect') {
         return createAttemptArrow(puzzle, attempt.move, 'rgba(190, 18, 60, 0.9)')
       }
       return []
     }),
-    [puzzle, puzzleAttempts],
+    [isMultiMovePuzzle, puzzle, puzzleAttempts],
   )
   const boardPosition = useMemo<string | PositionDataType>(() => {
     if (puzzle.type !== 'placement' && puzzle.type !== 'composition') return position
