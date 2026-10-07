@@ -122,6 +122,17 @@ test('page 27 puzzle 11 has the Black queen on d7', async (t) => {
   assert.deepEqual(puzzle?.answers, ['Bb5'])
 })
 
+test('page 29 puzzle 5 has the Black queen on d5', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0017_audit_steps_pages_21_56.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0023_correct_steps_page_29_puzzle_05_queen.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-29-puzzle-05')
+
+  assert.equal(puzzle?.fen, '5b2/p4p1p/1p2knp1/3q4/3QpP2/1P2P3/P5KP/3R4 w - - 0 1')
+  assert.deepEqual(puzzle?.answers, ['Qxf6+'])
+})
+
 test('catalog reads all D1 pages using bounded 500-row queries', async (t) => {
   const { query, calls } = database(t)
   const catalog = await readPuzzleCatalog(query)
@@ -316,7 +327,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, 'e70c2ddd6eaa49a6dc6484eab9ba1d2596f0ba7d893828a7e35bcfe48c6435af')
+  assert.equal(hash, '0627ff6229111916bfbf462f54b6c4694276eee4bc4b7b020dd36486bd82eaa9')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(
