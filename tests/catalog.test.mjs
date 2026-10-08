@@ -99,6 +99,45 @@ test('solution variants remain available to the trainer', async (t) => {
   assert.deepEqual(puzzles.get('polgar-puzzle-0307').solutionLines, [['Kc3', 'Ka2', 'Qb2#']])
 })
 
+test('page 31 moves into Composing Mate without losing attempt history', async (t) => {
+  const { db, query } = database(t)
+  db.exec(`
+    INSERT INTO practice_attempts (
+      id, puzzle_id, puzzle_title, move, result, checked_at
+    ) VALUES (
+      'attempt-before-section-move',
+      'page-31-puzzle-01',
+      'Page 31, Puzzle 1',
+      'Qb7, c6',
+      'correct',
+      '2026-10-08T00:00:00.000Z'
+    )
+  `)
+  db.exec(readFileSync(new URL('../migrations/0026_create_composing_mate_section.sql', import.meta.url), 'utf8'))
+
+  const catalog = await readPuzzleCatalog(query)
+  const collection = catalog.find(({ slug }) => slug === 'steps-2-workbook')
+  const composingMate = collection?.sections.find(({ slug }) => slug === 'composing-mate')
+  const mateInTwo = collection?.sections.find(({ slug }) => slug === 'mate-in-two')
+
+  assert.deepEqual(collection?.sections.slice(5, 8).map(({ slug }) => slug), [
+    'mixed-review-1', 'composing-mate', 'mate-in-two',
+  ])
+  assert.equal(composingMate?.title, 'Composing Mate')
+  assert.equal(composingMate?.workbookPages, 'Page 31')
+  assert.deepEqual(
+    composingMate?.puzzles.map(({ id }) => id),
+    Array.from({ length: 12 }, (_, index) => `page-31-puzzle-${String(index + 1).padStart(2, '0')}`),
+  )
+  assert.equal(mateInTwo?.workbookPages, 'Pages 32–35 and 38')
+  assert.equal(mateInTwo?.puzzles[0]?.id, 'page-32-puzzle-01')
+  assert.ok(mateInTwo?.puzzles.every(({ id }) => !id.startsWith('page-31-puzzle-')))
+  assert.deepEqual(
+    { ...db.prepare("SELECT puzzle_id, result FROM practice_attempts WHERE id = 'attempt-before-section-move'").get() },
+    { puzzle_id: 'page-31-puzzle-01', result: 'correct' },
+  )
+})
+
 test('Chess Steps 2 Mix migration adds the first twelve puzzles and last-move context', async (t) => {
   const { db, query } = database(t)
   db.exec(readFileSync(new URL('../migrations/0024_add_chess_steps_2_mix.sql', import.meta.url), 'utf8'))
