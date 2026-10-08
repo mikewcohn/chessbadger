@@ -1,0 +1,30 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import PuzzleCollectionProgress from '../../components/PuzzleCollectionProgress'
+import { chessSteps2Mix } from '../../lib/puzzleCollections'
+---
+
+<BaseLayout
+  title="Chess Steps 2 Mix | ChessBadger"
+  description="Work through mixed Step 2 chess puzzles without being told the tactical theme."
+>
+  <section class="bg-[#eef6ff]">
+    <div class="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-11">
+      <p class="text-sm font-bold tracking-[0.04em] text-amber-800">
+        <a href="/puzzles" class="hover:text-amber-700">Puzzles</a>
+        <span class="mx-2 text-stone-400" aria-hidden="true">/</span>
+        Collection
+      </p>
+      <h1 class="mt-3 max-w-5xl text-4xl font-bold leading-[1.02] tracking-[-0.025em] text-stone-950 sm:text-6xl">
+        {chessSteps2Mix.title}
+      </h1>
+      <p class="mt-4 max-w-2xl text-lg text-stone-600">{chessSteps2Mix.description}</p>
+    </div>
+  </section>
+
+  <section class="bg-stone-100">
+    <div class="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-10">
+      <PuzzleCollectionProgress collection={chessSteps2Mix} client:load />
+    </div>
+  </section>
+</BaseLayout>

@@ -44,3 +44,4 @@ function requiredCollection(slug: string) {
 }
 export const steps2Workbook = requiredCollection('steps-2-workbook')
 export const polgar5334 = requiredCollection('polgar-5334')
+export const chessSteps2Mix = requiredCollection('chess-steps-2-mix')

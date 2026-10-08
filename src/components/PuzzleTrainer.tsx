@@ -112,7 +112,42 @@ const formatAnswers = (puzzle: Puzzle) => {
   return puzzle.answers.map((answer) => formatAnswer(puzzle, answer)).join(', ')
 }
 
+const initialPositionForPuzzle = (puzzle: Puzzle) => (
+  puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.lastMove
+    ? puzzle.lastMove.previousFen
+    : puzzle.fen
+)
+
+const createRouteArrows = (
+  moves: string[],
+  color = 'rgba(180, 83, 9, 0.52)',
+): Arrow[] => moves.map((move) => ({
+  startSquare: move.slice(0, 2) as Square,
+  endSquare: move.slice(2, 4) as Square,
+  color,
+}))
+
+const positionAfterCoordinateMoves = (fen: string, moves: string[]): PositionDataType => {
+  let nextPosition = fenStringToPositionObject(fen, 8, 8)
+  const moveContext = pseudoLegalMoveContextFromFen(fen)
+
+  moves.forEach((move) => {
+    nextPosition = applyPseudoLegalMove(
+      nextPosition,
+      move.slice(0, 2),
+      move.slice(2, 4),
+      moveContext,
+    )
+  })
+
+  return nextPosition
+}
+
 const createAnswerArrows = (puzzle: Puzzle): Arrow[] => {
+
+  if (puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.routeMoves) {
+    return createRouteArrows(puzzle.routeMoves, 'rgba(217, 119, 6, 0.9)')
+  }
 
   if (puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.answerMoves) {
     return puzzle.answerMoves.map((move) => ({
@@ -191,7 +226,7 @@ export default function PuzzleTrainer({
 }: PuzzleTrainerProps) {
   const initialPuzzleIndex = Math.max(0, puzzles.findIndex((candidate) => candidate.id === initialPuzzleId))
   const [puzzleIndex, setPuzzleIndex] = useState(initialPuzzleIndex)
-  const [position, setPosition] = useState<string | PositionDataType>(puzzles[initialPuzzleIndex].fen)
+  const [position, setPosition] = useState<string | PositionDataType>(initialPositionForPuzzle(puzzles[initialPuzzleIndex]))
   const [attemptedMove, setAttemptedMove] = useState<string | null>(null)
   const [result, setResult] = useState<Result>(null)
   const [answerVisible, setAnswerVisible] = useState(false)
@@ -202,8 +237,11 @@ export default function PuzzleTrainer({
   const [compositionPlacements, setCompositionPlacements] = useState<Record<string, PlaceablePiece>>({})
   const [activeSolutionLine, setActiveSolutionLine] = useState<string[] | null>(null)
   const [nextSolutionPly, setNextSolutionPly] = useState(0)
+  const [routeMoveHistory, setRouteMoveHistory] = useState<string[]>([])
+  const [routeCheckMessage, setRouteCheckMessage] = useState('')
   const [opponentReply, setOpponentReply] = useState('')
   const [isResponding, setIsResponding] = useState(false)
+  const [isShowingLastMove, setIsShowingLastMove] = useState(false)
   const [boardRevision, setBoardRevision] = useState(0)
   const [alwaysWhiteOnBottom, setAlwaysWhiteOnBottom] = useState(true)
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
@@ -213,6 +251,7 @@ export default function PuzzleTrainer({
   const [historyExpanded, setHistoryExpanded] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'signed-out' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
+  const lastMoveTimerRefs = useRef<number[]>([])
   const focusModeButtonRef = useRef<HTMLButtonElement | null>(null)
   const timer = usePuzzleTimer()
 
@@ -231,12 +270,26 @@ export default function PuzzleTrainer({
   const boardOrientation = alwaysWhiteOnBottom || sideToMove !== 'Black' ? 'white' : 'black'
   const isMultiMovePuzzle = puzzle.type !== 'placement'
     && puzzle.type !== 'composition'
-    && puzzle.playThrough
-    && puzzle.solutionLines?.some((line) => line.length > 1) === true
+    && (
+      (puzzle.playThrough && puzzle.solutionLines?.some((line) => line.length > 1) === true)
+      || (puzzle.routeMoves?.length ?? 0) > 1
+    )
   const boardArrows = useMemo(
     () => {
       if (answerVisible && puzzle.type !== 'placement' && puzzle.type !== 'composition') {
         return createAnswerArrows(puzzle)
+      }
+
+      if (
+        puzzle.type !== 'placement'
+        && puzzle.type !== 'composition'
+        && puzzle.routeMoves
+        && routeMoveHistory.length > 0
+      ) {
+        return createRouteArrows(
+          routeMoveHistory,
+          result === 'correct' ? 'rgba(217, 119, 6, 0.82)' : undefined,
+        )
       }
 
       if (isMultiMovePuzzle) return []
@@ -244,7 +297,7 @@ export default function PuzzleTrainer({
       const correctAttempt = puzzleAttempts.findLast((attempt) => attempt.result === 'correct')
       return correctAttempt ? createAttemptArrow(puzzle, correctAttempt.move) : []
     },
-    [answerVisible, attemptedMove, isMultiMovePuzzle, puzzle, puzzleAttempts, result],
+    [answerVisible, attemptedMove, isMultiMovePuzzle, puzzle, puzzleAttempts, result, routeMoveHistory],
   )
   const reviewArrows = useMemo(
     () => isMultiMovePuzzle ? [] : puzzleAttempts.flatMap((attempt) => {
@@ -320,7 +373,7 @@ export default function PuzzleTrainer({
     const requestedPuzzle = Number(params.get('puzzle'))
     if (Number.isInteger(requestedPuzzle) && requestedPuzzle >= 1 && requestedPuzzle <= puzzles.length) {
       setPuzzleIndex(requestedPuzzle - 1)
-      setPosition(puzzles[requestedPuzzle - 1].fen)
+      setPosition(initialPositionForPuzzle(puzzles[requestedPuzzle - 1]))
     }
 
     const controller = new AbortController()
@@ -368,7 +421,29 @@ export default function PuzzleTrainer({
 
   useEffect(() => () => {
     if (replyTimerRef.current !== null) window.clearTimeout(replyTimerRef.current)
+    lastMoveTimerRefs.current.forEach((timerId) => window.clearTimeout(timerId))
   }, [])
+
+  useEffect(() => {
+    lastMoveTimerRefs.current.forEach((timerId) => window.clearTimeout(timerId))
+    lastMoveTimerRefs.current = []
+
+    if (puzzle.type === 'placement' || puzzle.type === 'composition' || !puzzle.lastMove) {
+      setIsShowingLastMove(false)
+      return
+    }
+
+    setPosition(puzzle.lastMove.previousFen)
+    setIsShowingLastMove(true)
+    const animateTimer = window.setTimeout(() => setPosition(puzzle.fen), 180)
+    const finishTimer = window.setTimeout(() => setIsShowingLastMove(false), 900)
+    lastMoveTimerRefs.current = [animateTimer, finishTimer]
+
+    return () => {
+      lastMoveTimerRefs.current.forEach((timerId) => window.clearTimeout(timerId))
+      lastMoveTimerRefs.current = []
+    }
+  }, [boardRevision, puzzle])
 
   useEffect(() => {
     if (!focusMode) return
@@ -408,7 +483,7 @@ export default function PuzzleTrainer({
     }
     document.title = `${nextPuzzle.title} | ${sectionName} | ChessBadger`
     setPuzzleIndex(nextIndex)
-    setPosition(puzzles[nextIndex].fen)
+    setPosition(initialPositionForPuzzle(nextPuzzle))
     setAttemptedMove(null)
     setResult(null)
     setAnswerVisible(false)
@@ -419,6 +494,8 @@ export default function PuzzleTrainer({
     setCompositionPlacements({})
     setActiveSolutionLine(null)
     setNextSolutionPly(0)
+    setRouteMoveHistory([])
+    setRouteCheckMessage('')
     setOpponentReply('')
     setIsResponding(false)
     setHistoryExpanded(false)
@@ -477,6 +554,8 @@ export default function PuzzleTrainer({
     )
     setActiveSolutionLine(null)
     setNextSolutionPly(0)
+    setRouteMoveHistory([])
+    setRouteCheckMessage('')
     setOpponentReply('')
     setIsResponding(false)
     setAttemptedMove('Answer viewed')
@@ -565,6 +644,7 @@ export default function PuzzleTrainer({
       || !targetSquare
       || attemptedMove
       || isResponding
+      || isShowingLastMove
       || !timer.isRunning
     ) return false
 
@@ -578,7 +658,7 @@ export default function PuzzleTrainer({
           castlingRights: '-',
           enPassantSquare: null,
         }
-    const sideToMove = puzzle.answerMoves
+    const sideToMove = puzzle.answerMoves || puzzle.routeMoves
       ? puzzle.sideToMove === 'black' ? 'b' : 'w'
       : moveContext.sideToMove
 
@@ -648,6 +728,16 @@ export default function PuzzleTrainer({
         recordAttempt(coordinateLabel, 'incorrect')
         return true
       }
+    }
+
+    if (puzzle.routeMoves) {
+      const attemptedCoordinates = `${sourceSquare}${targetSquare}`.toLowerCase()
+
+      setPosition(applyMoveWithoutKingSafety())
+      setSelectedSquare(null)
+      setRouteMoveHistory((moves) => [...moves, attemptedCoordinates])
+      setRouteCheckMessage('')
+      return true
     }
 
     if (puzzle.answerMoves) {
@@ -793,8 +883,53 @@ export default function PuzzleTrainer({
     recordAttempt(attemptLabel, isCorrect ? 'correct' : 'incorrect')
   }
 
+  const undoRouteMove = () => {
+    if (
+      puzzle.type === 'placement'
+      || puzzle.type === 'composition'
+      || !puzzle.routeMoves
+      || routeMoveHistory.length === 0
+      || attemptedMove
+      || answerVisible
+      || !timer.isRunning
+    ) return
+
+    const remainingMoves = routeMoveHistory.slice(0, -1)
+    setPosition(positionAfterCoordinateMoves(puzzle.fen, remainingMoves))
+    setRouteMoveHistory(remainingMoves)
+    setRouteCheckMessage('')
+    setSelectedSquare(null)
+  }
+
+  const checkRoute = () => {
+    if (
+      puzzle.type === 'placement'
+      || puzzle.type === 'composition'
+      || !puzzle.routeMoves
+      || routeMoveHistory.length === 0
+      || attemptedMove
+      || answerVisible
+      || !timer.isRunning
+    ) return
+
+    const isCorrect = routeMoveHistory.length === puzzle.routeMoves.length
+      && puzzle.routeMoves.every(
+        (move, index) => move.toLowerCase() === routeMoveHistory[index]?.toLowerCase(),
+      )
+
+    if (!isCorrect) {
+      setRouteCheckMessage('Not quite—adjust your route and check again.')
+      return
+    }
+
+    const attemptLabel = puzzle.answers[0] ?? routeMoveHistory.join(' ')
+    setRouteCheckMessage('')
+    setAttemptedMove(attemptLabel)
+    recordAttempt(attemptLabel, 'correct')
+  }
+
   const handleSquareClick = (square: string) => {
-    if (attemptedMove || answerVisible || isResponding || !timer.isRunning) return
+    if (attemptedMove || answerVisible || isResponding || isShowingLastMove || !timer.isRunning) return
 
     if (puzzle.type === 'placement') {
       if (placementPieceSelected || placedSquares.includes(square)) tryPlacement(square)
@@ -817,7 +952,7 @@ export default function PuzzleTrainer({
     }
 
 
-    if (puzzle.answerMoves) {
+    if (puzzle.answerMoves || puzzle.routeMoves) {
       const currentPosition = typeof position === 'string'
         ? fenStringToPositionObject(position, 8, 8)
         : position
@@ -830,7 +965,13 @@ export default function PuzzleTrainer({
 
       const piece = currentPosition[clickedSquare]
       const expectedColor = puzzle.sideToMove === 'black' ? 'b' : 'w'
-      if (piece?.pieceType.startsWith(expectedColor)) setSelectedSquare(clickedSquare)
+      const routeSourceSquare = puzzle.routeMoves
+        ? routeMoveHistory.at(-1)?.slice(2, 4) ?? puzzle.routeMoves[0]?.slice(0, 2)
+        : null
+      if (
+        piece?.pieceType.startsWith(expectedColor)
+        && (!routeSourceSquare || clickedSquare === routeSourceSquare)
+      ) setSelectedSquare(clickedSquare)
       return
     }
 
@@ -852,7 +993,15 @@ export default function PuzzleTrainer({
     : puzzle.type === 'composition'
       ? puzzle.placements.map(({ square }) => square)
       : []
-  const interactionSquareStyles = answerVisible && (puzzle.type === 'placement' || puzzle.type === 'composition')
+  const lastMoveSquareStyles = puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.lastMove
+    ? {
+        [puzzle.lastMove.from]: { boxShadow: 'inset 0 0 0 4px rgba(217, 119, 6, 0.62)' },
+        [puzzle.lastMove.to]: { boxShadow: 'inset 0 0 0 4px rgba(217, 119, 6, 0.62)' },
+      }
+    : {}
+  const interactionSquareStyles = {
+    ...lastMoveSquareStyles,
+    ...(answerVisible && (puzzle.type === 'placement' || puzzle.type === 'composition')
     ? Object.fromEntries(answerSquares.map((answer) => [answer, {
         boxShadow: 'inset 0 0 0 5px rgba(217, 119, 6, 0.88)',
       }]))
@@ -861,7 +1010,8 @@ export default function PuzzleTrainer({
           boxShadow: 'inset 0 0 0 4px rgba(120, 53, 15, 0.7)',
         },
       }
-    : {}
+    : {}),
+  }
   const themeSquareStyles = boardTheme === 'wood' ? WOOD_SQUARE_STYLES : {}
   const squareStyles = {
     ...themeSquareStyles,
@@ -1056,7 +1206,8 @@ export default function PuzzleTrainer({
               position: boardPosition,
               boardOrientation,
               showNotation: true,
-              allowDragging: attemptedMove === null && timer.isRunning,
+              animationDurationInMs: 520,
+              allowDragging: attemptedMove === null && !isShowingLastMove && timer.isRunning,
               allowDrawingArrows: false,
               arrows: boardArrows,
               clearArrowsOnClick: false,
@@ -1067,7 +1218,7 @@ export default function PuzzleTrainer({
               lightSquareNotationStyle: { color: BOARD_THEMES[boardTheme].lightNotation },
               darkSquareNotationStyle: { color: BOARD_THEMES[boardTheme].darkNotation },
               canDragPiece: ({ isSparePiece, square }) => {
-                if (attemptedMove !== null || answerVisible || isResponding || !timer.isRunning) return false
+                if (attemptedMove !== null || answerVisible || isResponding || isShowingLastMove || !timer.isRunning) return false
                 if (puzzle.type === 'placement') {
                   return isSparePiece || (square !== null && placedSquares.includes(square))
                 }
@@ -1312,8 +1463,13 @@ export default function PuzzleTrainer({
                   ? puzzle.instruction ?? 'Place the piece on all squares that make a double attack.'
                   : puzzle.type === 'composition'
                     ? puzzle.instruction ?? 'Place both pieces so the king is checkmated.'
-                    : `${sideToMove} to move`}
+                    : puzzle.instruction ?? `${sideToMove} to move`}
               </p>
+              {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.routeMoves && result === null ? (
+                <p className={routeCheckMessage ? 'text-sm font-bold text-rose-800' : 'text-sm font-semibold text-amber-900'} aria-live="polite">
+                  {routeCheckMessage || `${routeMoveHistory.length} ${routeMoveHistory.length === 1 ? 'move' : 'moves'} played`}
+                </p>
+              ) : null}
               <div className="flex flex-wrap items-center justify-center gap-2">
                 {!timer.isRunning && result === null ? (
                   <button type="button" onClick={timer.resume} className="cursor-pointer rounded-lg bg-stone-950 px-4 py-2 text-sm font-bold text-white hover:bg-stone-800">
@@ -1330,6 +1486,16 @@ export default function PuzzleTrainer({
                       <button type="button" onClick={checkComposition} disabled={Object.keys(compositionPlacements).length !== puzzle.placements.length} className="cursor-pointer rounded-lg bg-stone-950 px-4 py-2 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40">
                         Check answer
                       </button>
+                    ) : null}
+                    {result === null && puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.routeMoves ? (
+                      <>
+                        <button type="button" onClick={undoRouteMove} disabled={routeMoveHistory.length === 0} className="cursor-pointer rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-800 hover:border-amber-700 hover:text-amber-900 disabled:cursor-not-allowed disabled:opacity-40">
+                          Undo last move
+                        </button>
+                        <button type="button" onClick={checkRoute} disabled={routeMoveHistory.length === 0} className="cursor-pointer rounded-lg bg-stone-950 px-4 py-2 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40">
+                          Check answer
+                        </button>
+                      </>
                     ) : null}
                     {result === null && puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.canAnswerNo ? (
                       <button type="button" onClick={answerNoDefense} className="cursor-pointer rounded-lg bg-stone-950 px-4 py-2 text-sm font-bold text-white hover:bg-stone-800">
@@ -1394,6 +1560,17 @@ export default function PuzzleTrainer({
               ? puzzle.instruction ?? 'Place both pieces so the king is checkmated.'
               : puzzle.instruction ?? `${sideToMove} to move`}
         </p>
+        {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.lastMove ? (
+          <p className="mt-2 text-sm font-bold text-amber-900" aria-live="polite">
+            Last move: {puzzle.lastMove.san}. Find the best response.
+          </p>
+        ) : null}
+        {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.routeMoves && result === null && !answerVisible ? (
+          <div className="mt-2 text-sm font-bold text-amber-900" aria-live="polite">
+            <p>Moves played: {routeMoveHistory.length}. Finish the route, then check your answer.</p>
+            {routeCheckMessage ? <p className="mt-1 text-rose-800">{routeCheckMessage}</p> : null}
+          </div>
+        ) : null}
 
         <section className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-stone-500" aria-label="Puzzle timer">
           <span>Active time</span>
@@ -1504,6 +1681,26 @@ export default function PuzzleTrainer({
               >
                 Check answer
               </button>
+            ) : null}
+            {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.routeMoves ? (
+              <>
+                <button
+                  type="button"
+                  onClick={undoRouteMove}
+                  disabled={routeMoveHistory.length === 0 || !timer.isRunning}
+                  className="cursor-pointer rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-bold text-stone-800 hover:border-amber-700 hover:text-amber-900 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Undo last move
+                </button>
+                <button
+                  type="button"
+                  onClick={checkRoute}
+                  disabled={routeMoveHistory.length === 0 || !timer.isRunning}
+                  className="cursor-pointer rounded-lg bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Check answer
+                </button>
+              </>
             ) : null}
             {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.canAnswerNo ? (
               <button

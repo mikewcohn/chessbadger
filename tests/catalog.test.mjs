@@ -99,6 +99,25 @@ test('solution variants remain available to the trainer', async (t) => {
   assert.deepEqual(puzzles.get('polgar-puzzle-0307').solutionLines, [['Kc3', 'Ka2', 'Qb2#']])
 })
 
+test('Chess Steps 2 Mix migration adds the first twelve puzzles and last-move context', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0024_add_chess_steps_2_mix.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const collection = catalog.find(({ slug }) => slug === 'chess-steps-2-mix')
+
+  assert.equal(collection?.title, 'Chess Steps 2 Mix')
+  assert.deepEqual(collection?.sections.map(({ title }) => title), ['Puzzles 1–100'])
+  assert.equal(collection?.puzzles.length, 12)
+  assert.deepEqual(collection?.puzzles[4].lastMove, {
+    san: 'Rxe4',
+    from: 'e1',
+    to: 'e4',
+    previousFen: 'r1bqk2r/ppppbppp/2n5/8/2Bpn3/5N2/PPP2PPP/RNBQR1K1 w kq - 0 1',
+  })
+  assert.deepEqual(collection?.puzzles[6].routeMoves, ['e8d7', 'd7h3', 'h3f1', 'f1e2', 'e2f3'])
+  assert.deepEqual(collection?.puzzles[6].answers, ['Bd7-h3-f1-e2-f3+'])
+})
+
 test('page 27 placement puzzles match the workbook instructions and piece colors', async (t) => {
   const { db, query } = database(t)
   db.exec(readFileSync(new URL('../migrations/0020_correct_steps_page_27_placement_puzzles.sql', import.meta.url), 'utf8'))

@@ -5,6 +5,13 @@ type PuzzleBase = {
   answers: string[]
 }
 
+export type PuzzleLastMove = {
+  san: string
+  from: string
+  to: string
+  previousFen: string
+}
+
 export type PlaceablePiece =
   | 'wQ' | 'bQ'
   | 'wR' | 'bR'
@@ -20,7 +27,9 @@ type MovePuzzle = PuzzleBase & {
   solutionNote?: string
   playThrough?: boolean
   answerMoves?: string[]
+  routeMoves?: string[]
   sideToMove?: 'white' | 'black'
+  lastMove?: PuzzleLastMove
 }
 
 export type PlacementPuzzle = PuzzleBase & {
