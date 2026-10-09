@@ -14,6 +14,7 @@ function database(t) {
   sqlite.exec(readFileSync(new URL('../migrations/0001_d1_schema.sql', import.meta.url), 'utf8'))
   sqlite.exec(readFileSync(new URL('../migrations/0004_players.sql', import.meta.url), 'utf8'))
   sqlite.exec(readFileSync(new URL('../migrations/0027_add_practice_sessions.sql', import.meta.url), 'utf8'))
+  sqlite.exec(readFileSync(new URL('../migrations/0029_add_auth_rate_limits.sql', import.meta.url), 'utf8'))
   sqlite.exec(`
     INSERT INTO puzzle_collections VALUES ('test', 'Test', '', 0);
     INSERT INTO puzzle_sections VALUES ('test', 'review', 'Review', '', '[]', 0);
@@ -37,18 +38,19 @@ function database(t) {
   return { sqlite, env: { DB } }
 }
 
-const request = (path, body, cookie) => new Request(`https://chessbadger.com${path}`, {
+const request = (path, body, cookie, clientIp = '203.0.113.10') => new Request(`https://chessbadger.com${path}`, {
   method: body === undefined ? 'GET' : 'POST',
   headers: {
     ...(body === undefined ? {} : { 'content-type': 'application/json' }),
     ...(cookie ? { cookie } : {}),
+    'cf-connecting-ip': clientIp,
   },
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 })
 
 const cookieFrom = (response) => response.headers.get('set-cookie')?.split(';')[0]
 
-const claimPlayer = async (env, handle, pin = '1234') => {
+const claimPlayer = async (env, handle, pin = 'correct-horse') => {
   const response = await claim({ env, request: request('/api/players/claim', { handle, pin }) })
   return { response, cookie: cookieFrom(response) }
 }
@@ -74,19 +76,58 @@ test('claim creates a normalized unique player and authenticated session', async
   const meResponse = await me({ env, request: request('/api/players/me', undefined, cookie) })
   assert.deepEqual(await meResponse.json(), { player: { handle: 'Mike', slug: 'mike' } })
 
-  const duplicate = await claimPlayer(env, 'MIKE', '5678')
+  const duplicate = await claimPlayer(env, 'MIKE', 'another-passphrase')
   assert.equal(duplicate.response.status, 409)
 })
 
-test('login rejects a wrong PIN and creates a new session for the right PIN', async (t) => {
+test('login rejects a wrong passphrase and creates a new session for the right passphrase', async (t) => {
   const { env } = database(t)
   await claimPlayer(env, 'Mike')
-  const wrong = await login({ env, request: request('/api/players/login', { handle: 'mike', pin: '0000' }) })
+  const wrong = await login({ env, request: request('/api/players/login', { handle: 'mike', pin: 'wrong-passphrase' }) })
   assert.equal(wrong.status, 401)
 
-  const right = await login({ env, request: request('/api/players/login', { handle: 'MIKE', pin: '1234' }) })
+  const right = await login({ env, request: request('/api/players/login', { handle: 'MIKE', pin: 'correct-horse' }) })
   assert.equal(right.status, 200)
   assert.match(cookieFrom(right), /^cb_session=/)
+})
+
+test('new players need an eight-character passphrase', async (t) => {
+  const { env } = database(t)
+  const { response } = await claimPlayer(env, 'Mike', '1234')
+  assert.equal(response.status, 400)
+  assert.match((await response.json()).error, /at least 8 characters/)
+})
+
+test('login is throttled after five failed attempts for a player and client', async (t) => {
+  const { env } = database(t)
+  await claimPlayer(env, 'Mike')
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await login({ env, request: request('/api/players/login', {
+      handle: 'Mike',
+      pin: 'wrong-passphrase',
+    }) })
+    assert.equal(response.status, 401)
+  }
+
+  const blocked = await login({ env, request: request('/api/players/login', {
+    handle: 'Mike',
+    pin: 'correct-horse',
+  }) })
+  assert.equal(blocked.status, 429)
+  assert.match(blocked.headers.get('retry-after'), /^\d+$/)
+})
+
+test('account claims are limited per client', async (t) => {
+  const { env } = database(t)
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const { response } = await claimPlayer(env, `Player ${attempt}`)
+    assert.equal(response.status, 201)
+  }
+
+  const { response } = await claimPlayer(env, 'Player 6')
+  assert.equal(response.status, 429)
+  assert.match(response.headers.get('retry-after'), /^\d+$/)
 })
 
 test('attempt history is private to the signed-in player', async (t) => {

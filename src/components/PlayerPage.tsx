@@ -96,7 +96,7 @@ function AccountForm() {
           <p className="mt-2 text-stone-600">
             {mode === 'login'
               ? 'Use the same name and private PIN on any device.'
-              : 'Your progress page will be public. Your private PIN is only for signing in and adding results.'}
+              : 'Your progress page will be public. Your private passphrase is only for signing in and adding results.'}
           </p>
         </div>
         <label className="grid gap-2 text-sm font-bold text-stone-800">
@@ -112,14 +112,14 @@ function AccountForm() {
           />
         </label>
         <label className="grid gap-2 text-sm font-bold text-stone-800">
-          Private PIN or short passphrase
+          {mode === 'login' ? 'Private PIN or passphrase' : 'Private passphrase'}
           <input
             type="password"
             value={pin}
             onChange={(event) => setPin(event.currentTarget.value)}
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             required
-            minLength={4}
+            minLength={mode === 'login' ? 4 : 8}
             maxLength={64}
             className="rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-base font-normal outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200"
           />
@@ -130,7 +130,7 @@ function AccountForm() {
         </button>
         <p className="text-sm text-stone-500">
           {mode === 'claim'
-            ? 'Share your progress link with a coach or friend—never your PIN. There is no email recovery yet.'
+            ? 'Use at least 8 characters. Share your progress link with a coach or friend—never your passphrase. There is no email recovery yet.'
             : 'There is no email recovery yet. Ask the site owner if you forget your PIN.'}
         </p>
       </form>

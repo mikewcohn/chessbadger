@@ -46,9 +46,11 @@ All commands are run from the root of the project:
 ## Player puzzle practice
 
 Puzzle definitions and player-owned practice histories live in Cloudflare D1,
-bound as `DB`. Players claim a unique name and a PIN; an HTTP-only signed-in session
+bound as `DB`. Players claim a unique name and a private passphrase; an HTTP-only signed-in session
 selects which history the practice APIs read and write. There is no email or
-automatic PIN recovery. Sanity continues to manage editorial content.
+automatic passphrase recovery. New passphrases require at least eight characters;
+existing shorter PINs remain valid for sign-in. Failed logins and account claims are
+rate-limited in D1. Sanity continues to manage editorial content.
 
 Puzzle pages remain static: Astro reads the catalog from D1 at build time, so
 definition changes require a rebuild. Attempts, player sessions, and public progress

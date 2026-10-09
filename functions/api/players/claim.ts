@@ -1,9 +1,20 @@
 import { json } from '../../lib/practice.ts'
-import { createPlayer, createSession, invalidCredentials, playerJson, readCredentials, type PlayerFunctionContext } from '../../lib/players.ts'
+import {
+  consumeClaimAttempt,
+  createPlayer,
+  createSession,
+  invalidCredentials,
+  playerJson,
+  readCredentials,
+  tooManyAttempts,
+  type PlayerFunctionContext,
+} from '../../lib/players.ts'
 
 export const onRequestPost = async ({ request, env }: PlayerFunctionContext) => {
-  const credentials = await readCredentials(request)
-  if (!credentials) return invalidCredentials()
+  const credentials = await readCredentials(request, 8)
+  if (!credentials) return invalidCredentials(8)
+  const retryAfter = await consumeClaimAttempt(env, request)
+  if (retryAfter) return tooManyAttempts(retryAfter)
   try {
     const player = await createPlayer(env, credentials)
     const response = json({ player: playerJson(player) }, 201)

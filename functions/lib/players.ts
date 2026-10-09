@@ -3,10 +3,17 @@ import { json, readJson, type FunctionContext, type PracticeEnv } from './practi
 const SESSION_COOKIE = 'cb_session'
 const SESSION_SECONDS = 60 * 60 * 24 * 30
 const PIN_ITERATIONS = 100_000
+const LOGIN_WINDOW_SECONDS = 15 * 60
+const LOGIN_PLAYER_LIMIT = 5
+const LOGIN_CLIENT_LIMIT = 25
+const CLAIM_WINDOW_SECONDS = 60 * 60
+const CLAIM_CLIENT_LIMIT = 5
 
 type PlayerRow = { id: string; handle: string; normalized_handle: string }
 export type Player = { id: string; handle: string; slug: string }
 type CredentialsBody = { handle?: string; pin?: string }
+type RateLimitRow = { attempt_count: number; window_started_at: number }
+type RateLimitRule = { scope: string; key: string; limit: number; windowSeconds: number }
 
 const bytesToHex = (bytes: Uint8Array) =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
@@ -49,8 +56,8 @@ export const normalizeHandle = (value: unknown) => {
   return { handle, slug: handle.toLowerCase().replace(/[ -]+/g, '-') }
 }
 
-const validPin = (value: unknown): value is string =>
-  typeof value === 'string' && value.length >= 4 && value.length <= 64
+const validPin = (value: unknown, minimumLength: number): value is string =>
+  typeof value === 'string' && value.length >= minimumLength && value.length <= 64
 
 const publicPlayer = (row: PlayerRow): Player => ({
   id: row.id,
@@ -100,11 +107,94 @@ export const clearSession = async (env: PracticeEnv, request: Request) => {
   return cookieValue(request, '', 0)
 }
 
-export const readCredentials = async (request: Request) => {
+export const readCredentials = async (request: Request, minimumPinLength = 4) => {
   const body = await readJson<CredentialsBody>(request)
   const normalized = normalizeHandle(body?.handle)
-  if (!normalized || !validPin(body?.pin)) return null
+  if (!normalized || !validPin(body?.pin, minimumPinLength)) return null
   return { ...normalized, pin: body.pin }
+}
+
+const clientKey = (request: Request) => request.headers.get('cf-connecting-ip')?.trim() || 'unknown'
+
+const rateLimitKey = (rule: RateLimitRule) => sha256(`${rule.scope}\0${rule.key}`)
+
+const retryAfter = (row: RateLimitRow, windowSeconds: number, now: number) =>
+  Math.max(1, row.window_started_at + windowSeconds - now)
+
+const blockedBy = async (env: PracticeEnv, rules: RateLimitRule[]) => {
+  const now = Math.floor(Date.now() / 1000)
+  let waitSeconds = 0
+  for (const rule of rules) {
+    const row = await env.DB.prepare(`
+      SELECT attempt_count, window_started_at
+      FROM auth_rate_limits
+      WHERE scope = ? AND key_hash = ?
+    `).bind(rule.scope, await rateLimitKey(rule)).first<RateLimitRow>()
+    if (row && row.attempt_count >= rule.limit && now - row.window_started_at < rule.windowSeconds) {
+      waitSeconds = Math.max(waitSeconds, retryAfter(row, rule.windowSeconds, now))
+    }
+  }
+  return waitSeconds
+}
+
+const recordAttempt = async (env: PracticeEnv, rule: RateLimitRule) => {
+  const now = Math.floor(Date.now() / 1000)
+  const cutoff = now - rule.windowSeconds
+  await env.DB.prepare(`
+    INSERT INTO auth_rate_limits (scope, key_hash, window_started_at, attempt_count)
+    VALUES (?, ?, ?, 1)
+    ON CONFLICT (scope, key_hash) DO UPDATE SET
+      window_started_at = CASE
+        WHEN auth_rate_limits.window_started_at <= ? THEN excluded.window_started_at
+        ELSE auth_rate_limits.window_started_at
+      END,
+      attempt_count = CASE
+        WHEN auth_rate_limits.window_started_at <= ? THEN 1
+        ELSE auth_rate_limits.attempt_count + 1
+      END
+  `).bind(rule.scope, await rateLimitKey(rule), now, cutoff, cutoff).run()
+}
+
+const clearAttempt = async (env: PracticeEnv, rule: RateLimitRule) => {
+  await env.DB.prepare('DELETE FROM auth_rate_limits WHERE scope = ? AND key_hash = ?')
+    .bind(rule.scope, await rateLimitKey(rule)).run()
+}
+
+const loginRules = (request: Request, playerSlug: string): RateLimitRule[] => {
+  const client = clientKey(request)
+  return [
+    { scope: 'login-player-client', key: `${playerSlug}\0${client}`, limit: LOGIN_PLAYER_LIMIT, windowSeconds: LOGIN_WINDOW_SECONDS },
+    { scope: 'login-client', key: client, limit: LOGIN_CLIENT_LIMIT, windowSeconds: LOGIN_WINDOW_SECONDS },
+  ]
+}
+
+export const loginRetryAfter = (env: PracticeEnv, request: Request, playerSlug: string) =>
+  blockedBy(env, loginRules(request, playerSlug))
+
+export const recordFailedLogin = async (env: PracticeEnv, request: Request, playerSlug: string) => {
+  for (const rule of loginRules(request, playerSlug)) await recordAttempt(env, rule)
+}
+
+export const clearFailedLogin = (env: PracticeEnv, request: Request, playerSlug: string) =>
+  clearAttempt(env, loginRules(request, playerSlug)[0])
+
+export const consumeClaimAttempt = async (env: PracticeEnv, request: Request) => {
+  const rule: RateLimitRule = {
+    scope: 'claim-client',
+    key: clientKey(request),
+    limit: CLAIM_CLIENT_LIMIT,
+    windowSeconds: CLAIM_WINDOW_SECONDS,
+  }
+  const waitSeconds = await blockedBy(env, [rule])
+  if (waitSeconds) return waitSeconds
+  await recordAttempt(env, rule)
+  return 0
+}
+
+export const tooManyAttempts = (retryAfterSeconds: number) => {
+  const response = json({ error: 'Too many attempts. Please wait and try again.' }, 429)
+  response.headers.set('retry-after', String(retryAfterSeconds))
+  return response
 }
 
 export const createPlayer = async (
@@ -133,5 +223,5 @@ export const authenticatePlayer = async (
 }
 
 export type PlayerFunctionContext = FunctionContext
-export const invalidCredentials = () =>
-  json({ error: 'Use a name of 2–24 letters or numbers and a PIN of at least 4 characters.' }, 400)
+export const invalidCredentials = (minimumPinLength = 4) =>
+  json({ error: `Use a name of 2–24 letters or numbers and a private passphrase of at least ${minimumPinLength} characters.` }, 400)
