@@ -24,24 +24,40 @@ export const onRequestGet = async ({ env, params }: ProfileContext) => {
   if (!player) return json({ error: 'Player not found.' }, 404)
 
   const { results } = await env.DB.prepare(`
-    WITH puzzle_outcomes AS (
+    WITH ordered_attempts AS (
+      SELECT puzzle_id, result,
+        ROW_NUMBER() OVER (
+          PARTITION BY puzzle_id, COALESCE(session_id, 'legacy')
+          ORDER BY checked_at, rowid
+        ) AS session_attempt_number
+      FROM practice_attempts
+      WHERE player_id = ?
+    ),
+    attempt_outcomes AS (
+      SELECT puzzle_id,
+        1 AS attempted,
+        MAX(CASE WHEN result = 'correct' THEN 1 ELSE 0 END) AS solved,
+        MAX(CASE WHEN session_attempt_number = 1 AND result = 'correct' THEN 1 ELSE 0 END) AS clean
+      FROM ordered_attempts
+      GROUP BY puzzle_id
+    ),
+    puzzle_outcomes AS (
       SELECT puzzles.id, puzzles.collection_slug, puzzles.section_slug,
-        MAX(CASE WHEN practice_attempts.result = 'correct' THEN 1 ELSE 0 END) AS solved,
-        MAX(CASE WHEN practice_attempts.result != 'correct' THEN 1 ELSE 0 END) AS missed
+        COALESCE(attempt_outcomes.solved, 0) AS solved,
+        COALESCE(attempt_outcomes.clean, 0) AS clean,
+        COALESCE(attempt_outcomes.attempted, 0) AS attempted
       FROM puzzles
-      LEFT JOIN practice_attempts
-        ON practice_attempts.puzzle_id = puzzles.id AND practice_attempts.player_id = ?
-      GROUP BY puzzles.id
+      LEFT JOIN attempt_outcomes ON attempt_outcomes.puzzle_id = puzzles.id
     )
     SELECT puzzle_sections.collection_slug,
       puzzle_collections.title AS collection_title,
       puzzle_sections.slug AS section_slug,
       puzzle_sections.title AS section_title,
       COUNT(puzzle_outcomes.id) AS total,
-      SUM(CASE WHEN puzzle_outcomes.solved = 1 OR puzzle_outcomes.missed = 1 THEN 1 ELSE 0 END) AS attempted,
-      SUM(CASE WHEN puzzle_outcomes.solved = 1 AND puzzle_outcomes.missed = 0 THEN 1 ELSE 0 END) AS clean,
-      SUM(CASE WHEN puzzle_outcomes.solved = 1 AND puzzle_outcomes.missed = 1 THEN 1 ELSE 0 END) AS retried,
-      SUM(CASE WHEN puzzle_outcomes.solved = 0 AND puzzle_outcomes.missed = 1 THEN 1 ELSE 0 END) AS missed
+      SUM(puzzle_outcomes.attempted) AS attempted,
+      SUM(CASE WHEN puzzle_outcomes.clean = 1 THEN 1 ELSE 0 END) AS clean,
+      SUM(CASE WHEN puzzle_outcomes.solved = 1 AND puzzle_outcomes.clean = 0 THEN 1 ELSE 0 END) AS retried,
+      SUM(CASE WHEN puzzle_outcomes.solved = 0 AND puzzle_outcomes.attempted = 1 THEN 1 ELSE 0 END) AS missed
     FROM puzzle_sections
     JOIN puzzle_collections ON puzzle_collections.slug = puzzle_sections.collection_slug
     LEFT JOIN puzzle_outcomes

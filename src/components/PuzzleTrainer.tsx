@@ -12,8 +12,10 @@ import type { PlaceablePiece, Puzzle } from '../types/puzzles'
 import { formatDuration, usePuzzleTimer } from '../hooks/usePuzzleTimer'
 import {
   cachePracticeAttempt,
+  getCachedPracticeAttempts,
   removeCachedPracticeAttempt,
 } from '../lib/practiceClient'
+import { getPuzzleStatuses, type PuzzleProgressStatus } from '../lib/puzzleProgress'
 import {
   applyPseudoLegalMove,
   isPseudoLegalMove,
@@ -42,6 +44,7 @@ type Attempt = {
   move: string
   result: Exclude<Result, null>
   checkedAt?: string
+  sessionId?: string
   durationMs?: number
   pauseCount?: number
   restartCount?: number
@@ -249,14 +252,34 @@ export default function PuzzleTrainer({
   const [reviewMode, setReviewMode] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
   const [historyExpanded, setHistoryExpanded] = useState(false)
+  const [retryPuzzleIndices, setRetryPuzzleIndices] = useState<number[] | null>(null)
+  const [retryStatuses, setRetryStatuses] = useState<Array<Extract<PuzzleProgressStatus, 'missed' | 'retried'>>>([])
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'signed-out' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
   const lastMoveTimerRefs = useRef<number[]>([])
   const focusModeButtonRef = useRef<HTMLButtonElement | null>(null)
+  const practiceSessionIdRef = useRef('')
   const timer = usePuzzleTimer()
 
   const puzzle = puzzles[puzzleIndex]
   const puzzleAttempts = attemptHistory[puzzle.id] ?? []
+  const retryMode = retryPuzzleIndices !== null
+  const retryPosition = retryPuzzleIndices?.indexOf(puzzleIndex) ?? -1
+  const previousPuzzleIndex = retryMode
+    ? retryPosition > 0 ? retryPuzzleIndices[retryPosition - 1] : null
+    : puzzleIndex > 0 ? puzzleIndex - 1 : null
+  const nextPuzzleIndex = retryMode
+    ? retryPosition >= 0 && retryPuzzleIndices && retryPosition < retryPuzzleIndices.length - 1
+      ? retryPuzzleIndices[retryPosition + 1]
+      : null
+    : puzzleIndex < puzzles.length - 1 ? puzzleIndex + 1 : null
+  const currentSessionAttempts = puzzleAttempts.filter(
+    (attempt) => attempt.sessionId === practiceSessionIdRef.current,
+  )
+  const sessionResultCopy = currentSessionAttempts.length === 1
+    ? 'Solved on your first try this session'
+    : `Solved after ${currentSessionAttempts.length} attempts this session`
+  const lifetimeAttemptCopy = `${puzzleAttempts.length} ${puzzleAttempts.length === 1 ? 'attempt' : 'attempts'} overall`
   const solutionEndsInMate = activeSolutionLine
     ? activeSolutionLine.at(-1)?.endsWith('#') ?? false
     : puzzle.type !== 'placement'
@@ -368,7 +391,13 @@ export default function PuzzleTrainer({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const nextReviewMode = params.get('review') === 'student'
+    const nextRetryStatuses = (params.get('retry')?.split(',') ?? []).filter(
+      (status): status is 'missed' | 'retried' => status === 'missed' || status === 'retried',
+    )
     setReviewMode(nextReviewMode)
+    setRetryStatuses(nextRetryStatuses)
+    if (nextRetryStatuses.length > 0) setRetryPuzzleIndices([])
+    practiceSessionIdRef.current = crypto.randomUUID()
     if (nextReviewMode) timer.pause()
     const requestedPuzzle = Number(params.get('puzzle'))
     if (Number.isInteger(requestedPuzzle) && requestedPuzzle >= 1 && requestedPuzzle <= puzzles.length) {
@@ -398,6 +427,7 @@ export default function PuzzleTrainer({
                 move: attempt.move,
                 result: attempt.result,
                 checkedAt: attempt.checkedAt,
+                sessionId: attempt.sessionId,
                 durationMs: attempt.durationMs,
                 pauseCount: attempt.pauseCount,
                 restartCount: attempt.restartCount,
@@ -409,6 +439,11 @@ export default function PuzzleTrainer({
         )
 
         setAttemptHistory(history)
+        if (nextRetryStatuses.length > 0) {
+          const statusAttempts = [...data.attempts, ...getCachedPracticeAttempts()]
+          const statuses = getPuzzleStatuses(puzzles, statusAttempts)
+          setRetryPuzzleIndices(statuses.flatMap((status, index) => nextRetryStatuses.includes(status as 'missed' | 'retried') ? [index] : []))
+        }
         setSaveStatus(playerData.player ? 'saved' : 'signed-out')
       })
       .catch((error: unknown) => {
@@ -475,10 +510,15 @@ export default function PuzzleTrainer({
     }
     const nextPuzzle = puzzles[nextIndex]
     if (updateUrl && nextIndex !== puzzleIndex) {
+      const search = reviewMode
+        ? '?review=student'
+        : retryStatuses.length > 0
+          ? `?retry=${encodeURIComponent(retryStatuses.join(','))}`
+          : ''
       window.history.pushState(
         {},
         '',
-        `/puzzles/${collectionSlug}/${sectionSlug}/puzzle/${nextPuzzle.id}${reviewMode ? '?review=student' : ''}`,
+        `/puzzles/${collectionSlug}/${sectionSlug}/puzzle/${nextPuzzle.id}${search}`,
       )
     }
     document.title = `${nextPuzzle.title} | ${sectionName} | ChessBadger`
@@ -526,8 +566,8 @@ export default function PuzzleTrainer({
         && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
       ) return
 
-      const nextIndex = event.key === 'ArrowLeft' ? puzzleIndex - 1 : puzzleIndex + 1
-      if (nextIndex < 0 || nextIndex >= puzzles.length) return
+      const nextIndex = event.key === 'ArrowLeft' ? previousPuzzleIndex : nextPuzzleIndex
+      if (nextIndex === null) return
 
       event.preventDefault()
       resetPuzzle(nextIndex)
@@ -535,7 +575,7 @@ export default function PuzzleTrainer({
 
     window.addEventListener('keydown', handlePuzzleArrowKey)
     return () => window.removeEventListener('keydown', handlePuzzleArrowKey)
-  }, [puzzleIndex, puzzles.length, reviewMode])
+  }, [nextPuzzleIndex, previousPuzzleIndex, reviewMode, retryStatuses])
 
   const showAnswer = () => {
     if (replyTimerRef.current !== null) {
@@ -566,18 +606,20 @@ export default function PuzzleTrainer({
   const recordAttempt = (attemptLabel: string, nextResult: Exclude<Result, null>) => {
     const checkedAt = new Date().toISOString()
     const timing = timer.complete()
+    const sessionId = practiceSessionIdRef.current || crypto.randomUUID()
+    practiceSessionIdRef.current = sessionId
 
     setAttemptHistory((history) => ({
       ...history,
       [puzzle.id]: [
         ...(history[puzzle.id] ?? []),
-        { move: attemptLabel, result: nextResult, checkedAt, ...timing },
+        { move: attemptLabel, result: nextResult, checkedAt, sessionId, ...timing },
       ],
     }))
     setResult(nextResult)
     setHistoryExpanded(true)
 
-    const cachedAttemptId = cachePracticeAttempt({ puzzleId: puzzle.id, result: nextResult })
+    const cachedAttemptId = cachePracticeAttempt({ puzzleId: puzzle.id, result: nextResult, checkedAt, sessionId })
     setSaveStatus('saving')
     void fetch('/api/practice/attempts', {
       method: 'POST',
@@ -588,6 +630,7 @@ export default function PuzzleTrainer({
         puzzleTitle: puzzle.title,
         move: attemptLabel,
         result: nextResult,
+        sessionId,
         ...timing,
       }),
     })
@@ -1024,18 +1067,23 @@ export default function PuzzleTrainer({
   const collectionHref = `/puzzles/${collectionSlug}`
   const sectionHref = `/puzzles/${collectionSlug}/${sectionSlug}`
   const reviewReturnHref = `/puzzles/${collectionSlug}/${sectionSlug}#attempt-details`
-  const reviewStatus = puzzleAttempts.some((attempt) => attempt.result === 'correct')
-    ? puzzleAttempts.some((attempt) => attempt.result !== 'correct') ? 'After retry' : 'First try'
-    : puzzleAttempts.length > 0 ? 'Not solved' : 'Not attempted'
+  const progressStatusFor = (index: number) => getPuzzleStatuses(
+    [puzzles[index]],
+    (attemptHistory[puzzles[index].id] ?? []).map((attempt) => ({ ...attempt, puzzleId: puzzles[index].id })),
+  )[0]
+  const reviewProgressStatus = progressStatusFor(puzzleIndex)
+  const reviewStatus = reviewProgressStatus === 'clean'
+    ? 'First try'
+    : reviewProgressStatus === 'retried'
+      ? 'After retry'
+      : reviewProgressStatus === 'missed' ? 'Not solved' : 'Not attempted'
   const reviewStatusClass = reviewStatus === 'Not solved'
     ? 'text-rose-800'
     : reviewStatus === 'Not attempted' ? 'text-stone-600' : 'text-emerald-800'
   const findReviewIndex = (direction: -1 | 1) => {
     for (let index = puzzleIndex + direction; index >= 0 && index < puzzles.length; index += direction) {
       const attempts = attemptHistory[puzzles[index].id] ?? []
-      const solvedOnFirstTry = attempts.some((attempt) => attempt.result === 'correct')
-        && attempts.every((attempt) => attempt.result === 'correct')
-      if (attempts.length > 0 && !solvedOnFirstTry) return index
+      if (attempts.length > 0 && progressStatusFor(index) !== 'clean') return index
     }
     return null
   }
@@ -1344,11 +1392,12 @@ export default function PuzzleTrainer({
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Nice work</p>
                   <p className={`${focusMode ? 'mt-0.5 text-lg' : 'mt-1 text-2xl sm:text-3xl'} font-bold`}>Correct!</p>
+                  <p className="mt-1 text-sm text-emerald-100">{sessionResultCopy} · {lifetimeAttemptCopy}</p>
                 </div>
-                {!focusMode && puzzleIndex < puzzles.length - 1 ? (
+                {!focusMode && nextPuzzleIndex !== null ? (
                   <button
                     type="button"
-                    onClick={() => resetPuzzle(puzzleIndex + 1)}
+                    onClick={() => resetPuzzle(nextPuzzleIndex)}
                     className="grid size-12 shrink-0 cursor-pointer place-items-center rounded-full bg-white text-emerald-950 shadow-lg transition hover:scale-105 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:size-14"
                     aria-label="Next puzzle"
                     title="Next puzzle"
@@ -1358,7 +1407,7 @@ export default function PuzzleTrainer({
                     </svg>
                   </button>
                 ) : !focusMode ? (
-                  <p className="text-sm font-bold text-emerald-100">All puzzles complete.</p>
+                  <p className="text-sm font-bold text-emerald-100">{retryMode ? 'Retry set complete.' : 'All puzzles complete.'}</p>
                 ) : null}
               </div>
             ) : result === 'answer-viewed' ? (
@@ -1380,8 +1429,8 @@ export default function PuzzleTrainer({
                   </button>
                   <button
                     type="button"
-                    onClick={() => resetPuzzle(puzzleIndex + 1)}
-                    disabled={puzzleIndex === puzzles.length - 1}
+                    onClick={() => nextPuzzleIndex !== null && resetPuzzle(nextPuzzleIndex)}
+                    disabled={nextPuzzleIndex === null}
                     className="cursor-pointer rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     Advance
@@ -1427,8 +1476,8 @@ export default function PuzzleTrainer({
                   </button>
                   <button
                     type="button"
-                    onClick={() => resetPuzzle(puzzleIndex + 1)}
-                    disabled={puzzleIndex === puzzles.length - 1}
+                    onClick={() => nextPuzzleIndex !== null && resetPuzzle(nextPuzzleIndex)}
+                    disabled={nextPuzzleIndex === null}
                     className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     Advance
@@ -1446,8 +1495,8 @@ export default function PuzzleTrainer({
           <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 p-2 sm:gap-4 sm:p-3">
             <button
               type="button"
-              onClick={() => resetPuzzle(puzzleIndex - 1)}
-              disabled={puzzleIndex === 0}
+              onClick={() => previousPuzzleIndex !== null && resetPuzzle(previousPuzzleIndex)}
+              disabled={previousPuzzleIndex === null}
               aria-label="Previous puzzle"
               aria-keyshortcuts="ArrowLeft"
               title="Previous puzzle (←)"
@@ -1524,8 +1573,8 @@ export default function PuzzleTrainer({
 
             <button
               type="button"
-              onClick={() => resetPuzzle(puzzleIndex + 1)}
-              disabled={puzzleIndex === puzzles.length - 1}
+              onClick={() => nextPuzzleIndex !== null && resetPuzzle(nextPuzzleIndex)}
+              disabled={nextPuzzleIndex === null}
               aria-label="Next puzzle"
               aria-keyshortcuts="ArrowRight"
               title="Next puzzle (→)"
@@ -1548,7 +1597,11 @@ export default function PuzzleTrainer({
             {sectionName}
           </a>
           <span aria-hidden="true">·</span>
-          <span className="text-xs font-bold uppercase tracking-[0.12em] text-stone-500">Puzzle {puzzleIndex + 1} of {puzzles.length}</span>
+          <span className="text-xs font-bold uppercase tracking-[0.12em] text-stone-500">
+            {retryMode && retryPosition >= 0
+              ? `Retry ${retryPosition + 1} of ${retryPuzzleIndices?.length ?? 0}`
+              : `Puzzle ${puzzleIndex + 1} of ${puzzles.length}`}
+          </span>
         </div>
         <h1 className="mt-3 text-2xl font-bold tracking-[-0.015em] text-stone-950 sm:text-3xl">
           {puzzle.title}
@@ -1764,8 +1817,8 @@ export default function PuzzleTrainer({
         <div className={`${focusMode ? 'mt-auto' : 'mt-8'} flex items-center justify-between gap-4 border-t border-stone-200 pt-6`}>
           <button
             type="button"
-            onClick={() => resetPuzzle(puzzleIndex - 1)}
-            disabled={puzzleIndex === 0}
+            onClick={() => previousPuzzleIndex !== null && resetPuzzle(previousPuzzleIndex)}
+            disabled={previousPuzzleIndex === null}
             aria-keyshortcuts="ArrowLeft"
             title="Previous puzzle (←)"
             className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
@@ -1775,8 +1828,8 @@ export default function PuzzleTrainer({
           </button>
           <button
             type="button"
-            onClick={() => resetPuzzle(puzzleIndex + 1)}
-            disabled={puzzleIndex === puzzles.length - 1}
+            onClick={() => nextPuzzleIndex !== null && resetPuzzle(nextPuzzleIndex)}
+            disabled={nextPuzzleIndex === null}
             aria-keyshortcuts="ArrowRight"
             title="Next puzzle (→)"
             className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"

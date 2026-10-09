@@ -13,6 +13,7 @@ function database(t) {
   t.after(() => sqlite.close())
   sqlite.exec(readFileSync(new URL('../migrations/0001_d1_schema.sql', import.meta.url), 'utf8'))
   sqlite.exec(readFileSync(new URL('../migrations/0004_players.sql', import.meta.url), 'utf8'))
+  sqlite.exec(readFileSync(new URL('../migrations/0027_add_practice_sessions.sql', import.meta.url), 'utf8'))
   sqlite.exec(`
     INSERT INTO puzzle_collections VALUES ('test', 'Test', '', 0);
     INSERT INTO puzzle_sections VALUES ('test', 'review', 'Review', '', '[]', 0);
@@ -60,6 +61,7 @@ const validAttempt = {
   durationMs: 1200,
   pauseCount: 0,
   restartCount: 0,
+  sessionId: 'session-one',
 }
 
 test('claim creates a normalized unique player and authenticated session', async (t) => {
@@ -119,4 +121,29 @@ test('attempt history is private to the signed-in player', async (t) => {
       missed: 0,
     }],
   })
+})
+
+test('a clean later session upgrades a previously missed puzzle', async (t) => {
+  const { sqlite, env } = database(t)
+  await claimPlayer(env, 'Mike')
+  const playerId = sqlite.prepare("SELECT id FROM players WHERE normalized_handle = 'mike'").get().id
+  sqlite.prepare(`
+    INSERT INTO practice_attempts (
+      id, puzzle_id, puzzle_title, move, result, checked_at,
+      duration_ms, pause_count, restart_count, player_id, session_id
+    ) VALUES (?, 'page-1-puzzle-1', 'Test puzzle', 'move', ?, ?, 1000, 0, 0, ?, ?)
+  `).run('miss', 'incorrect', '2026-01-01T00:00:00.000Z', playerId, 'old-session')
+  sqlite.prepare(`
+    INSERT INTO practice_attempts (
+      id, puzzle_id, puzzle_title, move, result, checked_at,
+      duration_ms, pause_count, restart_count, player_id, session_id
+    ) VALUES (?, 'page-1-puzzle-1', 'Test puzzle', 'move', ?, ?, 1000, 0, 0, ?, ?)
+  `).run('clean', 'correct', '2026-01-02T00:00:00.000Z', playerId, 'new-session')
+
+  const profile = await getProgress({ env, request: request('/api/players/mike/progress'), params: { handle: 'Mike' } })
+  const section = (await profile.json()).sections[0]
+  assert.deepEqual(
+    { attempted: section.attempted, clean: section.clean, retried: section.retried, missed: section.missed },
+    { attempted: 1, clean: 1, retried: 0, missed: 0 },
+  )
 })

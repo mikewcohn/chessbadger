@@ -11,6 +11,7 @@ function database(t) {
   t.after(() => sqlite.close())
   sqlite.exec(readFileSync(new URL('../migrations/0001_d1_schema.sql', import.meta.url), 'utf8'))
   sqlite.exec(readFileSync(new URL('../migrations/0004_players.sql', import.meta.url), 'utf8'))
+  sqlite.exec(readFileSync(new URL('../migrations/0027_add_practice_sessions.sql', import.meta.url), 'utf8'))
   sqlite.exec(`
     INSERT INTO puzzle_collections VALUES ('test', 'Test', '', 0);
     INSERT INTO puzzle_sections VALUES ('test', 'review', 'Review', '', '[]', 0);
@@ -68,6 +69,7 @@ const validBody = {
   durationMs: 1200,
   pauseCount: 0,
   restartCount: 1,
+  sessionId: 'session-one',
 }
 
 // The storage tests intentionally exercise SQL through SQLite, including ordering,
@@ -131,6 +133,7 @@ test('unknown puzzles and invalid payloads are rejected without inserting attemp
     { ...validBody, durationMs: -1 },
     { ...validBody, pauseCount: 1.5 },
     { ...validBody, restartCount: 1001 },
+    { ...validBody, sessionId: 'not a valid id' },
   ]) {
     assert.equal((await post(env, body)).status, 400)
   }

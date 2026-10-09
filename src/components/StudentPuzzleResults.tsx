@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Puzzle } from '../types/puzzles'
 import { formatDuration } from '../hooks/usePuzzleTimer'
-import type { PracticeAttempt, PuzzleProgressStatus } from '../lib/puzzleProgress'
+import { getPuzzleStatuses, type PracticeAttempt, type PuzzleProgressStatus } from '../lib/puzzleProgress'
 
 type StudentPuzzleResultsProps = {
   collectionSlug: string
@@ -88,7 +88,7 @@ export default function StudentPuzzleResults({
       return [{
         puzzle,
         puzzleIndex,
-        status: correctAttempt ? (failedAttempts.length > 0 ? 'retried' : 'clean') : 'missed',
+        status: getPuzzleStatuses([puzzle], puzzleAttempts)[0] as AttemptedStatus,
         attempts: puzzleAttempts,
         failedMoves: failedAttempts
           .filter((attempt) => attempt.result === 'incorrect' && attempt.move)

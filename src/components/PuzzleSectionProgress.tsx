@@ -70,6 +70,8 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   const [rangeStart, setRangeStart] = useState(0)
   const [jumpValue, setJumpValue] = useState('')
   const [jumpError, setJumpError] = useState('')
+  const [includeUnsolved, setIncludeUnsolved] = useState(true)
+  const [includeRetried, setIncludeRetried] = useState(true)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -140,6 +142,15 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   const visiblePuzzleIndices = Array.from({ length: rangeEnd - rangeStart }, (_, index) => rangeStart + index)
   const firstBookProblem = Number(section.puzzles[0]?.title.match(/\d+$/)?.[0])
   const jumpPlaceholder = Number.isFinite(firstBookProblem) ? `e.g. ${firstBookProblem}` : 'e.g. 1'
+  const retryIndices = statuses.flatMap((status, index) => (
+    (includeUnsolved && status === 'missed') || (includeRetried && status === 'retried') ? [index] : []
+  ))
+  const retrySearch = [includeUnsolved ? 'missed' : null, includeRetried ? 'retried' : null]
+    .filter(Boolean)
+    .join(',')
+  const retryHref = retryIndices.length > 0
+    ? `${puzzleHref(retryIndices[0])}?retry=${encodeURIComponent(retrySearch)}`
+    : null
 
   const handleJump = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -248,6 +259,33 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
             {jumpError ? <p className="mt-1 text-xs font-semibold text-rose-800" role="alert">{jumpError}</p> : null}
           </form>
         </div>
+        {progress.missed + progress.retried > 0 ? (
+          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
+            <div>
+              <h3 className="font-bold text-amber-950">Retry puzzles</h3>
+              <p className="mt-1 text-sm text-amber-900">Clear the red puzzles, then turn every result dark green.</p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-5">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-stone-800">
+                  <input type="checkbox" checked={includeUnsolved} onChange={(event) => setIncludeUnsolved(event.currentTarget.checked)} className="size-4 cursor-pointer accent-amber-800" />
+                  Unsolved or skipped ({progress.missed})
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-stone-800">
+                  <input type="checkbox" checked={includeRetried} onChange={(event) => setIncludeRetried(event.currentTarget.checked)} className="size-4 cursor-pointer accent-amber-800" />
+                  Solved after multiple attempts ({progress.retried})
+                </label>
+              </div>
+            </div>
+            {retryHref ? (
+              <a href={retryHref} className="mt-4 inline-flex w-full justify-center rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 sm:mt-0 sm:w-auto sm:shrink-0">
+                Retry {retryIndices.length} {retryIndices.length === 1 ? 'puzzle' : 'puzzles'}
+              </a>
+            ) : (
+              <button type="button" disabled className="mt-4 w-full cursor-not-allowed rounded-lg bg-stone-300 px-5 py-2.5 text-sm font-bold text-stone-600 sm:mt-0 sm:w-auto sm:shrink-0">
+                Select puzzles
+              </button>
+            )}
+          </div>
+        ) : null}
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-8 lg:grid-cols-12">
           {visiblePuzzleIndices.map((index) => {
           const puzzle = section.puzzles[index]

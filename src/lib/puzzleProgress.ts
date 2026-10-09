@@ -1,6 +1,7 @@
 export type PracticeAttempt = {
   puzzleId: string
   result: 'correct' | 'incorrect' | 'answer-viewed'
+  sessionId?: string
   move?: string
   checkedAt?: string
   durationMs?: number
@@ -34,12 +35,22 @@ export const getPuzzleStatuses = (
 
   return puzzles.map((puzzle) => {
     const puzzleAttempts = attemptsByPuzzle.get(puzzle.id) ?? []
-    const hasMiss = puzzleAttempts.some((attempt) => attempt.result !== 'correct')
     const hasSolve = puzzleAttempts.some((attempt) => attempt.result === 'correct')
+    const attemptsBySession = new Map<string, PracticeAttempt[]>()
 
-    if (hasMiss && hasSolve) return 'retried'
-    if (hasMiss) return 'missed'
-    if (hasSolve) return 'clean'
+    for (const attempt of puzzleAttempts) {
+      const sessionAttempts = attemptsBySession.get(attempt.sessionId ?? 'legacy')
+      if (sessionAttempts) sessionAttempts.push(attempt)
+      else attemptsBySession.set(attempt.sessionId ?? 'legacy', [attempt])
+    }
+
+    const hasCleanSolve = [...attemptsBySession.values()].some(
+      (sessionAttempts) => sessionAttempts[0]?.result === 'correct',
+    )
+
+    if (hasCleanSolve) return 'clean'
+    if (hasSolve) return 'retried'
+    if (puzzleAttempts.length > 0) return 'missed'
     return 'not-attempted'
   })
 }

@@ -7,6 +7,7 @@ export type StoredAttempt = {
   move: string
   result: AttemptResult
   checkedAt: string
+  sessionId?: string
   durationMs?: number
   pauseCount?: number
   restartCount?: number
@@ -55,6 +56,7 @@ type AttemptRow = {
   move: string
   result: AttemptResult
   checked_at: string
+  session_id: string | null
   duration_ms: number | null
   pause_count: number | null
   restart_count: number | null
@@ -62,7 +64,7 @@ type AttemptRow = {
 
 export const readPractice = async (env: PracticeEnv, playerId: string): Promise<PracticeRecord> => {
   const { results } = await env.DB.prepare(`
-    SELECT id, puzzle_id, puzzle_title, move, result, checked_at,
+    SELECT id, puzzle_id, puzzle_title, move, result, checked_at, session_id,
       duration_ms, pause_count, restart_count
     FROM practice_attempts
     WHERE player_id = ?
@@ -78,6 +80,7 @@ export const readPractice = async (env: PracticeEnv, playerId: string): Promise<
       move: row.move,
       result: row.result,
       checkedAt: row.checked_at,
+      ...(row.session_id === null ? {} : { sessionId: row.session_id }),
       ...(row.duration_ms === null ? {} : { durationMs: row.duration_ms }),
       ...(row.pause_count === null ? {} : { pauseCount: row.pause_count }),
       ...(row.restart_count === null ? {} : { restartCount: row.restart_count }),
@@ -92,10 +95,11 @@ export const appendAttempt = (env: PracticeEnv, playerId: string, attempt: Store
   env.DB.prepare(`
     INSERT INTO practice_attempts (
       id, puzzle_id, puzzle_title, move, result, checked_at,
-      duration_ms, pause_count, restart_count, player_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      duration_ms, pause_count, restart_count, player_id, session_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     attempt.id, attempt.puzzleId, attempt.puzzleTitle, attempt.move,
     attempt.result, attempt.checkedAt, attempt.durationMs ?? null,
     attempt.pauseCount ?? null, attempt.restartCount ?? null, playerId,
+    attempt.sessionId ?? null,
   ).run()

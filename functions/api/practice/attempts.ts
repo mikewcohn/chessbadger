@@ -18,6 +18,7 @@ type SaveAttemptBody = {
   durationMs?: number
   pauseCount?: number
   restartCount?: number
+  sessionId?: string
 }
 
 export const onRequestGet = async ({ request, env }: FunctionContext) => {
@@ -40,6 +41,7 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
   const durationMs = body.durationMs
   const pauseCount = body.pauseCount
   const restartCount = body.restartCount
+  const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim() : undefined
   if (!puzzleId || puzzleId.length > 200 || puzzleTitle.length > 100) {
     return json({ error: 'Invalid puzzle.' }, 400)
   }
@@ -59,6 +61,9 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
   if (typeof restartCount !== 'number' || !Number.isInteger(restartCount) || restartCount < 0 || restartCount > 1000) {
     return json({ error: 'Invalid restart count.' }, 400)
   }
+  if (sessionId !== undefined && !/^[a-zA-Z0-9_-]{1,100}$/.test(sessionId)) {
+    return json({ error: 'Invalid practice session.' }, 400)
+  }
 
   if (!await puzzleExists(env, puzzleId)) {
     return json({ error: 'Invalid puzzle.' }, 400)
@@ -74,6 +79,7 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
     durationMs,
     pauseCount,
     restartCount,
+    ...(sessionId ? { sessionId } : {}),
   }
 
   await appendAttempt(env, player.id, attempt)
