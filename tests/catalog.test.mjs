@@ -99,6 +99,46 @@ test('solution variants remain available to the trainer', async (t) => {
   assert.deepEqual(puzzles.get('polgar-puzzle-0307').solutionLines, [['Kc3', 'Ka2', 'Qb2#']])
 })
 
+test('Steps 2 continuations require the student to complete every keyed combination', async (t) => {
+  const { db, query } = database(t)
+  const migrationDirectory = new URL('../migrations/', import.meta.url)
+  for (const migration of readdirSync(migrationDirectory)
+    .filter((name) => name.endsWith('.sql') && name > '0002_seed_puzzles.sql')
+    .sort()) {
+    db.exec(readFileSync(new URL(migration, migrationDirectory), 'utf8'))
+  }
+  const catalog = await readPuzzleCatalog(query)
+  const puzzles = new Map(catalog.flatMap(({ puzzles }) => puzzles.map((puzzle) => [puzzle.id, puzzle])))
+  const expectedIds = [
+    ...Array.from({ length: 12 }, (_, index) => `page-21-puzzle-${String(index + 1).padStart(2, '0')}`),
+    'page-39-puzzle-01', 'page-39-puzzle-02', 'page-39-puzzle-04',
+    'page-39-puzzle-07', 'page-39-puzzle-09',
+    'page-40-puzzle-04', 'page-40-puzzle-06', 'page-40-puzzle-10',
+    'page-43-puzzle-01', 'page-43-puzzle-02', 'page-43-puzzle-04',
+    'page-43-puzzle-06', 'page-43-puzzle-07', 'page-43-puzzle-08',
+  ]
+
+  assert.equal(expectedIds.length, 26)
+  for (const id of expectedIds) {
+    const puzzle = puzzles.get(id)
+    assert.equal(puzzle?.playThrough, true, id)
+    assert.ok(puzzle?.solutionLines?.some((line) => line.length === 3), id)
+    for (const line of puzzle?.solutionLines ?? []) {
+      const game = new Chess(puzzle.fen)
+      for (const move of line) assert.doesNotThrow(() => game.move(move), `${id}: ${line.join(' ')}`)
+    }
+  }
+
+  assert.deepEqual(puzzles.get('page-21-puzzle-08')?.solutionLines, [
+    ['Nxc5', 'bxc5', 'Bxd7'],
+    ['Nxc5', 'Bxa4', 'Nxa4'],
+  ])
+  assert.deepEqual(puzzles.get('page-39-puzzle-07')?.solutionLines, [
+    ['Rxh6+', 'Bxh6', 'Qxe5+'],
+    ['Qxe5'],
+  ])
+})
+
 test('page 31 moves into Composing Mate without losing attempt history', async (t) => {
   const { db, query } = database(t)
   db.exec(`
@@ -395,7 +435,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, 'eddb1ab16ec6ae105ee263aca71f9eded502a091569fce80ed331465dd57ba2f')
+  assert.equal(hash, '70ec0f485e5b878d8fa91df4b59ace52528d2a6f48e5cc4f27fc9c059be40d6a')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(

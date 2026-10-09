@@ -800,6 +800,13 @@ export default function PuzzleTrainer({
           return true
         }
 
+        if (matchingLine.length === 1) {
+          setPosition(game.fen())
+          setAttemptedMove(move.san)
+          recordAttempt(move.san, 'correct')
+          return true
+        }
+
         setActiveSolutionLine(matchingLine)
         setNextSolutionPly(2)
         continueSolutionLine(game, matchingLine, 1)
