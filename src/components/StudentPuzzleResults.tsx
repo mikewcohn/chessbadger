@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Puzzle } from '../types/puzzles'
 import { formatDuration } from '../hooks/usePuzzleTimer'
+import {
+  createWorkbookAttemptsCsv,
+  workbookAttemptsFilename,
+  workbookPuzzleReference,
+} from '../lib/attemptExport'
 import { getPuzzleStatuses, type PracticeAttempt, type PuzzleProgressStatus } from '../lib/puzzleProgress'
 
 type StudentPuzzleResultsProps = {
@@ -105,18 +110,42 @@ export default function StudentPuzzleResults({
       ? new Date(right.latestAttempt.checkedAt ?? 0).getTime() - new Date(left.latestAttempt.checkedAt ?? 0).getTime()
       : left.puzzleIndex - right.puzzleIndex), [results, sortOrder, statusFilter])
 
+  const canExportWorkbookAttempts = puzzles.some((puzzle) => workbookPuzzleReference(puzzle) !== null)
+
+  const exportAttempts = () => {
+    const csv = createWorkbookAttemptsCsv(puzzles, attempts)
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = workbookAttemptsFilename(sectionSlug)
+    document.body.append(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
+
   return (
     <section id="attempt-details" className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm" aria-labelledby="attempt-details-heading">
-      <button type="button" onClick={() => setExpanded((isExpanded) => !isExpanded)} aria-expanded={expanded} aria-controls="attempt-details-content" className="flex w-full cursor-pointer items-center justify-between gap-5 px-5 py-5 text-left transition hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-800 sm:px-7">
-        <span>
-          <span id="attempt-details-heading" className="block text-xl font-bold tracking-[-0.015em] text-stone-950">Attempt details</span>
-          <span className="mt-1 block text-sm text-stone-500">{results.length} attempted {results.length === 1 ? 'puzzle' : 'puzzles'} · Moves, timing, retries, and answer views</span>
-        </span>
-        <span className="flex shrink-0 items-center gap-2 text-sm font-bold text-amber-900">
-          {expanded ? 'Hide details' : 'Show details'}
-          <svg viewBox="0 0 24 24" className={`size-4 fill-none stroke-current transition ${expanded ? 'rotate-180' : ''}`} strokeWidth="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </span>
-      </button>
+      <div className="flex flex-col sm:flex-row sm:items-stretch">
+        <button type="button" onClick={() => setExpanded((isExpanded) => !isExpanded)} aria-expanded={expanded} aria-controls="attempt-details-content" className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-5 px-5 py-5 text-left transition hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-800 sm:px-7">
+          <span>
+            <span id="attempt-details-heading" className="block text-xl font-bold tracking-[-0.015em] text-stone-950">Attempt details</span>
+            <span className="mt-1 block text-sm text-stone-500">{results.length} attempted {results.length === 1 ? 'puzzle' : 'puzzles'} · Moves, timing, retries, and answer views</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-2 text-sm font-bold text-amber-900">
+            {expanded ? 'Hide details' : 'Show details'}
+            <svg viewBox="0 0 24 24" className={`size-4 fill-none stroke-current transition ${expanded ? 'rotate-180' : ''}`} strokeWidth="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </span>
+        </button>
+        {canExportWorkbookAttempts ? (
+          <div className="flex items-center border-t border-stone-200 px-5 py-4 sm:border-l sm:border-t-0 sm:px-7">
+            <button type="button" onClick={exportAttempts} className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-amber-800 bg-white px-4 py-2.5 text-sm font-bold text-amber-900 transition hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 sm:w-auto">
+              <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current" strokeWidth="2.25" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              Export attempts CSV
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       {expanded ? (
         <div id="attempt-details-content" className="border-t border-stone-200">

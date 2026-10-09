@@ -7,6 +7,7 @@ import {
   type PracticeAttempt,
   type PuzzleProgressStatus,
 } from '../lib/puzzleProgress'
+import { retryPuzzleHref, retrySearch, saveRetryQueue, type RetryStatus } from '../lib/retryQueue'
 import PuzzleProgressBar from './PuzzleProgressBar'
 import StudentPuzzleResults from './StudentPuzzleResults'
 
@@ -103,10 +104,6 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
     [attempts, section.puzzles],
   )
   const progress = summarizePuzzleStatuses(statuses)
-  const solvedCount = progress.clean + progress.retried
-  const firstMissedIndex = statuses.findIndex((status) => status === 'missed')
-  const firstNotAttemptedIndex = statuses.findIndex((status) => status === 'not-attempted')
-  const continueIndex = firstMissedIndex >= 0 ? firstMissedIndex : firstNotAttemptedIndex >= 0 ? firstNotAttemptedIndex : 0
   const showSavedProgress = signedIn !== false || attempts.length > 0
 
   const puzzleHref = (index: number) => {
@@ -125,15 +122,6 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
     )
   }
 
-  const continueStatus = statuses[continueIndex]
-  const continueCopy = continueStatus === 'missed'
-    ? `Review Puzzle ${continueIndex + 1}`
-    : progress.attempted === 0
-      ? 'Start with Puzzle 1'
-      : solvedCount === section.puzzles.length
-        ? 'Review from Puzzle 1'
-        : `Continue with Puzzle ${continueIndex + 1}`
-
   const rangeStarts = Array.from(
     { length: Math.ceil(section.puzzles.length / RANGE_SIZE) },
     (_, index) => index * RANGE_SIZE,
@@ -145,12 +133,21 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   const retryIndices = statuses.flatMap((status, index) => (
     (includeUnsolved && status === 'missed') || (includeRetried && status === 'retried') ? [index] : []
   ))
-  const retrySearch = [includeUnsolved ? 'missed' : null, includeRetried ? 'retried' : null]
-    .filter(Boolean)
-    .join(',')
-  const retryHref = retryIndices.length > 0
-    ? `${puzzleHref(retryIndices[0])}?retry=${encodeURIComponent(retrySearch)}`
+  const selectedRetryStatuses = [includeUnsolved ? 'missed' : null, includeRetried ? 'retried' : null]
+    .filter((status): status is RetryStatus => status !== null)
+  const retryEntries = retryIndices.map((index) => ({ puzzleId: section.puzzles[index].id, sectionSlug: section.slug }))
+  const retryQuery = selectedRetryStatuses.length > 0 ? retrySearch(selectedRetryStatuses, 'section') : ''
+  const retryHref = retryEntries.length > 0
+    ? retryPuzzleHref(collection.slug, retryEntries[0], retryQuery)
     : null
+
+  const beginRetry = () => saveRetryQueue({
+    collectionSlug: collection.slug,
+    scope: 'section',
+    sectionSlug: section.slug,
+    statuses: selectedRetryStatuses,
+    entries: retryEntries,
+  })
 
   const handleJump = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -215,24 +212,6 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
         </div> : null}
       </div>
 
-      {showSavedProgress ? <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.11em] text-stone-500">Continue where you left off</p>
-            <p className="mt-1 font-semibold text-stone-900">{section.puzzles[continueIndex].title}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <a href="#attempt-details" className="inline-flex items-center gap-1.5 text-sm font-bold text-amber-900 hover:text-amber-700">
-              Jump to attempt details <span aria-hidden="true">↓</span>
-            </a>
-            <a href={puzzleHref(continueIndex)} className="inline-flex w-fit items-center gap-2 rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">
-              {continueCopy}
-              <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M6 12h12m-5-5 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </a>
-          </div>
-        </div>
-      </div> : null}
-
       <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
@@ -276,7 +255,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
               </div>
             </div>
             {retryHref ? (
-              <a href={retryHref} className="mt-4 inline-flex w-full justify-center rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 sm:mt-0 sm:w-auto sm:shrink-0">
+              <a href={retryHref} onClick={beginRetry} className="mt-4 inline-flex w-full justify-center rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 sm:mt-0 sm:w-auto sm:shrink-0">
                 Retry {retryIndices.length} {retryIndices.length === 1 ? 'puzzle' : 'puzzles'}
               </a>
             ) : (

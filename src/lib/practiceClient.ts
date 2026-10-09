@@ -2,7 +2,11 @@ export type PracticeAttemptSummary = {
   puzzleId: string
   result: 'correct' | 'incorrect' | 'answer-viewed'
   sessionId?: string
+  move?: string
   checkedAt?: string
+  durationMs?: number
+  pauseCount?: number
+  restartCount?: number
 }
 
 type CachedPracticeAttempt = PracticeAttemptSummary & {
@@ -23,6 +27,7 @@ const readCachedAttempts = (): CachedPracticeAttempt[] => {
       const candidate = attempt as Partial<CachedPracticeAttempt>
       return typeof candidate.id === 'string'
         && typeof candidate.puzzleId === 'string'
+        && (candidate.move === undefined || typeof candidate.move === 'string')
         && (candidate.sessionId === undefined || typeof candidate.sessionId === 'string')
         && (candidate.checkedAt === undefined || typeof candidate.checkedAt === 'string')
         && (candidate.result === 'correct'

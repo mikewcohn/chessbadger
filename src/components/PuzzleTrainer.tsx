@@ -15,7 +15,16 @@ import {
   getCachedPracticeAttempts,
   removeCachedPracticeAttempt,
 } from '../lib/practiceClient'
-import { getPuzzleStatuses, type PuzzleProgressStatus } from '../lib/puzzleProgress'
+import { getPuzzleStatuses } from '../lib/puzzleProgress'
+import {
+  loadRetryQueue,
+  retryNeighbors,
+  retryPuzzleHref,
+  retrySearch,
+  type RetryQueueEntry,
+  type RetryScope,
+  type RetryStatus,
+} from '../lib/retryQueue'
 import {
   applyPseudoLegalMove,
   isPseudoLegalMove,
@@ -252,8 +261,9 @@ export default function PuzzleTrainer({
   const [reviewMode, setReviewMode] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
   const [historyExpanded, setHistoryExpanded] = useState(false)
-  const [retryPuzzleIndices, setRetryPuzzleIndices] = useState<number[] | null>(null)
-  const [retryStatuses, setRetryStatuses] = useState<Array<Extract<PuzzleProgressStatus, 'missed' | 'retried'>>>([])
+  const [retryQueue, setRetryQueue] = useState<RetryQueueEntry[] | null>(null)
+  const [retryStatuses, setRetryStatuses] = useState<RetryStatus[]>([])
+  const [retryScope, setRetryScope] = useState<RetryScope>('section')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'signed-out' | 'error'>('idle')
   const replyTimerRef = useRef<number | null>(null)
   const lastMoveTimerRefs = useRef<number[]>([])
@@ -263,16 +273,15 @@ export default function PuzzleTrainer({
 
   const puzzle = puzzles[puzzleIndex]
   const puzzleAttempts = attemptHistory[puzzle.id] ?? []
-  const retryMode = retryPuzzleIndices !== null
-  const retryPosition = retryPuzzleIndices?.indexOf(puzzleIndex) ?? -1
-  const previousPuzzleIndex = retryMode
-    ? retryPosition > 0 ? retryPuzzleIndices[retryPosition - 1] : null
-    : puzzleIndex > 0 ? puzzleIndex - 1 : null
-  const nextPuzzleIndex = retryMode
-    ? retryPosition >= 0 && retryPuzzleIndices && retryPosition < retryPuzzleIndices.length - 1
-      ? retryPuzzleIndices[retryPosition + 1]
-      : null
-    : puzzleIndex < puzzles.length - 1 ? puzzleIndex + 1 : null
+  const retryMode = retryQueue !== null
+  const retryNavigation = retryNeighbors(retryQueue ?? [], puzzle.id)
+  const retryPosition = retryNavigation.position
+  const previousRetryEntry = retryNavigation.previous
+  const nextRetryEntry = retryNavigation.next
+  const previousPuzzleIndex = !retryMode && puzzleIndex > 0 ? puzzleIndex - 1 : null
+  const nextPuzzleIndex = !retryMode && puzzleIndex < puzzles.length - 1 ? puzzleIndex + 1 : null
+  const hasPreviousPuzzle = retryMode ? previousRetryEntry !== null : previousPuzzleIndex !== null
+  const hasNextPuzzle = retryMode ? nextRetryEntry !== null : nextPuzzleIndex !== null
   const currentSessionAttempts = puzzleAttempts.filter(
     (attempt) => attempt.sessionId === practiceSessionIdRef.current,
   )
@@ -394,9 +403,14 @@ export default function PuzzleTrainer({
     const nextRetryStatuses = (params.get('retry')?.split(',') ?? []).filter(
       (status): status is 'missed' | 'retried' => status === 'missed' || status === 'retried',
     )
+    const nextRetryScope: RetryScope = params.get('retryScope') === 'collection' ? 'collection' : 'section'
+    const savedRetryQueue = nextRetryStatuses.length > 0
+      ? loadRetryQueue(collectionSlug, nextRetryScope, sectionSlug)
+      : null
     setReviewMode(nextReviewMode)
     setRetryStatuses(nextRetryStatuses)
-    if (nextRetryStatuses.length > 0) setRetryPuzzleIndices([])
+    setRetryScope(nextRetryScope)
+    if (nextRetryStatuses.length > 0) setRetryQueue(savedRetryQueue?.entries ?? [])
     practiceSessionIdRef.current = crypto.randomUUID()
     if (nextReviewMode) timer.pause()
     const requestedPuzzle = Number(params.get('puzzle'))
@@ -439,10 +453,12 @@ export default function PuzzleTrainer({
         )
 
         setAttemptHistory(history)
-        if (nextRetryStatuses.length > 0) {
+        if (nextRetryStatuses.length > 0 && !savedRetryQueue) {
           const statusAttempts = [...data.attempts, ...getCachedPracticeAttempts()]
           const statuses = getPuzzleStatuses(puzzles, statusAttempts)
-          setRetryPuzzleIndices(statuses.flatMap((status, index) => nextRetryStatuses.includes(status as 'missed' | 'retried') ? [index] : []))
+          setRetryQueue(statuses.flatMap((status, index) => nextRetryStatuses.includes(status as RetryStatus)
+            ? [{ puzzleId: puzzles[index].id, sectionSlug }]
+            : []))
         }
         setSaveStatus(playerData.player ? 'saved' : 'signed-out')
       })
@@ -513,7 +529,7 @@ export default function PuzzleTrainer({
       const search = reviewMode
         ? '?review=student'
         : retryStatuses.length > 0
-          ? `?retry=${encodeURIComponent(retryStatuses.join(','))}`
+          ? retrySearch(retryStatuses, retryScope)
           : ''
       window.history.pushState(
         {},
@@ -544,6 +560,29 @@ export default function PuzzleTrainer({
     else timer.reset(isRestart)
   }
 
+  const retryReturnHref = retryScope === 'collection'
+    ? `/puzzles/${collectionSlug}`
+    : `/puzzles/${collectionSlug}/${sectionSlug}`
+  const activeRetrySearch = retrySearch(retryStatuses, retryScope)
+  const navigateToRetryEntry = (entry: RetryQueueEntry) => {
+    window.location.assign(retryPuzzleHref(collectionSlug, entry, activeRetrySearch))
+  }
+  const goToPreviousPuzzle = () => {
+    if (retryMode) {
+      if (previousRetryEntry) navigateToRetryEntry(previousRetryEntry)
+      return
+    }
+    if (previousPuzzleIndex !== null) resetPuzzle(previousPuzzleIndex)
+  }
+  const goToNextPuzzle = () => {
+    if (retryMode) {
+      if (nextRetryEntry) navigateToRetryEntry(nextRetryEntry)
+      return
+    }
+    if (nextPuzzleIndex !== null) resetPuzzle(nextPuzzleIndex)
+  }
+  const finishRetries = () => window.location.assign(retryReturnHref)
+
   useEffect(() => {
     const syncPuzzleToUrl = () => {
       const puzzleId = decodeURIComponent(window.location.pathname.split('/').at(-1) ?? '')
@@ -566,16 +605,17 @@ export default function PuzzleTrainer({
         && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
       ) return
 
-      const nextIndex = event.key === 'ArrowLeft' ? previousPuzzleIndex : nextPuzzleIndex
-      if (nextIndex === null) return
+      const canNavigate = event.key === 'ArrowLeft' ? hasPreviousPuzzle : hasNextPuzzle
+      if (!canNavigate) return
 
       event.preventDefault()
-      resetPuzzle(nextIndex)
+      if (event.key === 'ArrowLeft') goToPreviousPuzzle()
+      else goToNextPuzzle()
     }
 
     window.addEventListener('keydown', handlePuzzleArrowKey)
     return () => window.removeEventListener('keydown', handlePuzzleArrowKey)
-  }, [nextPuzzleIndex, previousPuzzleIndex, reviewMode, retryStatuses])
+  }, [hasNextPuzzle, hasPreviousPuzzle, nextPuzzleIndex, nextRetryEntry, previousPuzzleIndex, previousRetryEntry, retryMode, retryScope, retryStatuses])
 
   const showAnswer = () => {
     if (replyTimerRef.current !== null) {
@@ -619,7 +659,7 @@ export default function PuzzleTrainer({
     setResult(nextResult)
     setHistoryExpanded(true)
 
-    const cachedAttemptId = cachePracticeAttempt({ puzzleId: puzzle.id, result: nextResult, checkedAt, sessionId })
+    const cachedAttemptId = cachePracticeAttempt({ puzzleId: puzzle.id, move: attemptLabel, result: nextResult, checkedAt, sessionId, ...timing })
     setSaveStatus('saving')
     void fetch('/api/practice/attempts', {
       method: 'POST',
@@ -1394,10 +1434,10 @@ export default function PuzzleTrainer({
                   <p className={`${focusMode ? 'mt-0.5 text-lg' : 'mt-1 text-2xl sm:text-3xl'} font-bold`}>Correct!</p>
                   <p className="mt-1 text-sm text-emerald-100">{sessionResultCopy} · {lifetimeAttemptCopy}</p>
                 </div>
-                {!focusMode && nextPuzzleIndex !== null ? (
+                {!focusMode && hasNextPuzzle ? (
                   <button
                     type="button"
-                    onClick={() => resetPuzzle(nextPuzzleIndex)}
+                    onClick={goToNextPuzzle}
                     className="grid size-12 shrink-0 cursor-pointer place-items-center rounded-full bg-white text-emerald-950 shadow-lg transition hover:scale-105 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:size-14"
                     aria-label="Next puzzle"
                     title="Next puzzle"
@@ -1406,8 +1446,12 @@ export default function PuzzleTrainer({
                       <path d="M8 5.4v13.2c0 .78.86 1.26 1.53.85l10.2-6.6a1 1 0 0 0 0-1.7l-10.2-6.6A1 1 0 0 0 8 5.4Z" />
                     </svg>
                   </button>
+                ) : !focusMode && retryMode ? (
+                  <button type="button" onClick={finishRetries} className="shrink-0 cursor-pointer rounded-full bg-white px-4 py-2 text-sm font-bold text-emerald-950 hover:bg-emerald-50">
+                    Finish retries
+                  </button>
                 ) : !focusMode ? (
-                  <p className="text-sm font-bold text-emerald-100">{retryMode ? 'Retry set complete.' : 'All puzzles complete.'}</p>
+                  <p className="text-sm font-bold text-emerald-100">All puzzles complete.</p>
                 ) : null}
               </div>
             ) : result === 'answer-viewed' ? (
@@ -1429,11 +1473,11 @@ export default function PuzzleTrainer({
                   </button>
                   <button
                     type="button"
-                    onClick={() => nextPuzzleIndex !== null && resetPuzzle(nextPuzzleIndex)}
-                    disabled={nextPuzzleIndex === null}
+                    onClick={hasNextPuzzle ? goToNextPuzzle : finishRetries}
+                    disabled={!hasNextPuzzle && !retryMode}
                     className="cursor-pointer rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    Advance
+                    {hasNextPuzzle ? 'Advance' : retryMode ? 'Finish retries' : 'Advance'}
                   </button>
                 </div> : null}
               </div>
@@ -1476,11 +1520,11 @@ export default function PuzzleTrainer({
                   </button>
                   <button
                     type="button"
-                    onClick={() => nextPuzzleIndex !== null && resetPuzzle(nextPuzzleIndex)}
-                    disabled={nextPuzzleIndex === null}
+                    onClick={hasNextPuzzle ? goToNextPuzzle : finishRetries}
+                    disabled={!hasNextPuzzle && !retryMode}
                     className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    Advance
+                    {hasNextPuzzle ? 'Advance' : retryMode ? 'Finish retries' : 'Advance'}
                     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-current">
                       <path d="M8 5.4v13.2c0 .78.86 1.26 1.53.85l10.2-6.6a1 1 0 0 0 0-1.7l-10.2-6.6A1 1 0 0 0 8 5.4Z" />
                     </svg>
@@ -1495,8 +1539,8 @@ export default function PuzzleTrainer({
           <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 p-2 sm:gap-4 sm:p-3">
             <button
               type="button"
-              onClick={() => previousPuzzleIndex !== null && resetPuzzle(previousPuzzleIndex)}
-              disabled={previousPuzzleIndex === null}
+              onClick={goToPreviousPuzzle}
+              disabled={!hasPreviousPuzzle}
               aria-label="Previous puzzle"
               aria-keyshortcuts="ArrowLeft"
               title="Previous puzzle (←)"
@@ -1573,8 +1617,8 @@ export default function PuzzleTrainer({
 
             <button
               type="button"
-              onClick={() => nextPuzzleIndex !== null && resetPuzzle(nextPuzzleIndex)}
-              disabled={nextPuzzleIndex === null}
+              onClick={goToNextPuzzle}
+              disabled={!hasNextPuzzle}
               aria-label="Next puzzle"
               aria-keyshortcuts="ArrowRight"
               title="Next puzzle (→)"
@@ -1599,9 +1643,17 @@ export default function PuzzleTrainer({
           <span aria-hidden="true">·</span>
           <span className="text-xs font-bold uppercase tracking-[0.12em] text-stone-500">
             {retryMode && retryPosition >= 0
-              ? `Retry ${retryPosition + 1} of ${retryPuzzleIndices?.length ?? 0}`
+              ? `Retry ${retryPosition + 1} of ${retryQueue?.length ?? 0}`
               : `Puzzle ${puzzleIndex + 1} of ${puzzles.length}`}
           </span>
+          {retryMode ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <a href={retryReturnHref} className="text-xs font-bold uppercase tracking-[0.12em] underline decoration-amber-300 underline-offset-4 hover:text-amber-700">
+                Exit retry mode
+              </a>
+            </>
+          ) : null}
         </div>
         <h1 className="mt-3 text-2xl font-bold tracking-[-0.015em] text-stone-950 sm:text-3xl">
           {puzzle.title}
@@ -1817,8 +1869,8 @@ export default function PuzzleTrainer({
         <div className={`${focusMode ? 'mt-auto' : 'mt-8'} flex items-center justify-between gap-4 border-t border-stone-200 pt-6`}>
           <button
             type="button"
-            onClick={() => previousPuzzleIndex !== null && resetPuzzle(previousPuzzleIndex)}
-            disabled={previousPuzzleIndex === null}
+            onClick={goToPreviousPuzzle}
+            disabled={!hasPreviousPuzzle}
             aria-keyshortcuts="ArrowLeft"
             title="Previous puzzle (←)"
             className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
@@ -1828,8 +1880,8 @@ export default function PuzzleTrainer({
           </button>
           <button
             type="button"
-            onClick={() => nextPuzzleIndex !== null && resetPuzzle(nextPuzzleIndex)}
-            disabled={nextPuzzleIndex === null}
+            onClick={goToNextPuzzle}
+            disabled={!hasNextPuzzle}
             aria-keyshortcuts="ArrowRight"
             title="Next puzzle (→)"
             className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"

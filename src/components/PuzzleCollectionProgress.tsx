@@ -6,6 +6,7 @@ import {
   summarizePuzzleStatuses,
   type PracticeAttempt,
 } from '../lib/puzzleProgress'
+import { retryPuzzleHref, retrySearch, saveRetryQueue, type RetryStatus } from '../lib/retryQueue'
 import PuzzleProgressBar from './PuzzleProgressBar'
 
 type PuzzleCollectionProgressProps = {
@@ -17,6 +18,8 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [includeUnsolved, setIncludeUnsolved] = useState(true)
+  const [includeRetried, setIncludeRetried] = useState(true)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -50,7 +53,7 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
     const firstNotAttempted = statuses.findIndex((status) => status === 'not-attempted')
     const continueIndex = firstMissed >= 0 ? firstMissed : firstNotAttempted >= 0 ? firstNotAttempted : 0
 
-    return { section, progress, continueIndex }
+    return { section, progress, continueIndex, statuses }
   }), [attempts, collection.sections])
 
   const availableCount = collection.sections.filter((section) => section.puzzles.length > 0).length
@@ -65,6 +68,24 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
     ? 0
     : Math.round((bookProgress.attempted / bookProgress.total) * 100)
   const showSavedProgress = signedIn !== false || attempts.length > 0
+  const selectedRetryStatuses = [includeUnsolved ? 'missed' : null, includeRetried ? 'retried' : null]
+    .filter((status): status is RetryStatus => status !== null)
+  const retryEntries = sectionProgress.flatMap(({ section, statuses }) => statuses.flatMap((status, index) => (
+    ((includeUnsolved && status === 'missed') || (includeRetried && status === 'retried'))
+      ? [{ puzzleId: section.puzzles[index].id, sectionSlug: section.slug }]
+      : []
+  )))
+  const retryQuery = selectedRetryStatuses.length > 0 ? retrySearch(selectedRetryStatuses, 'collection') : ''
+  const retryHref = retryEntries.length > 0
+    ? retryPuzzleHref(collection.slug, retryEntries[0], retryQuery)
+    : null
+
+  const beginRetry = () => saveRetryQueue({
+    collectionSlug: collection.slug,
+    scope: 'collection',
+    statuses: selectedRetryStatuses,
+    entries: retryEntries,
+  })
 
   return (
     <div className="grid gap-6">
@@ -107,6 +128,34 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
           ))}
         </div> : null}
       </section>
+
+      {showSavedProgress && bookProgress.missed + bookProgress.retried > 0 ? (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-6">
+          <div>
+            <h2 className="text-lg font-bold text-amber-950">Retry puzzles across this book</h2>
+            <p className="mt-1 text-sm text-amber-900">Clear every red puzzle, then turn every result dark green.</p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-5">
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-stone-800">
+                <input type="checkbox" checked={includeUnsolved} onChange={(event) => setIncludeUnsolved(event.currentTarget.checked)} className="size-4 cursor-pointer accent-amber-800" />
+                Unsolved or skipped ({bookProgress.missed})
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-stone-800">
+                <input type="checkbox" checked={includeRetried} onChange={(event) => setIncludeRetried(event.currentTarget.checked)} className="size-4 cursor-pointer accent-amber-800" />
+                Solved after multiple attempts ({bookProgress.retried})
+              </label>
+            </div>
+          </div>
+          {retryHref ? (
+            <a href={retryHref} onClick={beginRetry} className="mt-4 inline-flex w-full justify-center rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 sm:mt-0 sm:w-auto sm:shrink-0">
+              Retry {retryEntries.length} {retryEntries.length === 1 ? 'puzzle' : 'puzzles'}
+            </a>
+          ) : (
+            <button type="button" disabled className="mt-4 w-full cursor-not-allowed rounded-lg bg-stone-300 px-5 py-2.5 text-sm font-bold text-stone-600 sm:mt-0 sm:w-auto sm:shrink-0">
+              Select puzzles
+            </button>
+          )}
+        </section>
+      ) : null}
 
       <ol className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm divide-y divide-stone-200">
         {sectionProgress.map(({ section, progress, continueIndex }, index) => {
