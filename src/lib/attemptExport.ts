@@ -23,11 +23,29 @@ const movePrefix = (puzzle: Puzzle) => {
   return activeColor === 'b' ? '1...' : '1. '
 }
 
+const formatMoveSequence = (puzzle: Puzzle, moveText: string) => {
+  const moves = moveText.trim().split(/\s+/)
+  if (!('solutionLines' in puzzle) || !puzzle.solutionLines || moves.length <= 1) {
+    return `${movePrefix(puzzle)}${moveText}`
+  }
+
+  const startsWithBlack = puzzle.fen.trim().split(/\s+/)[1] === 'b'
+
+  return moves.map((move, index) => {
+    const plyIndex = index + (startsWithBlack ? 1 : 0)
+    if (index === 0 && startsWithBlack) return `1...${move}`
+    if (plyIndex % 2 === 0) return `${Math.floor(plyIndex / 2) + 1}. ${move}`
+    return move
+  }).join(' ')
+}
+
 export const formatAttemptData = (puzzle: Puzzle, attempts: PracticeAttempt[]) => attempts
-  .filter((attempt) => attempt.puzzleId === puzzle.id && attempt.move)
+  .filter((attempt): attempt is PracticeAttempt & { move: string } => (
+    attempt.puzzleId === puzzle.id && Boolean(attempt.move)
+  ))
   .map((attempt) => {
     if (attempt.result === 'answer-viewed') return 'Answer viewed'
-    return `${movePrefix(puzzle)}${attempt.move}${attempt.result === 'incorrect' ? ' (wrong)' : ''}`
+    return `${formatMoveSequence(puzzle, attempt.move)}${attempt.result === 'incorrect' ? ' (wrong)' : ''}`
   })
   .join('; ')
 

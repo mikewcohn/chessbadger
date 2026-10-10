@@ -23,6 +23,34 @@ test('formats every attempt in order with side-to-move prefixes and wrong labels
   assert.equal(formatAttemptData(puzzles[1], attempts), '1. Qxc6 (wrong); 1. Qh3+')
 })
 
+test('numbers every White move in a multi-ply attempt', () => {
+  const whiteToMovePuzzle = {
+    id: 'page-21-puzzle-01',
+    title: 'Page 21, Puzzle 1',
+    fen: '8/4kpp1/5n2/3b3p/8/5P2/1B4P1/3R2K1 w - - 0 1',
+    answers: ['Bxf6+'],
+    solutionLines: [['Bxf6+', 'Kxf6', 'Rxd5']],
+  }
+  const blackToMovePuzzle = {
+    id: 'page-07-puzzle-01',
+    title: 'Page 7, Puzzle 1',
+    fen: '6k1/2p1q1p1/5p2/8/8/2R2B1P/P5P1/7K b - - 0 1',
+    answers: ['Qe1+'],
+    solutionLines: [['Qe1+', 'Kh2', 'Qxc3']],
+  }
+
+  assert.equal(formatAttemptData(whiteToMovePuzzle, [{
+    puzzleId: whiteToMovePuzzle.id,
+    move: 'Bxf6+ Kxf6 Rxd5',
+    result: 'correct',
+  }]), '1. Bxf6+ Kxf6 2. Rxd5')
+  assert.equal(formatAttemptData(blackToMovePuzzle, [{
+    puzzleId: blackToMovePuzzle.id,
+    move: 'Qe1+ Kh2 Qxc3',
+    result: 'correct',
+  }]), '1...Qe1+ 2. Kh2 Qxc3')
+})
+
 test('exports puzzle time and a page total on the first row of each page', () => {
   assert.equal(createWorkbookAttemptsCsv(puzzles, attempts), [
     'Page #,Puzzle #,Attempt Data,Puzzle Time (seconds),Page Total Time',
