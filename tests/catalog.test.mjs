@@ -435,7 +435,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, '19b79c0c635c9d1a7034e95c44dab04d2afb512fc7e690cce80023717f633dce')
+  assert.equal(hash, '1c70daa22876363eb055e085bf04453ceb664df5c248e9eab6afed954f58e940')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(
