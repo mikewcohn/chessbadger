@@ -10,6 +10,7 @@ import {
 } from 'react-chessboard'
 import type { PlaceablePiece, Puzzle } from '../types/puzzles'
 import { formatDuration, usePuzzleTimer } from '../hooks/usePuzzleTimer'
+import { normalizeSan } from '../lib/chessNotation'
 import {
   cachePracticeAttempt,
   getCachedPracticeAttempts,
@@ -60,9 +61,6 @@ type Attempt = {
   pauseCount?: number
   restartCount?: number
 }
-
-const normalizeSan = (san: string) =>
-  san.trim().replaceAll('0', 'O').replace(/[!?]+$/g, '')
 
 const moveWithExpectedPromotion = (
   game: Chess,
