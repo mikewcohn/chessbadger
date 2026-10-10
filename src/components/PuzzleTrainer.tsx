@@ -14,6 +14,7 @@ import {
   cachePracticeAttempt,
   getCachedPracticeAttempts,
   removeCachedPracticeAttempt,
+  removeCachedPracticeAttemptsForPuzzles,
 } from '../lib/practiceClient'
 import { getPuzzleStatuses } from '../lib/puzzleProgress'
 import {
@@ -37,6 +38,7 @@ import {
   WHITE_ON_BOTTOM_STORAGE_KEY,
   type BoardTheme,
 } from '../lib/boardThemes'
+import ResetAttempts from './ResetAttempts'
 
 type PuzzleTrainerProps = {
   puzzles: Puzzle[]
@@ -265,6 +267,7 @@ export default function PuzzleTrainer({
   const [retryStatuses, setRetryStatuses] = useState<RetryStatus[]>([])
   const [retryScope, setRetryScope] = useState<RetryScope>('section')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'signed-out' | 'error'>('idle')
+  const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const replyTimerRef = useRef<number | null>(null)
   const lastMoveTimerRefs = useRef<number[]>([])
   const focusModeButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -453,6 +456,7 @@ export default function PuzzleTrainer({
         )
 
         setAttemptHistory(history)
+        setSignedIn(Boolean(playerData.player))
         if (nextRetryStatuses.length > 0 && !savedRetryQueue) {
           const statusAttempts = [...data.attempts, ...getCachedPracticeAttempts()]
           const statuses = getPuzzleStatuses(puzzles, statusAttempts)
@@ -558,6 +562,12 @@ export default function PuzzleTrainer({
     setBoardRevision((revision) => revision + 1)
     if (reviewMode) timer.pause()
     else timer.reset(isRestart)
+  }
+
+  const resetCurrentPuzzleAttempts = () => {
+    setAttemptHistory((history) => ({ ...history, [puzzle.id]: [] }))
+    removeCachedPracticeAttemptsForPuzzles([puzzle.id])
+    resetPuzzle(puzzleIndex, false)
   }
 
   const retryReturnHref = retryScope === 'collection'
@@ -1216,6 +1226,16 @@ export default function PuzzleTrainer({
                 })}
               </ol>
             )}
+            {signedIn && puzzleAttempts.length > 0 ? (
+              <div className="mt-4">
+                <ResetAttempts
+                  attemptCount={puzzleAttempts.length}
+                  scopeLabel="puzzle"
+                  request={{ scope: 'puzzle', puzzleId: puzzle.id }}
+                  onReset={resetCurrentPuzzleAttempts}
+                />
+              </div>
+            ) : null}
           </section>
 
           <div className="mt-6 border-t border-stone-200 pt-5">
@@ -1870,6 +1890,17 @@ export default function PuzzleTrainer({
                 </li>
               ))}
             </ol>
+            {signedIn ? (
+              <div className="mt-4">
+                <ResetAttempts
+                  attemptCount={puzzleAttempts.length}
+                  disabled={saveStatus === 'saving'}
+                  scopeLabel="puzzle"
+                  request={{ scope: 'puzzle', puzzleId: puzzle.id }}
+                  onReset={resetCurrentPuzzleAttempts}
+                />
+              </div>
+            ) : null}
           </details>
         ) : null}
 

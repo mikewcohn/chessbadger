@@ -21,6 +21,11 @@ type SaveAttemptBody = {
   sessionId?: string
 }
 
+type ResetAttemptsBody =
+  | { scope?: 'puzzle'; puzzleId?: string }
+  | { scope?: 'section'; collectionSlug?: string; sectionSlug?: string }
+  | { scope?: 'collection'; collectionSlug?: string; confirmation?: string }
+
 export const onRequestGet = async ({ request, env }: FunctionContext) => {
   const player = await currentPlayer(env, request)
   if (!player) return json({ attempts: [] })
@@ -85,4 +90,54 @@ export const onRequestPost = async ({ request, env }: FunctionContext) => {
   await appendAttempt(env, player.id, attempt)
 
   return json({ attempt }, 201)
+}
+
+export const onRequestDelete = async ({ request, env }: FunctionContext) => {
+  const player = await currentPlayer(env, request)
+  if (!player) return json({ error: 'Sign in to reset puzzle progress.' }, 401)
+
+  const body = await readJson<ResetAttemptsBody>(request)
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return json({ error: 'Invalid reset request.' }, 400)
+  }
+
+  let result: unknown
+  if (body.scope === 'puzzle' && typeof body.puzzleId === 'string' && body.puzzleId.length <= 200) {
+    result = await env.DB.prepare(`
+      DELETE FROM practice_attempts
+      WHERE player_id = ? AND puzzle_id = ?
+    `).bind(player.id, body.puzzleId).run()
+  } else if (
+    body.scope === 'section'
+    && typeof body.collectionSlug === 'string'
+    && typeof body.sectionSlug === 'string'
+    && body.collectionSlug.length <= 100
+    && body.sectionSlug.length <= 100
+  ) {
+    result = await env.DB.prepare(`
+      DELETE FROM practice_attempts
+      WHERE player_id = ? AND puzzle_id IN (
+        SELECT id FROM puzzles WHERE collection_slug = ? AND section_slug = ?
+      )
+    `).bind(player.id, body.collectionSlug, body.sectionSlug).run()
+  } else if (
+    body.scope === 'collection'
+    && typeof body.collectionSlug === 'string'
+    && body.collectionSlug.length <= 100
+  ) {
+    if (body.confirmation !== 'RESET') {
+      return json({ error: 'Type RESET to confirm resetting the book.' }, 400)
+    }
+    result = await env.DB.prepare(`
+      DELETE FROM practice_attempts
+      WHERE player_id = ? AND puzzle_id IN (
+        SELECT id FROM puzzles WHERE collection_slug = ?
+      )
+    `).bind(player.id, body.collectionSlug).run()
+  } else {
+    return json({ error: 'Invalid reset request.' }, 400)
+  }
+
+  const resetResult = result as { changes?: number; meta?: { changes?: number } }
+  return json({ deleted: resetResult.meta?.changes ?? resetResult.changes ?? 0 })
 }

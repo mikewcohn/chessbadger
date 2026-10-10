@@ -296,6 +296,7 @@ test('page 17 positions match the workbook reference', async (t) => {
   const { db, query } = database(t)
   db.exec(readFileSync(new URL('../migrations/0007_correct_steps_page_17_positions.sql', import.meta.url), 'utf8'))
   db.exec(readFileSync(new URL('../migrations/0010_correct_steps_page_17_puzzle_05_queen.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0042_correct_page_17_puzzle_05_answer.sql', import.meta.url), 'utf8'))
   const catalog = await readPuzzleCatalog(query)
   const puzzles = new Map(catalog.flatMap(({ puzzles }) => puzzles.map((puzzle) => [puzzle.id, puzzle])))
   const expected = {
@@ -317,6 +318,7 @@ test('page 17 positions match the workbook reference', async (t) => {
     const puzzle = puzzles.get(id)
     assert.deepEqual([puzzle?.fen, puzzle?.piece], [fen, piece], id)
   }
+  assert.deepEqual(puzzles.get('page-17-puzzle-05')?.answers, ['c5'])
 })
 
 test('page 18 and 19 positions match the rendered workbook pages', async (t) => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { PuzzleCollection } from '../types/puzzleCollections'
-import { getCachedPracticeAttempts } from '../lib/practiceClient'
+import { getCachedPracticeAttempts, removeCachedPracticeAttemptsForPuzzles } from '../lib/practiceClient'
 import {
   getPuzzleStatuses,
   summarizePuzzleStatuses,
@@ -8,6 +8,7 @@ import {
 } from '../lib/puzzleProgress'
 import { retryPuzzleHref, retrySearch, saveRetryQueue, type RetryStatus } from '../lib/retryQueue'
 import PuzzleProgressBar from './PuzzleProgressBar'
+import ResetAttempts from './ResetAttempts'
 
 type PuzzleCollectionProgressProps = {
   collection: PuzzleCollection
@@ -68,6 +69,11 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
     ? 0
     : Math.round((bookProgress.attempted / bookProgress.total) * 100)
   const showSavedProgress = signedIn !== false || attempts.length > 0
+  const collectionPuzzleIds = useMemo(
+    () => new Set(collection.sections.flatMap((section) => section.puzzles.map((puzzle) => puzzle.id))),
+    [collection.sections],
+  )
+  const collectionAttemptCount = attempts.filter((attempt) => collectionPuzzleIds.has(attempt.puzzleId)).length
   const selectedRetryStatuses = [includeUnsolved ? 'missed' : null, includeRetried ? 'retried' : null]
     .filter((status): status is RetryStatus => status !== null)
   const retryEntries = sectionProgress.flatMap(({ section, statuses }) => statuses.flatMap((status, index) => (
@@ -86,6 +92,12 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
     statuses: selectedRetryStatuses,
     entries: retryEntries,
   })
+
+  const resetCollectionAttempts = () => {
+    const puzzleIds = [...collectionPuzzleIds]
+    setAttempts((currentAttempts) => currentAttempts.filter((attempt) => !collectionPuzzleIds.has(attempt.puzzleId)))
+    removeCachedPracticeAttemptsForPuzzles(puzzleIds)
+  }
 
   return (
     <div className="grid gap-6">
@@ -127,6 +139,16 @@ export default function PuzzleCollectionProgress({ collection }: PuzzleCollectio
             </div>
           ))}
         </div> : null}
+        {signedIn && collectionAttemptCount > 0 ? (
+          <div className="px-5 pb-5 sm:px-7">
+            <ResetAttempts
+              attemptCount={collectionAttemptCount}
+              scopeLabel="book"
+              request={{ scope: 'collection', collectionSlug: collection.slug, confirmation: 'RESET' }}
+              onReset={resetCollectionAttempts}
+            />
+          </div>
+        ) : null}
       </section>
 
       {showSavedProgress && bookProgress.missed + bookProgress.retried > 0 ? (

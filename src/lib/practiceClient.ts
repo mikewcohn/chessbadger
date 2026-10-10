@@ -63,3 +63,14 @@ export const removeCachedPracticeAttempt = (attemptId: string) => {
     // Nothing else needs to happen when browser storage is unavailable.
   }
 }
+
+export const removeCachedPracticeAttemptsForPuzzles = (puzzleIds: string[]) => {
+  const puzzleIdSet = new Set(puzzleIds)
+
+  try {
+    const attempts = readCachedAttempts().filter((attempt) => !puzzleIdSet.has(attempt.puzzleId))
+    window.sessionStorage.setItem(ATTEMPTS_STORAGE_KEY, JSON.stringify(attempts))
+  } catch {
+    // Nothing else needs to happen when browser storage is unavailable.
+  }
+}

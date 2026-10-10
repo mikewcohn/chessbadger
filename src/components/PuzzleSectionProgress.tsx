@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode, type SyntheticEvent } from 'react'
 import type { PuzzleCollection, PuzzleSection } from '../types/puzzleCollections'
-import { getCachedPracticeAttempts } from '../lib/practiceClient'
+import { getCachedPracticeAttempts, removeCachedPracticeAttemptsForPuzzles } from '../lib/practiceClient'
 import {
   getPuzzleStatuses,
   summarizePuzzleStatuses,
@@ -9,6 +9,7 @@ import {
 } from '../lib/puzzleProgress'
 import { retryPuzzleHref, retrySearch, saveRetryQueue, type RetryStatus } from '../lib/retryQueue'
 import PuzzleProgressBar from './PuzzleProgressBar'
+import ResetAttempts from './ResetAttempts'
 import StudentPuzzleResults from './StudentPuzzleResults'
 
 type PuzzleSectionProgressProps = {
@@ -105,6 +106,17 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   )
   const progress = summarizePuzzleStatuses(statuses)
   const showSavedProgress = signedIn !== false || attempts.length > 0
+  const sectionPuzzleIds = useMemo(
+    () => new Set(section.puzzles.map((puzzle) => puzzle.id)),
+    [section.puzzles],
+  )
+  const sectionAttemptCount = attempts.filter((attempt) => sectionPuzzleIds.has(attempt.puzzleId)).length
+
+  const resetSectionAttempts = () => {
+    const puzzleIds = [...sectionPuzzleIds]
+    setAttempts((currentAttempts) => currentAttempts.filter((attempt) => !sectionPuzzleIds.has(attempt.puzzleId)))
+    removeCachedPracticeAttemptsForPuzzles(puzzleIds)
+  }
 
   const puzzleHref = (index: number) => {
     const puzzle = section.puzzles[index]
@@ -210,6 +222,16 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
             </div>
           ))}
         </div> : null}
+        {signedIn && sectionAttemptCount > 0 ? (
+          <div className="px-5 pb-5 sm:px-7">
+            <ResetAttempts
+              attemptCount={sectionAttemptCount}
+              scopeLabel="section"
+              request={{ scope: 'section', collectionSlug: collection.slug, sectionSlug: section.slug }}
+              onReset={resetSectionAttempts}
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
