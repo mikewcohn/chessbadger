@@ -437,7 +437,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, 'd9210f39340f597f5a4aec01becdfd2d7c4734a5885797cee129b3ec98f88e46')
+  assert.equal(hash, '3636913de1fbb4a67d1b28b3ecae0b96c7b4a89860aa163f08b15633c79f4fb3')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(
@@ -463,6 +463,10 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   assert.deepEqual(
     page35Puzzle09.solutionLines[0].map((move) => page35Puzzle09Game.move(move).san),
     page35Puzzle09.solutionLines[0],
+  )
+  assert.equal(
+    puzzles.get('page-39-puzzle-11')?.fen,
+    '1k6/p4p2/Bp5p/2p5/8/P1Q2q1P/1PP2rr1/1KR5 w - - 0 1',
   )
   const page38Puzzle01 = puzzles.get('page-38-puzzle-01')
   assert.deepEqual(page38Puzzle01?.answers, ['Rf1', 'Rf2', 'Rf3', 'Rf4', 'Rf5'])
