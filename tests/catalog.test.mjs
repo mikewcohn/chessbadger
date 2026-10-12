@@ -478,6 +478,19 @@ test('page 53 puzzle 4 requires the complete mate-in-two continuation', async (t
   assert.deepEqual(puzzle.solutionLines[0].map((move) => game.move(move).san), puzzle.solutionLines[0])
 })
 
+test('page 54 puzzle 11 has Black to move', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0049_correct_page_54_puzzle_11_turn.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-54-puzzle-11')
+
+  assert.equal(puzzle?.fen, '5r1k/2b3pp/1p6/2p2n2/8/1Q1P4/1PP3NP/7K b - - 0 1')
+  assert.equal(puzzle?.sideToMove, 'black')
+  assert.deepEqual(puzzle?.answers, ['Nd4'])
+  assert.deepEqual(puzzle?.answerMoves, ['f5d4'])
+  assert.equal(new Chess(puzzle.fen).move(puzzle.answers[0]).san, 'Nd4')
+})
+
 test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t) => {
   const { db, query } = database(t)
   const migrationDirectory = new URL('../migrations/', import.meta.url)
@@ -502,7 +515,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, 'ba7ec7edecd13a9e72eb598f07761bbc244f125d09b28f8c59734051b2ddfe09')
+  assert.equal(hash, '61d0bc645bf076e67c8b70a93c2b7ab7d4e20d481362d4edf69a6e9af807bd4b')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(
