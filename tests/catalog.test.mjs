@@ -178,6 +178,47 @@ test('page 31 moves into Composing Mate without losing attempt history', async (
   )
 })
 
+test('page 38 moves into Mate in 2 (Rook) without losing attempt history', async (t) => {
+  const { db, query } = database(t)
+  db.exec(`
+    INSERT INTO practice_attempts (
+      id, puzzle_id, puzzle_title, move, result, checked_at
+    ) VALUES (
+      'attempt-before-rook-section-move',
+      'page-38-puzzle-01',
+      'Page 38, Puzzle 1',
+      'Rf1',
+      'correct',
+      '2026-10-12T00:00:00.000Z'
+    )
+  `)
+  db.exec(readFileSync(new URL('../migrations/0026_create_composing_mate_section.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0045_split_rook_mate_section.sql', import.meta.url), 'utf8'))
+
+  const catalog = await readPuzzleCatalog(query)
+  const collection = catalog.find(({ slug }) => slug === 'steps-2-workbook')
+  const mateInTwo = collection?.sections.find(({ slug }) => slug === 'mate-in-two')
+  const rookMate = collection?.sections.find(({ slug }) => slug === 'mate-in-two-rook')
+  const defendingAgainstMate = collection?.sections.find(({ slug }) => slug === 'defending-against-mate')
+
+  assert.deepEqual(collection?.sections.slice(7, 10).map(({ slug }) => slug), [
+    'mate-in-two', 'double-attack-knight', 'mate-in-two-rook',
+  ])
+  assert.equal(mateInTwo?.workbookPages, 'Pages 32–35')
+  assert.ok(mateInTwo?.puzzles.every(({ id }) => !id.startsWith('page-38-puzzle-')))
+  assert.equal(rookMate?.title, 'Mate in 2 (Rook)')
+  assert.equal(rookMate?.workbookPages, 'Page 38')
+  assert.deepEqual(
+    rookMate?.puzzles.map(({ id }) => id),
+    Array.from({ length: 11 }, (_, index) => `page-38-puzzle-${String(index + 1).padStart(2, '0')}`),
+  )
+  assert.equal(defendingAgainstMate?.workbookPages, 'Pages 50–51')
+  assert.deepEqual(
+    { ...db.prepare("SELECT puzzle_id, result FROM practice_attempts WHERE id = 'attempt-before-rook-section-move'").get() },
+    { puzzle_id: 'page-38-puzzle-01', result: 'correct' },
+  )
+})
+
 test('Chess Steps 2 Mix migration adds the first twelve puzzles and last-move context', async (t) => {
   const { db, query } = database(t)
   db.exec(readFileSync(new URL('../migrations/0024_add_chess_steps_2_mix.sql', import.meta.url), 'utf8'))
@@ -413,6 +454,26 @@ test('page 40 puzzle 12 answers the check from the queen on e3', async (t) => {
   assert.equal(puzzle?.sideToMove, 'white')
 })
 
+test('page 43 puzzle 5 has a White queen on a8', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0017_audit_steps_pages_21_56.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0047_correct_page_43_puzzle_05_queen.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-43-puzzle-05')
+
+  assert.equal(puzzle?.fen, 'Q7/5ppk/1p5p/b2N1q2/4p3/P3P2P/2r2PP1/5RK1 w - - 0 1')
+})
+
+test('page 53 puzzle 4 has a Black queen on h4', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0017_audit_steps_pages_21_56.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0046_correct_page_53_puzzle_04_queen.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-53-puzzle-04')
+
+  assert.equal(puzzle?.fen, '8/6k1/1B4p1/P1ppb3/6Pq/1P1P3P/2PK4/5Q2 b - - 0 1')
+})
+
 test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t) => {
   const { db, query } = database(t)
   const migrationDirectory = new URL('../migrations/', import.meta.url)
@@ -437,7 +498,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, '24820eb7808806e20a3c2680060fa00bbf25527a991da6e156ccac73a00cbde8')
+  assert.equal(hash, 'c0562106360b1362752050aaa2bb83135c0d3461d9bfa722ca048ddb2aed99b3')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(
