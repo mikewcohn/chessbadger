@@ -464,14 +464,18 @@ test('page 43 puzzle 5 has a White queen on a8', async (t) => {
   assert.equal(puzzle?.fen, 'Q7/5ppk/1p5p/b2N1q2/4p3/P3P2P/2r2PP1/5RK1 w - - 0 1')
 })
 
-test('page 53 puzzle 4 has a Black queen on h4', async (t) => {
+test('page 53 puzzle 4 requires the complete mate-in-two continuation', async (t) => {
   const { db, query } = database(t)
-  db.exec(readFileSync(new URL('../migrations/0017_audit_steps_pages_21_56.sql', import.meta.url), 'utf8'))
-  db.exec(readFileSync(new URL('../migrations/0046_correct_page_53_puzzle_04_queen.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0048_add_page_53_puzzle_04_continuation.sql', import.meta.url), 'utf8'))
   const catalog = await readPuzzleCatalog(query)
   const puzzle = catalog.flatMap(({ puzzles }) => puzzles).find(({ id }) => id === 'page-53-puzzle-04')
 
-  assert.equal(puzzle?.fen, '8/6k1/1B4p1/P1ppb3/6Pq/1P1P3P/2PK4/5Q2 b - - 0 1')
+  assert.equal(puzzle?.fen, '8/6k1/1B4p1/P1ppb3/6Pq/1P1P3P/2PK4/5q2 b - - 0 1')
+  assert.equal(puzzle?.playThrough, true)
+  assert.deepEqual(puzzle?.solutionLines, [['Bf4+', 'Kc3', 'Qa1#']])
+
+  const game = new Chess(puzzle.fen)
+  assert.deepEqual(puzzle.solutionLines[0].map((move) => game.move(move).san), puzzle.solutionLines[0])
 })
 
 test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t) => {
@@ -498,7 +502,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, 'c0562106360b1362752050aaa2bb83135c0d3461d9bfa722ca048ddb2aed99b3')
+  assert.equal(hash, 'ba7ec7edecd13a9e72eb598f07761bbc244f125d09b28f8c59734051b2ddfe09')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(
