@@ -491,7 +491,70 @@ test('page 54 puzzle 11 has Black to move', async (t) => {
   assert.equal(new Chess(puzzle.fen).move(puzzle.answers[0]).san, 'Nd4')
 })
 
-test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t) => {
+test('workbook drawings create display-number gaps without changing puzzle IDs or attempts', async (t) => {
+  const { db, query } = database(t)
+  const migrationDirectory = new URL('../migrations/', import.meta.url)
+  for (const migration of readdirSync(migrationDirectory)
+    .filter((name) => name.endsWith('.sql') && name > '0002_seed_puzzles.sql' && name < '0052_align_workbook_puzzle_numbers.sql')
+    .sort()) {
+    db.exec(readFileSync(new URL(migration, migrationDirectory), 'utf8'))
+  }
+  db.exec(`
+    INSERT INTO practice_attempts (
+      id, puzzle_id, puzzle_title, move, result, checked_at
+    ) VALUES (
+      'attempt-before-workbook-renumbering',
+      'page-22-puzzle-07',
+      'Page 22, Puzzle 7',
+      'Qa4',
+      'correct',
+      '2026-10-13T00:00:00.000Z'
+    )
+  `)
+  db.exec(readFileSync(new URL('../migrations/0052_align_workbook_puzzle_numbers.sql', import.meta.url), 'utf8'))
+
+  const catalog = await readPuzzleCatalog(query)
+  const puzzles = new Map(catalog.flatMap(({ puzzles }) => puzzles.map((puzzle) => [puzzle.id, puzzle])))
+  const expectedNumbers = {
+    4: [1, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    8: [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12],
+    12: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    16: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    18: [1, 2, 3, 4, 5, 6, 9, 12],
+    22: [1, 2, 3, 4, 5, 6, 9, 10, 11, 12],
+    27: [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12],
+    30: [1, 2, 3, 4, 5, 6, 7, 8, 10, 11],
+    32: [1, 2, 3, 4, 5, 7, 8, 10, 11, 12],
+    35: [1, 2, 3, 4, 5, 6, 7, 10, 11, 12],
+    38: [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12],
+    42: [1, 2, 3, 4, 5, 6, 7, 10],
+    50: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    54: [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  }
+
+  for (const [page, workbookNumbers] of Object.entries(expectedNumbers)) {
+    const pagePuzzles = [...puzzles.values()].filter(({ id }) => id.startsWith(`page-${page}-puzzle-`))
+    assert.deepEqual(pagePuzzles.map(({ workbookPuzzleNumber }) => workbookPuzzleNumber), workbookNumbers, `page ${page}`)
+    assert.deepEqual(
+      pagePuzzles.map(({ id }) => id),
+      workbookNumbers.map((_, index) => `page-${page}-puzzle-${String(index + 1).padStart(2, '0')}`),
+      `stable IDs on page ${page}`,
+    )
+    assert.deepEqual(
+      pagePuzzles.map(({ title }) => title),
+      workbookNumbers.map((number) => `Page ${page}, Puzzle ${number}`),
+      `titles on page ${page}`,
+    )
+  }
+
+  assert.deepEqual(
+    { ...db.prepare("SELECT puzzle_id, puzzle_title FROM practice_attempts WHERE id = 'attempt-before-workbook-renumbering'").get() },
+    { puzzle_id: 'page-22-puzzle-07', puzzle_title: 'Page 22, Puzzle 7' },
+  )
+  assert.equal(puzzles.get('page-22-puzzle-07')?.title, 'Page 22, Puzzle 9')
+})
+
+test('audited workbook pages 21 through 56 match the approved catalog', async (t) => {
   const { db, query } = database(t)
   const migrationDirectory = new URL('../migrations/', import.meta.url)
   for (const migration of readdirSync(migrationDirectory)
@@ -515,7 +578,7 @@ test('audited workbook pages 21 through 56 stay byte-for-byte stable', async (t)
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, 'fef9c35f8838f850f637cbb3bd2adc4c65dbfcf1fe95bd8ad471b50bfc7e9264')
+  assert.equal(hash, 'f0f80a9d8fcac5f91ccc8e6c0577a22febc2e16fa1659cec5aeed91eb4b4f544')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(

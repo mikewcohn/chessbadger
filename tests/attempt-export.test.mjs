@@ -83,6 +83,22 @@ test('starts a new page total when the page number changes', () => {
   ].join('\r\n'))
 })
 
+test('uses workbook positions and exports blank rows for drawings', () => {
+  const page22Puzzles = [
+    { id: 'page-22-puzzle-01', title: 'Page 22, Puzzle 1', workbookPuzzleNumber: 1, fen: '8/8/8/8/8/8/8/8 w - - 0 1', answers: ['Qa4'] },
+    { id: 'page-22-puzzle-06', title: 'Page 22, Puzzle 6', workbookPuzzleNumber: 6, fen: '8/8/8/8/8/8/8/8 w - - 0 1', answers: ['Qa4'] },
+    { id: 'page-22-puzzle-07', title: 'Page 22, Puzzle 9', workbookPuzzleNumber: 9, fen: '8/8/8/8/8/8/8/8 w - - 0 1', answers: ['Qa4'] },
+  ]
+
+  const rows = createWorkbookAttemptsCsv(page22Puzzles, []).split('\r\n')
+  assert.equal(rows.length, 13)
+  assert.equal(rows[1], '22,1,,0,0s')
+  assert.equal(rows[6], '22,6,,0,')
+  assert.equal(rows[7], '22,7,,,')
+  assert.equal(rows[8], '22,8,,,')
+  assert.equal(rows[9], '22,9,,0,')
+})
+
 test('uses a section-specific CSV filename', () => {
   assert.equal(workbookAttemptsFilename('double-attack-queen'), 'steps-2-double-attack-queen-attempts.csv')
 })

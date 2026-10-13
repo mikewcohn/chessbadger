@@ -14,7 +14,7 @@ export const workbookPuzzleReference = (puzzle: Puzzle): WorkbookPuzzleReference
 
   return {
     pageNumber: Number(match[1]),
-    puzzleNumber: Number(match[2]),
+    puzzleNumber: puzzle.workbookPuzzleNumber ?? Number(match[2]),
   }
 }
 
@@ -84,19 +84,33 @@ export const createWorkbookAttemptsCsv = (puzzles: Puzzle[], attempts: PracticeA
     pageTotals.set(reference.pageNumber, (pageTotals.get(reference.pageNumber) ?? 0) + timeMs)
   }
 
-  const exportedPages = new Set<number>()
-  const rows = workbookPuzzles.map(({ puzzle, reference, timeMs }) => {
-    const isFirstPuzzleOnPage = !exportedPages.has(reference.pageNumber)
-    exportedPages.add(reference.pageNumber)
+  const rows = []
+  const puzzlesByPage = new Map<number, typeof workbookPuzzles>()
+  for (const entry of workbookPuzzles) {
+    const pagePuzzles = puzzlesByPage.get(entry.reference.pageNumber) ?? []
+    pagePuzzles.push(entry)
+    puzzlesByPage.set(entry.reference.pageNumber, pagePuzzles)
+  }
+  for (const [pageNumber, pagePuzzles] of puzzlesByPage) {
+    const puzzlesByNumber = new Map(pagePuzzles.map((entry) => [entry.reference.puzzleNumber, entry]))
+    const includeWorkbookBlanks = pagePuzzles.some(({ puzzle }) => puzzle.workbookPuzzleNumber !== undefined)
+    const puzzleNumbers = includeWorkbookBlanks
+      ? Array.from({ length: 12 }, (_, index) => index + 1)
+      : pagePuzzles.map(({ reference }) => reference.puzzleNumber)
 
-    return [
-      reference.pageNumber,
-      reference.puzzleNumber,
-      formatAttemptData(puzzle, attempts),
-      Math.round(timeMs / 1000),
-      isFirstPuzzleOnPage ? formatPageTotalTime(pageTotals.get(reference.pageNumber) ?? 0) : '',
-    ]
-  })
+    for (const puzzleNumber of puzzleNumbers) {
+      const entry = puzzlesByNumber.get(puzzleNumber)
+      rows.push(entry
+        ? [
+            pageNumber,
+            puzzleNumber,
+            formatAttemptData(entry.puzzle, attempts),
+            Math.round(entry.timeMs / 1000),
+            puzzleNumber === 1 ? formatPageTotalTime(pageTotals.get(pageNumber) ?? 0) : '',
+          ]
+        : [pageNumber, puzzleNumber, '', '', ''])
+    }
+  }
 
   return [
     ['Page #', 'Puzzle #', 'Attempt Data', 'Puzzle Time (seconds)', 'Page Total Time'],

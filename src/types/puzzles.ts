@@ -1,6 +1,7 @@
 type PuzzleBase = {
   id: string
   title: string
+  workbookPuzzleNumber?: number
   fen: string
   answers: string[]
 }
