@@ -5,6 +5,9 @@ import { puzzleCollections, type PuzzleCollection, type PuzzleSection } from '..
 import type { Puzzle } from '../../../../../types/puzzles'
 
 export function getStaticPaths() {
+  // Runtime mode avoids rebuilding thousands of pages for puzzle-data corrections.
+  // Set PUZZLE_RUNTIME_MODE=legacy to restore the prior generated-page behavior.
+  if (process.env.PUZZLE_RUNTIME_MODE !== 'legacy') return []
   return puzzleCollections.flatMap((collection) => collection.sections.flatMap((section) =>
     section.puzzles.map((puzzle) => ({
       params: { collection: collection.slug, section: section.slug, puzzle: puzzle.id },

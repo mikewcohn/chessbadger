@@ -1,2 +1,3 @@
 /players /player-shell/ 200
 /players/* /player-shell/ 200
+/puzzles/:collection/:section/puzzle/:puzzle /puzzle-shell/ 200
