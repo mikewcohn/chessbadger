@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro'
-import PuzzleSectionProgress from '../../../components/PuzzleSectionProgress'
+import PuzzleSectionProgressLoader from '../../../components/PuzzleSectionProgressLoader'
 import { puzzleCollections, type PuzzleCollection, type PuzzleSection } from '../../../lib/puzzleCollections'
 
 export function getStaticPaths() {
@@ -34,7 +34,7 @@ const { collection, section } = Astro.props
 
   <section class="bg-stone-100">
     <div class="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-10">
-      <PuzzleSectionProgress collection={collection} section={section} client:load />
+      <PuzzleSectionProgressLoader collection={collection} section={section} client:load />
     </div>
   </section>
 </BaseLayout>

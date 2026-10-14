@@ -491,6 +491,23 @@ test('page 54 puzzle 11 has Black to move', async (t) => {
   assert.equal(new Chess(puzzle.fen).move(puzzle.answers[0]).san, 'Nd4')
 })
 
+test('temporary notation review puzzle is appended with the full avoid-mate line', async (t) => {
+  const { db, query } = database(t)
+  const attemptCountBefore = db.prepare('SELECT COUNT(*) AS count FROM practice_attempts').get().count
+  db.exec(readFileSync(new URL('../migrations/0053_add_temporary_notation_review_puzzle.sql', import.meta.url), 'utf8'))
+
+  const collection = (await readPuzzleCatalog(query)).find(({ slug }) => slug === 'steps-2-workbook')
+  const section = collection?.sections.find(({ slug }) => slug === 'notation-and-final-review')
+  const puzzle = section?.puzzles.at(-1)
+
+  assert.equal(puzzle?.id, 'notation-final-review-test-puzzle')
+  assert.equal(puzzle?.fen, '1k1q4/p6p/1pQ5/8/4p3/bP2B1P1/P4P1P/2K5 w - - 0 1')
+  assert.deepEqual(puzzle?.solutionLines, [['Kb1', 'Qd1+', 'Bc1']])
+  const game = new Chess(puzzle.fen)
+  assert.deepEqual(puzzle.solutionLines[0].map((move) => game.move(move).san), ['Kb1', 'Qd1+', 'Bc1'])
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM practice_attempts').get().count, attemptCountBefore)
+})
+
 test('workbook drawings create display-number gaps without changing puzzle IDs or attempts', async (t) => {
   const { db, query } = database(t)
   const migrationDirectory = new URL('../migrations/', import.meta.url)
