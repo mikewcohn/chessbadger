@@ -28,7 +28,7 @@ const catalogJson = (data: unknown, status = 200) => new Response(JSON.stringify
   status,
   headers: {
     'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'public, max-age=60, s-maxage=60, stale-while-revalidate=300',
+    'cache-control': 'no-store',
   },
 })
 

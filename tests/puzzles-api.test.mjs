@@ -42,7 +42,7 @@ test('runtime puzzle API returns the requested section without changing puzzle I
   const body = await response.json()
 
   assert.equal(response.status, 200)
-  assert.equal(response.headers.get('cache-control'), 'public, max-age=60, s-maxage=60, stale-while-revalidate=300')
+  assert.equal(response.headers.get('cache-control'), 'no-store')
   assert.deepEqual(body.puzzles.map(({ id }) => id), ['page-32-puzzle-01', 'page-32-puzzle-02'])
 })
 
