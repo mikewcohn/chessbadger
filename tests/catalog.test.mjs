@@ -508,6 +508,36 @@ test('temporary notation review puzzle is appended with the full avoid-mate line
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM practice_attempts').get().count, attemptCountBefore)
 })
 
+test('temporary notation review puzzle removal preserves all attempt history', async (t) => {
+  const { db } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0053_add_temporary_notation_review_puzzle.sql', import.meta.url), 'utf8'))
+  db.exec(`
+    INSERT INTO practice_attempts (
+      id, puzzle_id, puzzle_title, move, result, checked_at
+    ) VALUES (
+      'attempt-before-temporary-puzzle-removal',
+      'page-56-puzzle-12',
+      'Page 56, Puzzle 12',
+      'Nf3+',
+      'correct',
+      '2026-10-14T00:00:00.000Z'
+    )
+  `)
+  const attemptCountBefore = db.prepare('SELECT COUNT(*) AS count FROM practice_attempts').get().count
+
+  db.exec(readFileSync(new URL('../migrations/0054_remove_temporary_notation_review_puzzle.sql', import.meta.url), 'utf8'))
+
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS count FROM puzzles WHERE id = 'notation-final-review-test-puzzle'").get().count,
+    0,
+  )
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM practice_attempts').get().count, attemptCountBefore)
+  assert.equal(
+    db.prepare("SELECT puzzle_id FROM practice_attempts WHERE id = 'attempt-before-temporary-puzzle-removal'").get().puzzle_id,
+    'page-56-puzzle-12',
+  )
+})
+
 test('workbook drawings create display-number gaps without changing puzzle IDs or attempts', async (t) => {
   const { db, query } = database(t)
   const migrationDirectory = new URL('../migrations/', import.meta.url)
