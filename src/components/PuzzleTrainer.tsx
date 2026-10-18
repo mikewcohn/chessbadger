@@ -35,8 +35,8 @@ import {
 } from '../lib/pseudoLegalMove'
 import {
   BOARD_THEMES,
+  BOARD_SQUARE_STYLES,
   BOARD_THEME_STORAGE_KEY,
-  WOOD_SQUARE_STYLES,
   WHITE_ON_BOTTOM_STORAGE_KEY,
   type BoardTheme,
 } from '../lib/boardThemes'
@@ -1257,7 +1257,7 @@ export default function PuzzleTrainer({
       }
     : {}),
   }
-  const themeSquareStyles = boardTheme === 'wood' ? WOOD_SQUARE_STYLES : {}
+  const themeSquareStyles = BOARD_SQUARE_STYLES[boardTheme]
   const squareStyles = {
     ...themeSquareStyles,
     ...Object.fromEntries(Object.entries(interactionSquareStyles).map(([square, style]) => [

@@ -76,7 +76,18 @@ const createWoodGrainTexture = (seed: number, isLightSquare: boolean) => {
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }
 
-export const WOOD_SQUARE_STYLES = Object.fromEntries(
+const createMottledTexture = (seed: number, isLightSquare: boolean, theme: 'green' | 'blue') => {
+  const textureColor = theme === 'green'
+    ? (isLightSquare ? '#6f7468' : '#244f36')
+    : (isLightSquare ? '#668797' : '#365f73')
+  const baseFrequency = (18 + (seed % 11)) / 1000
+  const detailFrequency = (72 + (seed % 31)) / 1000
+  const opacity = isLightSquare ? 0.13 : 0.19
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><filter id="mottle" x="-25%" y="-25%" width="150%" height="150%"><feTurbulence type="fractalNoise" baseFrequency="${baseFrequency}" numOctaves="3" seed="${seed % 97}" result="broad"/><feTurbulence type="fractalNoise" baseFrequency="${detailFrequency}" numOctaves="2" seed="${(seed * 7) % 97}" result="detail"/><feBlend in="broad" in2="detail" mode="soft-light"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 ${opacity}"/></feComponentTransfer></filter><rect width="128" height="128" fill="${textureColor}" filter="url(#mottle)"/></svg>`
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+}
+
+const createWoodSquareStyles = () => Object.fromEntries(
   Array.from({ length: 64 }, (_, index) => {
     const fileIndex = index % 8
     const rank = Math.floor(index / 8) + 1
@@ -101,6 +112,43 @@ export const WOOD_SQUARE_STYLES = Object.fromEntries(
     } satisfies CSSProperties]
   }),
 ) satisfies Record<string, CSSProperties>
+
+const createMottledSquareStyles = (theme: 'green' | 'blue') => Object.fromEntries(
+  Array.from({ length: 64 }, (_, index) => {
+    const fileIndex = index % 8
+    const rank = Math.floor(index / 8) + 1
+    const square = `${String.fromCharCode(97 + fileIndex)}${rank}`
+    const seed = (fileIndex * 23) + (rank * 31)
+    const isLightSquare = (fileIndex + rank) % 2 === 0
+    const highlightX = 8 + ((seed * 11) % 85)
+    const highlightY = 7 + ((seed * 17) % 87)
+    const shadowX = 8 + ((seed * 19) % 84)
+    const shadowY = 9 + ((seed * 13) % 82)
+    const rotation = 92 + (seed % 47)
+    const lightOpacity = isLightSquare ? 0.09 : 0.12
+    const darkOpacity = isLightSquare ? 0.045 : 0.085
+
+    return [square, {
+      backgroundImage: [
+        `radial-gradient(ellipse at ${highlightX}% ${highlightY}%, rgba(255, 255, 255, ${lightOpacity}), transparent 42%)`,
+        createMottledTexture(seed, isLightSquare, theme),
+        `linear-gradient(${rotation}deg, rgba(255, 255, 255, ${lightOpacity * 0.45}), transparent 38%, rgba(16, 35, 29, ${darkOpacity}) 100%)`,
+        `radial-gradient(ellipse at ${shadowX}% ${shadowY}%, rgba(18, 42, 34, ${darkOpacity}), transparent 55%)`,
+      ].join(', '),
+      backgroundPosition: `0 0, -${seed % 41}px -${seed % 37}px, 0 0, 0 0`,
+      backgroundSize: `100% 100%, ${124 + (seed % 55)}% ${118 + (seed % 49)}%, 100% 100%, 100% 100%`,
+    } satisfies CSSProperties]
+  }),
+) satisfies Record<string, CSSProperties>
+
+export const WOOD_SQUARE_STYLES = createWoodSquareStyles()
+
+export const BOARD_SQUARE_STYLES: Record<BoardTheme, Record<string, CSSProperties>> = {
+  green: createMottledSquareStyles('green'),
+  blue: createMottledSquareStyles('blue'),
+  wood: WOOD_SQUARE_STYLES,
+  plain: {},
+}
 
 export const WHITE_ON_BOTTOM_STORAGE_KEY = 'chessbadger.always-white-on-bottom.v1'
 export const BOARD_THEME_STORAGE_KEY = 'chessbadger.board-theme.v1'

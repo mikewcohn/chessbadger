@@ -3,8 +3,8 @@ import { Chess } from 'chess.js'
 import { Chessboard, ChessboardProvider, type Arrow } from 'react-chessboard'
 import {
   BOARD_THEMES,
+  BOARD_SQUARE_STYLES,
   BOARD_THEME_STORAGE_KEY,
-  WOOD_SQUARE_STYLES,
   type BoardTheme,
 } from '../lib/boardThemes'
 
@@ -334,7 +334,7 @@ export default function PgnViewer({ pgn }: PgnViewerProps) {
             id: 'pgn-viewer-board', position, boardOrientation, allowDragging: false,
             allowDrawingArrows: false, arrows, clearArrowsOnClick: false,
             clearArrowsOnPositionChange: false, showNotation: true,
-            squareStyles: boardTheme === 'wood' ? WOOD_SQUARE_STYLES : {},
+            squareStyles: BOARD_SQUARE_STYLES[boardTheme],
             lightSquareStyle: theme.light, darkSquareStyle: theme.dark,
             lightSquareNotationStyle: { color: theme.lightNotation },
             darkSquareNotationStyle: { color: theme.darkNotation }, canDragPiece: () => false,
