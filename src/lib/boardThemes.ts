@@ -6,13 +6,13 @@ export const BOARD_THEMES = {
   green: {
     label: 'Green',
     light: {
-      backgroundColor: '#d3d1c8',
+      backgroundColor: '#e4dfd3',
       backgroundImage:
         'radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.28) 0 5%, transparent 24%), radial-gradient(circle at 78% 72%, rgba(80, 82, 72, 0.12) 0 7%, transparent 28%), linear-gradient(118deg, rgba(255, 255, 255, 0.1), rgba(78, 80, 70, 0.08))',
       backgroundSize: '82px 82px, 106px 106px, 100% 100%',
     },
     dark: {
-      backgroundColor: '#61836d',
+      backgroundColor: '#3f7f58',
       backgroundImage:
         'radial-gradient(circle at 22% 18%, rgba(222, 235, 222, 0.2) 0 5%, transparent 23%), radial-gradient(circle at 76% 74%, rgba(28, 65, 45, 0.18) 0 8%, transparent 29%), linear-gradient(118deg, rgba(255, 255, 255, 0.07), rgba(20, 57, 39, 0.12))',
       backgroundSize: '88px 88px, 112px 112px, 100% 100%',
@@ -23,13 +23,13 @@ export const BOARD_THEMES = {
   blue: {
     label: 'Blue',
     light: {
-      backgroundColor: '#dce9ef',
+      backgroundColor: '#e1edf2',
       backgroundImage:
         'radial-gradient(circle at 20% 24%, rgba(255, 255, 255, 0.42) 0 6%, transparent 28%), radial-gradient(circle at 76% 72%, rgba(87, 132, 154, 0.11) 0 8%, transparent 30%), linear-gradient(122deg, rgba(255, 255, 255, 0.15), rgba(102, 145, 166, 0.08))',
       backgroundSize: '86px 86px, 110px 110px, 100% 100%',
     },
     dark: {
-      backgroundColor: '#84a3b2',
+      backgroundColor: '#5f8da6',
       backgroundImage:
         'radial-gradient(circle at 22% 18%, rgba(224, 241, 247, 0.24) 0 6%, transparent 25%), radial-gradient(circle at 74% 76%, rgba(54, 94, 114, 0.15) 0 8%, transparent 30%), linear-gradient(118deg, rgba(255, 255, 255, 0.08), rgba(47, 88, 108, 0.12))',
       backgroundSize: '90px 90px, 116px 116px, 100% 100%',

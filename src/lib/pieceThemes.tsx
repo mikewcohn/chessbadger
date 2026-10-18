@@ -20,7 +20,7 @@ const createPieceRenderers = (theme: AssetPieceTheme): PieceRenderObject => (
   )]))
 )
 
-const createBadgerKnight = (side: 'white' | 'black'): PieceRenderObject['wN'] => (
+const createBadgerKing = (side: 'white' | 'black'): PieceRenderObject['wK'] => (
   ({ svgStyle } = {}) => (
     <svg
       viewBox="0 0 100 100"
@@ -29,9 +29,6 @@ const createBadgerKnight = (side: 'white' | 'black'): PieceRenderObject['wN'] =>
       style={{ display: 'block', height: '100%', width: '100%', ...svgStyle }}
     >
       <defs>
-        <clipPath id="badger-head-clip">
-          <path d="M9 2 H91 V55 C89 61 82 64 74 66 C69 78 61 83 50 83 C39 83 31 78 26 66 C18 64 11 61 9 55 Z" />
-        </clipPath>
         {side === 'white' ? (
           <>
           <filter id="white-badger-tone" x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
@@ -59,47 +56,42 @@ const createBadgerKnight = (side: 'white' | 'black'): PieceRenderObject['wN'] =>
             </feMerge>
           </filter>
           <clipPath id="white-badger-mouth-clip">
-            <ellipse cx="50" cy="61" rx="14" ry="11" />
+            <ellipse cx="50" cy="69" rx="16" ry="12" />
           </clipPath>
           </>
         ) : null}
       </defs>
       <image
         href="/favicon-badger.png"
-        x="9"
-        y="2"
-        width="82"
-        height="82"
+        x="4"
+        y="4"
+        width="92"
+        height="92"
         filter={side === 'white' ? 'url(#white-badger-tone)' : undefined}
-        clipPath="url(#badger-head-clip)"
       />
       {side === 'white' ? (
         <image
           href="/favicon-badger.png"
-          x="9"
-          y="2"
-          width="82"
-          height="82"
+          x="4"
+          y="4"
+          width="92"
+          height="92"
           clipPath="url(#white-badger-mouth-clip)"
         />
       ) : null}
       <path
-        d="M17 64 Q50 78 83 64 L87 93 Q50 99 13 93 Z"
-        fill={side === 'white' ? '#f8f8f5' : '#262626'}
-      />
-      <path
-        d="M17 64 L13 93 Q50 99 87 93 L83 64"
-        fill="none"
+        d="M31 27 L29 9 L41 17 L50 3 L59 17 L71 9 L69 27 Q50 23 31 27 Z"
+        fill={side === 'white' ? '#f8f8f5' : '#4a4a4a'}
         stroke="#111"
-        strokeWidth="4"
+        strokeWidth="3"
         strokeLinejoin="round"
       />
       <path
-        d="M25 85 Q50 80 75 85"
-        fill="none"
-        stroke={side === 'white' ? '#777' : '#f3f3ef'}
-        strokeWidth="3"
-        strokeLinecap="round"
+        d="M32 25 Q50 21 68 25 L67 31 Q50 27 33 31 Z"
+        fill={side === 'white' ? '#d0d0cc' : '#f3f3ef'}
+        stroke="#111"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
       />
     </svg>
   )
@@ -107,8 +99,8 @@ const createBadgerKnight = (side: 'white' | 'black'): PieceRenderObject['wN'] =>
 
 const badgerPieces: PieceRenderObject = {
   ...defaultPieces,
-  wN: createBadgerKnight('white'),
-  bN: createBadgerKnight('black'),
+  wK: createBadgerKing('white'),
+  bK: createBadgerKing('black'),
 }
 
 export const PIECE_THEMES: Record<PieceTheme, { label: string; pieces: PieceRenderObject }> = {
