@@ -12,7 +12,7 @@ export const BOARD_THEMES = {
       backgroundSize: '82px 82px, 106px 106px, 100% 100%',
     },
     dark: {
-      backgroundColor: '#6b9078',
+      backgroundColor: '#61836d',
       backgroundImage:
         'radial-gradient(circle at 22% 18%, rgba(222, 235, 222, 0.2) 0 5%, transparent 23%), radial-gradient(circle at 76% 74%, rgba(28, 65, 45, 0.18) 0 8%, transparent 29%), linear-gradient(118deg, rgba(255, 255, 255, 0.07), rgba(20, 57, 39, 0.12))',
       backgroundSize: '88px 88px, 112px 112px, 100% 100%',
@@ -29,7 +29,7 @@ export const BOARD_THEMES = {
       backgroundSize: '86px 86px, 110px 110px, 100% 100%',
     },
     dark: {
-      backgroundColor: '#8eafbf',
+      backgroundColor: '#84a3b2',
       backgroundImage:
         'radial-gradient(circle at 22% 18%, rgba(224, 241, 247, 0.24) 0 6%, transparent 25%), radial-gradient(circle at 74% 76%, rgba(54, 94, 114, 0.15) 0 8%, transparent 30%), linear-gradient(118deg, rgba(255, 255, 255, 0.08), rgba(47, 88, 108, 0.12))',
       backgroundSize: '90px 90px, 116px 116px, 100% 100%',
@@ -72,7 +72,7 @@ const createWoodGrainTexture = (seed: number, isLightSquare: boolean) => {
   const rotation = -18 + (seed % 37)
   const crossFrequency = (8 + (seed % 9)) / 1000
   const lengthFrequency = (52 + (seed % 39)) / 1000
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><filter id="wood" x="-50%" y="-50%" width="200%" height="200%"><feTurbulence type="fractalNoise" baseFrequency="${crossFrequency} ${lengthFrequency}" numOctaves="2" seed="${seed % 97}"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 0.22"/></feComponentTransfer></filter><g transform="rotate(${rotation} 64 64)"><rect x="-48" y="-48" width="224" height="224" fill="${grainColor}" filter="url(#wood)"/></g></svg>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><filter id="wood" x="-50%" y="-50%" width="200%" height="200%"><feTurbulence type="fractalNoise" baseFrequency="${crossFrequency} ${lengthFrequency}" numOctaves="3" seed="${seed % 97}"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 0.3"/></feComponentTransfer></filter><g transform="rotate(${rotation} 64 64)"><rect x="-48" y="-48" width="224" height="224" fill="${grainColor}" filter="url(#wood)"/></g></svg>`
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }
 
@@ -80,10 +80,10 @@ const createMottledTexture = (seed: number, isLightSquare: boolean, theme: 'gree
   const textureColor = theme === 'green'
     ? (isLightSquare ? '#6f7468' : '#244f36')
     : (isLightSquare ? '#668797' : '#365f73')
-  const baseFrequency = (18 + (seed % 11)) / 1000
-  const detailFrequency = (72 + (seed % 31)) / 1000
-  const opacity = isLightSquare ? 0.13 : 0.19
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><filter id="mottle" x="-25%" y="-25%" width="150%" height="150%"><feTurbulence type="fractalNoise" baseFrequency="${baseFrequency}" numOctaves="3" seed="${seed % 97}" result="broad"/><feTurbulence type="fractalNoise" baseFrequency="${detailFrequency}" numOctaves="2" seed="${(seed * 7) % 97}" result="detail"/><feBlend in="broad" in2="detail" mode="soft-light"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 ${opacity}"/></feComponentTransfer></filter><rect width="128" height="128" fill="${textureColor}" filter="url(#mottle)"/></svg>`
+  const baseFrequency = (13 + (seed % 15)) / 1000
+  const detailFrequency = (55 + (seed % 51)) / 1000
+  const opacity = isLightSquare ? 0.24 : 0.32
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><filter id="mottle" x="-25%" y="-25%" width="150%" height="150%"><feTurbulence type="fractalNoise" baseFrequency="${baseFrequency}" numOctaves="4" seed="${seed % 97}" result="broad"/><feTurbulence type="fractalNoise" baseFrequency="${detailFrequency}" numOctaves="2" seed="${(seed * 7) % 97}" result="detail"/><feBlend in="broad" in2="detail" mode="soft-light"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 ${opacity}"/></feComponentTransfer></filter><rect width="128" height="128" fill="${textureColor}" filter="url(#mottle)"/></svg>`
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }
 
@@ -99,13 +99,14 @@ const createWoodSquareStyles = () => Object.fromEntries(
     const isLightSquare = (fileIndex + rank) % 2 === 0
     const grain = isLightSquare ? '105, 75, 43' : '65, 40, 23'
     const sheen = isLightSquare ? '255, 247, 226' : '224, 196, 156'
+    const knotOpacity = isLightSquare ? 0.11 : 0.14
 
     return [square, {
       backgroundImage: [
-        `radial-gradient(ellipse at ${knotX}% ${knotY}%, rgba(${grain}, 0.075), transparent 46%)`,
+        `radial-gradient(ellipse at ${knotX}% ${knotY}%, rgba(${grain}, ${knotOpacity}) 0 6%, transparent 44%)`,
         createWoodGrainTexture(seed, isLightSquare),
-        `linear-gradient(${angle}deg, transparent 0 16%, rgba(${grain}, 0.035) 28%, transparent 43%, rgba(${sheen}, 0.065) 58%, transparent 72%, rgba(${grain}, 0.03) 88%)`,
-        `radial-gradient(ellipse at ${100 - knotX}% ${100 - knotY}%, rgba(${sheen}, 0.09), transparent 58%)`,
+        `linear-gradient(${angle}deg, transparent 0 16%, rgba(${grain}, 0.055) 28%, transparent 43%, rgba(${sheen}, 0.09) 58%, transparent 72%, rgba(${grain}, 0.045) 88%)`,
+        `radial-gradient(ellipse at ${100 - knotX}% ${100 - knotY}%, rgba(${sheen}, 0.12), transparent 58%)`,
       ].join(', '),
       backgroundPosition: `0 0, -${seed % 37}px -${seed % 31}px, 0 0, 0 0`,
       backgroundSize: `100% 100%, ${132 + (seed % 61)}% ${116 + (seed % 53)}%, 100% 100%, 100% 100%`,
@@ -124,19 +125,29 @@ const createMottledSquareStyles = (theme: 'green' | 'blue') => Object.fromEntrie
     const highlightY = 7 + ((seed * 17) % 87)
     const shadowX = 8 + ((seed * 19) % 84)
     const shadowY = 9 + ((seed * 13) % 82)
+    const chalkX = 10 + ((seed * 29) % 81)
+    const chalkY = 8 + ((seed * 31) % 85)
     const rotation = 92 + (seed % 47)
-    const lightOpacity = isLightSquare ? 0.09 : 0.12
-    const darkOpacity = isLightSquare ? 0.045 : 0.085
+    const lightOpacity = isLightSquare ? 0.15 : 0.21
+    const darkOpacity = isLightSquare ? 0.085 : 0.145
+    const chalkOpacity = seed % 5 === 0
+      ? (isLightSquare ? 0.18 : 0.27)
+      : (isLightSquare ? 0.045 : 0.065)
+    const toneLayer = seed % 3 === 0
+      ? `rgba(255, 255, 255, ${isLightSquare ? 0.035 : 0.055})`
+      : `rgba(18, 38, 31, ${isLightSquare ? 0.025 : 0.045})`
 
     return [square, {
       backgroundImage: [
-        `radial-gradient(ellipse at ${highlightX}% ${highlightY}%, rgba(255, 255, 255, ${lightOpacity}), transparent 42%)`,
+        `radial-gradient(circle at ${chalkX}% ${chalkY}%, rgba(255, 255, 255, ${chalkOpacity}) 0 4%, rgba(255, 255, 255, ${chalkOpacity * 0.45}) 11%, transparent 24%)`,
+        `radial-gradient(ellipse at ${highlightX}% ${highlightY}%, rgba(255, 255, 255, ${lightOpacity}) 0 7%, rgba(255, 255, 255, ${lightOpacity * 0.55}) 20%, transparent 48%)`,
         createMottledTexture(seed, isLightSquare, theme),
-        `linear-gradient(${rotation}deg, rgba(255, 255, 255, ${lightOpacity * 0.45}), transparent 38%, rgba(16, 35, 29, ${darkOpacity}) 100%)`,
-        `radial-gradient(ellipse at ${shadowX}% ${shadowY}%, rgba(18, 42, 34, ${darkOpacity}), transparent 55%)`,
+        `linear-gradient(${rotation}deg, rgba(255, 255, 255, ${lightOpacity * 0.52}), transparent 36%, rgba(16, 35, 29, ${darkOpacity}) 100%)`,
+        `radial-gradient(ellipse at ${shadowX}% ${shadowY}%, rgba(18, 42, 34, ${darkOpacity}) 0 8%, transparent 58%)`,
+        `linear-gradient(${toneLayer}, ${toneLayer})`,
       ].join(', '),
-      backgroundPosition: `0 0, -${seed % 41}px -${seed % 37}px, 0 0, 0 0`,
-      backgroundSize: `100% 100%, ${124 + (seed % 55)}% ${118 + (seed % 49)}%, 100% 100%, 100% 100%`,
+      backgroundPosition: `0 0, 0 0, -${seed % 41}px -${seed % 37}px, 0 0, 0 0, 0 0`,
+      backgroundSize: `100% 100%, 100% 100%, ${112 + (seed % 72)}% ${106 + (seed % 67)}%, 100% 100%, 100% 100%, 100% 100%`,
     } satisfies CSSProperties]
   }),
 ) satisfies Record<string, CSSProperties>
