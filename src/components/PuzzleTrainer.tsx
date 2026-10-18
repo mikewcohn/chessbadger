@@ -40,6 +40,12 @@ import {
   WHITE_ON_BOTTOM_STORAGE_KEY,
   type BoardTheme,
 } from '../lib/boardThemes'
+import {
+  isPieceTheme,
+  PIECE_THEMES,
+  PIECE_THEME_STORAGE_KEY,
+  type PieceTheme,
+} from '../lib/pieceThemes'
 import ResetAttempts from './ResetAttempts'
 
 type PuzzleTrainerProps = {
@@ -323,6 +329,7 @@ export default function PuzzleTrainer({
   const [boardRevision, setBoardRevision] = useState(0)
   const [alwaysWhiteOnBottom, setAlwaysWhiteOnBottom] = useState(true)
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
+  const [pieceTheme, setPieceTheme] = useState<PieceTheme>('default')
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
   const [reviewMode, setReviewMode] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
@@ -468,6 +475,8 @@ export default function PuzzleTrainer({
       ) {
         setBoardTheme(savedBoardTheme)
       }
+      const savedPieceTheme = window.localStorage.getItem(PIECE_THEME_STORAGE_KEY)
+      if (isPieceTheme(savedPieceTheme)) setPieceTheme(savedPieceTheme)
     } catch {
       // The setting still works for this page when browser storage is unavailable.
     }
@@ -486,6 +495,15 @@ export default function PuzzleTrainer({
     setBoardTheme(theme)
     try {
       window.localStorage.setItem(BOARD_THEME_STORAGE_KEY, theme)
+    } catch {
+      // Keep the in-page preference when browser storage is unavailable.
+    }
+  }
+
+  const updatePieceTheme = (theme: PieceTheme) => {
+    setPieceTheme(theme)
+    try {
+      window.localStorage.setItem(PIECE_THEME_STORAGE_KEY, theme)
     } catch {
       // Keep the in-page preference when browser storage is unavailable.
     }
@@ -1297,7 +1315,7 @@ export default function PuzzleTrainer({
       <div className="grid gap-6 md:grid-cols-[minmax(0,560px)_minmax(280px,1fr)] md:items-start lg:gap-8">
         <div className="w-full max-w-[560px] rounded-2xl border border-stone-300 bg-white p-2 shadow-sm sm:p-3">
           <ChessboardProvider
-            key={`review-${puzzle.id}-${boardTheme}`}
+            key={`review-${puzzle.id}-${boardTheme}-${pieceTheme}`}
             options={{
               id: `review-puzzle-board-${puzzle.id}`,
               position: puzzleAnswerPosition,
@@ -1309,6 +1327,7 @@ export default function PuzzleTrainer({
               clearArrowsOnClick: false,
               clearArrowsOnPositionChange: false,
               squareStyles: themeSquareStyles,
+              pieces: PIECE_THEMES[pieceTheme].pieces,
               lightSquareStyle: BOARD_THEMES[boardTheme].light,
               darkSquareStyle: BOARD_THEMES[boardTheme].dark,
               lightSquareNotationStyle: { color: BOARD_THEMES[boardTheme].lightNotation },
@@ -1319,12 +1338,20 @@ export default function PuzzleTrainer({
             <div className="overflow-hidden rounded-xl"><Chessboard /></div>
           </ChessboardProvider>
           <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-3">
-            <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
-              Board style
-              <select value={boardTheme} onChange={(event) => updateBoardTheme(event.currentTarget.value as BoardTheme)} className="cursor-pointer rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 font-semibold text-stone-900 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200">
-                {(Object.entries(BOARD_THEMES) as Array<[BoardTheme, (typeof BOARD_THEMES)[BoardTheme]]>).map(([value, theme]) => <option key={value} value={value}>{theme.label}</option>)}
-              </select>
-            </label>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+                Board style
+                <select value={boardTheme} onChange={(event) => updateBoardTheme(event.currentTarget.value as BoardTheme)} className="cursor-pointer rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 font-semibold text-stone-900 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200">
+                  {(Object.entries(BOARD_THEMES) as Array<[BoardTheme, (typeof BOARD_THEMES)[BoardTheme]]>).map(([value, theme]) => <option key={value} value={value}>{theme.label}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+                Piece style
+                <select value={pieceTheme} onChange={(event) => updatePieceTheme(event.currentTarget.value as PieceTheme)} className="cursor-pointer rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 font-semibold text-stone-900 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200">
+                  {(Object.entries(PIECE_THEMES) as Array<[PieceTheme, (typeof PIECE_THEMES)[PieceTheme]]>).map(([value, theme]) => <option key={value} value={value}>{theme.label}</option>)}
+                </select>
+              </label>
+            </div>
             <label className="flex cursor-pointer items-center gap-2 text-sm font-bold text-stone-700">
               <input type="checkbox" checked={alwaysWhiteOnBottom} onChange={(event) => updateBoardOrientationPreference(event.currentTarget.checked)} className="size-4 cursor-pointer accent-amber-800" />
               Always show White on bottom
@@ -1521,7 +1548,7 @@ export default function PuzzleTrainer({
           </form>
         ) : null}
         <ChessboardProvider
-          key={`${puzzle.id}-${boardRevision}-${boardTheme}`}
+          key={`${puzzle.id}-${boardRevision}-${boardTheme}-${pieceTheme}`}
           options={{
               id: `puzzle-board-${puzzle.id}`,
               position: boardPosition,
@@ -1534,6 +1561,7 @@ export default function PuzzleTrainer({
               clearArrowsOnClick: false,
               clearArrowsOnPositionChange: false,
               squareStyles,
+              pieces: PIECE_THEMES[pieceTheme].pieces,
               lightSquareStyle: BOARD_THEMES[boardTheme].light,
               darkSquareStyle: BOARD_THEMES[boardTheme].dark,
               lightSquareNotationStyle: { color: BOARD_THEMES[boardTheme].lightNotation },
@@ -1606,18 +1634,32 @@ export default function PuzzleTrainer({
           ) : null}
 
           <div className={`${focusMode ? 'hidden' : 'flex'} flex-wrap items-center justify-between gap-3 px-1 pt-3`}>
-            <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
-              Board style
-              <select
-                value={boardTheme}
-                onChange={(event) => updateBoardTheme(event.currentTarget.value as BoardTheme)}
-                className="cursor-pointer rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 font-semibold text-stone-900 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200"
-              >
-                {(Object.entries(BOARD_THEMES) as Array<[BoardTheme, (typeof BOARD_THEMES)[BoardTheme]]>).map(([value, theme]) => (
-                  <option key={value} value={value}>{theme.label}</option>
-                ))}
-              </select>
-            </label>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+                Board style
+                <select
+                  value={boardTheme}
+                  onChange={(event) => updateBoardTheme(event.currentTarget.value as BoardTheme)}
+                  className="cursor-pointer rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 font-semibold text-stone-900 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200"
+                >
+                  {(Object.entries(BOARD_THEMES) as Array<[BoardTheme, (typeof BOARD_THEMES)[BoardTheme]]>).map(([value, theme]) => (
+                    <option key={value} value={value}>{theme.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
+                Piece style
+                <select
+                  value={pieceTheme}
+                  onChange={(event) => updatePieceTheme(event.currentTarget.value as PieceTheme)}
+                  className="cursor-pointer rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 font-semibold text-stone-900 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200"
+                >
+                  {(Object.entries(PIECE_THEMES) as Array<[PieceTheme, (typeof PIECE_THEMES)[PieceTheme]]>).map(([value, theme]) => (
+                    <option key={value} value={value}>{theme.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <label className="flex cursor-pointer items-center gap-2 text-sm font-bold text-stone-700">
               <input
                 type="checkbox"

@@ -7,6 +7,12 @@ import {
   BOARD_THEME_STORAGE_KEY,
   type BoardTheme,
 } from '../lib/boardThemes'
+import {
+  isPieceTheme,
+  PIECE_THEMES,
+  PIECE_THEME_STORAGE_KEY,
+  type PieceTheme,
+} from '../lib/pieceThemes'
 
 type PgnViewerProps = { pgn: string }
 type PgnToken = { type: 'word' | 'comment' | 'open' | 'close'; value: string }
@@ -267,6 +273,7 @@ export default function PgnViewer({ pgn }: PgnViewerProps) {
   const [activeLineId, setActiveLineId] = useState('main')
   const [activeIndex, setActiveIndex] = useState(-1)
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
+  const [pieceTheme, setPieceTheme] = useState<PieceTheme>('default')
   const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white')
 
   const activeLine = parsed.lines.get(activeLineId) ?? parsed.mainline
@@ -287,6 +294,8 @@ export default function PgnViewer({ pgn }: PgnViewerProps) {
       if (savedTheme === 'green' || savedTheme === 'blue' || savedTheme === 'wood' || savedTheme === 'plain') {
         setBoardTheme(savedTheme)
       }
+      const savedPieceTheme = window.localStorage.getItem(PIECE_THEME_STORAGE_KEY)
+      if (isPieceTheme(savedPieceTheme)) setPieceTheme(savedPieceTheme)
     } catch {
       // Keep the in-page default when browser storage is unavailable.
     }
@@ -295,6 +304,13 @@ export default function PgnViewer({ pgn }: PgnViewerProps) {
   const updateBoardTheme = (theme: BoardTheme) => {
     setBoardTheme(theme)
     try { window.localStorage.setItem(BOARD_THEME_STORAGE_KEY, theme) } catch {
+      // Keep the in-page preference when browser storage is unavailable.
+    }
+  }
+
+  const updatePieceTheme = (theme: PieceTheme) => {
+    setPieceTheme(theme)
+    try { window.localStorage.setItem(PIECE_THEME_STORAGE_KEY, theme) } catch {
       // Keep the in-page preference when browser storage is unavailable.
     }
   }
@@ -329,12 +345,13 @@ export default function PgnViewer({ pgn }: PgnViewerProps) {
     <div className="pgn-viewer">
       <div className="pgn-board-card">
         <ChessboardProvider
-          key={`${boardTheme}-${boardOrientation}`}
+          key={`${boardTheme}-${pieceTheme}-${boardOrientation}`}
           options={{
             id: 'pgn-viewer-board', position, boardOrientation, allowDragging: false,
             allowDrawingArrows: false, arrows, clearArrowsOnClick: false,
             clearArrowsOnPositionChange: false, showNotation: true,
             squareStyles: BOARD_SQUARE_STYLES[boardTheme],
+            pieces: PIECE_THEMES[pieceTheme].pieces,
             lightSquareStyle: theme.light, darkSquareStyle: theme.dark,
             lightSquareNotationStyle: { color: theme.lightNotation },
             darkSquareNotationStyle: { color: theme.darkNotation }, canDragPiece: () => false,
@@ -348,6 +365,12 @@ export default function PgnViewer({ pgn }: PgnViewerProps) {
             <select value={boardTheme} onChange={(event) => updateBoardTheme(event.currentTarget.value as BoardTheme)}>
               {(Object.entries(BOARD_THEMES) as Array<[BoardTheme, (typeof BOARD_THEMES)[BoardTheme]]>)
                 .map(([value, boardStyle]) => <option key={value} value={value}>{boardStyle.label}</option>)}
+            </select>
+          </label>
+          <label>Piece style
+            <select value={pieceTheme} onChange={(event) => updatePieceTheme(event.currentTarget.value as PieceTheme)}>
+              {(Object.entries(PIECE_THEMES) as Array<[PieceTheme, (typeof PIECE_THEMES)[PieceTheme]]>)
+                .map(([value, pieceStyle]) => <option key={value} value={value}>{pieceStyle.label}</option>)}
             </select>
           </label>
           <button type="button" onClick={() => setBoardOrientation((value) => value === 'white' ? 'black' : 'white')}>
