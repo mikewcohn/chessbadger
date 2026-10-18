@@ -238,6 +238,100 @@ test('Chess Steps 2 Mix migration adds the first twelve puzzles and last-move co
   assert.deepEqual(collection?.puzzles[6].answers, ['Bd7-h3-f1-e2-f3+'])
 })
 
+test('workbook numbering uses printed page positions and Mix omits the page 3 answer examples', async (t) => {
+  const { db, query } = database(t)
+  db.exec(readFileSync(new URL('../migrations/0024_add_chess_steps_2_mix.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0052_align_workbook_puzzle_numbers.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0055_align_workbook_numbering_and_add_mix_pages_5_to_8.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0056_add_special_workbook_exercise_formats.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0057_refine_mix_exercise_instructions.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0058_make_line_exercises_strict_notation.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0059_format_line_exercises_as_scoresheets.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0060_remove_redundant_mix_7_8_instruction.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0061_add_remaining_chess_steps_2_mix.sql', import.meta.url), 'utf8'))
+  db.exec(readFileSync(new URL('../migrations/0062_correct_reviewed_mix_puzzles.sql', import.meta.url), 'utf8'))
+  const catalog = await readPuzzleCatalog(query)
+  const workbook = catalog.find(({ slug }) => slug === 'steps-2-workbook')
+  const collection = catalog.find(({ slug }) => slug === 'chess-steps-2-mix')
+  const puzzles = new Map(collection?.puzzles.map((puzzle) => [puzzle.id, puzzle]))
+
+  assert.equal(workbook?.puzzles[0].title, 'Puzzle 3.1')
+  assert.equal(workbook?.puzzles[0].sourcePage, 3)
+  assert.equal(workbook?.puzzles[0].pagePosition, 1)
+  assert.equal(workbook?.puzzles.find(({ id }) => id === 'page-22-puzzle-07')?.title, 'Puzzle 22.9')
+  assert.deepEqual(collection?.sections.map(({ slug, title }) => ({ slug, title })), [
+    { slug: 'workbook-puzzles', title: 'Workbook Puzzles' },
+    { slug: 'mate-in-two', title: 'Mate in Two' },
+  ])
+  assert.equal(collection?.puzzles.length, 719)
+  assert.equal(collection?.sections[0]?.puzzles.length, 672)
+  assert.equal(collection?.sections[1]?.puzzles.length, 47)
+  assert.deepEqual(collection?.puzzles.slice(11, 20).map(({ title }) => title), [
+    'Puzzle 4.12', 'Puzzle 5.1', 'Puzzle 5.2', 'Puzzle 5.3', 'Puzzle 5.4',
+    'Puzzle 5.5', 'Puzzle 5.6', 'Puzzle 5.8', 'Puzzle 5.9',
+  ])
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-5-puzzle-03')?.placements, [
+    { piece: 'wQ', square: 'e7' },
+    { piece: 'wN', square: 'c6' },
+    { piece: 'wB', square: 'e4' },
+    { piece: 'bK', square: 'd6' },
+  ])
+  assert.equal(puzzles.get('chess-steps-2-mix-page-5-puzzle-03')?.validation, 'checkmate')
+  assert.equal(
+    puzzles.get('chess-steps-2-mix-page-4-puzzle-07')?.instruction,
+    'Move the bishop, avoiding capture, until playing a check.',
+  )
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-5-puzzle-09')?.choices, ['Nxd5', 'Rxd5', 'Rxa8'])
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-6-puzzle-03')?.choices, ['gxh4', 'Rxf2', 'Re1+'])
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-6-puzzle-07')?.givenMoves, ['Ne5'])
+  assert.equal(puzzles.get('chess-steps-2-mix-page-6-puzzle-07')?.answerMode, 'notation')
+  assert.equal(puzzles.get('chess-steps-2-mix-page-6-puzzle-07')?.givenLine, '1.Ne5\n1..._____')
+  assert.equal(puzzles.get('chess-steps-2-mix-page-7-puzzle-08')?.fen, '8/1Q3ppk/P4p2/5P1K/5R1P/8/6q1/8 b - - 0 1')
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-7-puzzle-08')?.givenMoves, ['g6+', 'fxg6+'])
+  assert.equal(puzzles.get('chess-steps-2-mix-page-7-puzzle-08')?.givenLine, '1...g6+\n2.fxg6+ _____')
+  assert.equal(puzzles.get('chess-steps-2-mix-page-7-puzzle-08')?.instruction, undefined)
+  assert.equal(puzzles.get('chess-steps-2-mix-page-7-puzzle-08')?.answerMode, 'notation')
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-7-puzzle-08')?.answers, ['Qxg6#'])
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-8-puzzle-04')?.choices, ['Qc8+', 'Nxd5', 'Qxf6'])
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-8-puzzle-08')?.givenMoves, ['Bxc6+', 'bxc6'])
+  assert.equal(puzzles.get('chess-steps-2-mix-page-8-puzzle-08')?.givenLine, '1.Bxc6+\n1...bxc6\n2._____')
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-8-puzzle-08')?.answers, ['dxe5'])
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-13-puzzle-06')?.choices, ['Be6', 'Qxf3', 'Bxf2+'])
+  assert.equal(puzzles.get('chess-steps-2-mix-page-31-puzzle-02')?.answerMode, 'notation')
+  assert.equal(puzzles.get('chess-steps-2-mix-page-31-puzzle-02')?.givenLine, '1.Qa8+')
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-31-puzzle-02')?.notationFields, [
+    { prefix: '1...Kxa8 2.', answers: ['c8=Q#'] },
+    { prefix: '1...Kb6 2.', answers: ['c8=N#'] },
+  ])
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-34-puzzle-05')?.notationFields, [
+    { prefix: '1...Nc5? 2.', answers: ['Qa3'] },
+    { prefix: '1...', answers: ['Nf6', 'Nf6!'] },
+  ])
+  assert.equal(puzzles.get('chess-steps-2-mix-page-35-puzzle-12')?.fen, '5rk1/3RQppp/2p5/1p6/p7/1P2P1PP/q4PK1/8 w - - 0 1')
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-35-puzzle-12')?.answers, ['Rd8'])
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-43-puzzle-01')?.answers, ['Bxa2'])
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-46-puzzle-08')?.answers, ['c8=N+'])
+  assert.deepEqual(puzzles.get('chess-steps-2-mix-page-40-puzzle-09')?.routeLines?.map((line) => line.length), [8, 8])
+  assert.equal(puzzles.get('chess-steps-2-mix-page-47-puzzle-07')?.type, 'composition')
+  assert.equal(puzzles.get('chess-steps-2-mix-page-61-puzzle-02')?.playThrough, true)
+  assert.equal(collection?.puzzles.at(-1)?.title, 'Puzzle 64.12')
+
+  for (const puzzle of collection?.puzzles ?? []) {
+    if (puzzle.type === 'placement' || puzzle.type === 'composition' || puzzle.routeMoves || puzzle.answerMode === 'notation') continue
+    if (puzzle.playThrough && puzzle.solutionLines) {
+      for (const line of puzzle.solutionLines) {
+        const game = new Chess(puzzle.fen)
+        for (const move of puzzle.givenMoves ?? []) game.move(move)
+        assert.deepEqual(line.map((move) => game.move(move).san), line, puzzle.id)
+      }
+    } else {
+      const game = new Chess(puzzle.fen)
+      for (const move of puzzle.givenMoves ?? []) game.move(move)
+      assert.equal(game.move(puzzle.answers[0]).san, puzzle.answers[0], puzzle.id)
+    }
+  }
+})
+
 test('page 27 placement puzzles match the workbook instructions and piece colors', async (t) => {
   const { db, query } = database(t)
   db.exec(readFileSync(new URL('../migrations/0020_correct_steps_page_27_placement_puzzles.sql', import.meta.url), 'utf8'))
@@ -625,7 +719,7 @@ test('audited workbook pages 21 through 56 match the approved catalog', async (t
   const hash = createHash('sha256')
     .update(JSON.stringify(canonical(auditedPuzzles)))
     .digest('hex')
-  assert.equal(hash, 'f0f80a9d8fcac5f91ccc8e6c0577a22febc2e16fa1659cec5aeed91eb4b4f544')
+  assert.equal(hash, '3ae1db324cf4029440970c7ae9e65f797b4917bcb71c05b66c149db7e5c13346')
 
   const puzzles = new Map(auditedPuzzles)
   assert.deepEqual(

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type SubmitEvent } from 'react'
 import { Chess, type Square } from 'chess.js'
 import {
   Chessboard,
@@ -10,7 +10,8 @@ import {
 } from 'react-chessboard'
 import type { PlaceablePiece, Puzzle } from '../types/puzzles'
 import { formatDuration, usePuzzleTimer } from '../hooks/usePuzzleTimer'
-import { normalizeSan } from '../lib/chessNotation'
+import { normalizeSan, normalizeStrictSan } from '../lib/chessNotation'
+import { isComposedCheckmate } from '../lib/compositionMate'
 import {
   cachePracticeAttempt,
   getCachedPracticeAttempts,
@@ -83,6 +84,8 @@ const moveWithExpectedPromotion = (
 }
 
 const pieceNames = {
+  wK: 'white king',
+  bK: 'black king',
   wQ: 'white queen',
   bQ: 'black queen',
   wR: 'white rook',
@@ -96,6 +99,8 @@ const pieceNames = {
 } as const
 
 const pieceLetters = {
+  wK: 'K',
+  bK: 'K',
   wQ: 'Q',
   bQ: 'Q',
   wR: 'R',
@@ -124,11 +129,35 @@ const formatAnswers = (puzzle: Puzzle) => {
   return puzzle.answers.map((answer) => formatAnswer(puzzle, answer)).join(', ')
 }
 
-const initialPositionForPuzzle = (puzzle: Puzzle) => (
-  puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.lastMove
+const positionAfterGivenMoves = (puzzle: Puzzle) => {
+  if (
+    puzzle.type === 'placement'
+    || puzzle.type === 'composition'
+    || puzzle.answerMode === 'notation'
+    || !puzzle.givenMoves?.length
+  ) {
+    return puzzle.fen
+  }
+
+  const game = new Chess(puzzle.fen)
+  puzzle.givenMoves.forEach((move) => game.move(move))
+  return game.fen()
+}
+
+const initialPositionForPuzzle = (puzzle: Puzzle) => {
+  if (
+    puzzle.type !== 'placement'
+    && puzzle.type !== 'composition'
+    && puzzle.answerMode !== 'notation'
+    && puzzle.givenMoves?.length
+  ) {
+    return positionAfterGivenMoves(puzzle)
+  }
+
+  return puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.lastMove
     ? puzzle.lastMove.previousFen
     : puzzle.fen
-)
+}
 
 const createRouteArrows = (
   moves: string[],
@@ -138,6 +167,12 @@ const createRouteArrows = (
   endSquare: move.slice(2, 4) as Square,
   color,
 }))
+
+const routeSolutions = (puzzle: Puzzle) => puzzle.type !== 'placement'
+  && puzzle.type !== 'composition'
+  && puzzle.routeMoves
+  ? puzzle.routeLines?.length ? puzzle.routeLines : [puzzle.routeMoves]
+  : []
 
 const positionAfterCoordinateMoves = (fen: string, moves: string[]): PositionDataType => {
   let nextPosition = fenStringToPositionObject(fen, 8, 8)
@@ -155,7 +190,36 @@ const positionAfterCoordinateMoves = (fen: string, moves: string[]): PositionDat
   return nextPosition
 }
 
+const positionObjectToFen = (position: PositionDataType) => {
+  const ranks = Array.from({ length: 8 }, (_, rankIndex) => {
+    let rank = ''
+    let emptySquares = 0
+
+    for (let fileIndex = 0; fileIndex < 8; fileIndex += 1) {
+      const square = `${String.fromCharCode(97 + fileIndex)}${8 - rankIndex}` as Square
+      const pieceType = position[square]?.pieceType
+      if (!pieceType) {
+        emptySquares += 1
+        continue
+      }
+
+      if (emptySquares > 0) {
+        rank += String(emptySquares)
+        emptySquares = 0
+      }
+      const pieceLetter = pieceType.slice(1)
+      rank += pieceType.startsWith('b') ? pieceLetter.toLowerCase() : pieceLetter
+    }
+
+    return `${rank}${emptySquares || ''}`
+  })
+
+  return `${ranks.join('/')} w - - 0 1`
+}
+
 const createAnswerArrows = (puzzle: Puzzle): Arrow[] => {
+
+  if (puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.answerMode === 'notation') return []
 
   if (puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.routeMoves) {
     return createRouteArrows(puzzle.routeMoves, 'rgba(217, 119, 6, 0.9)')
@@ -172,7 +236,7 @@ const createAnswerArrows = (puzzle: Puzzle): Arrow[] => {
   if (puzzle.type === 'composition') return []
 
   return puzzle.answers.flatMap((answer) => {
-    const game = new Chess(puzzle.fen)
+    const game = new Chess(positionAfterGivenMoves(puzzle))
 
     try {
       const move = game.move(normalizeSan(answer))
@@ -193,6 +257,7 @@ const createAttemptArrow = (
   color = 'rgba(4, 120, 87, 0.9)',
 ): Arrow[] => {
   if (puzzle.type === 'placement' || puzzle.type === 'composition') return []
+  if (puzzle.answerMode === 'notation') return []
 
   const firstMove = attemptMove.trim().split(/\s+/)[0]
 
@@ -214,7 +279,7 @@ const createAttemptArrow = (
     }] : []
   }
 
-  const game = new Chess(puzzle.fen)
+  const game = new Chess(positionAfterGivenMoves(puzzle))
 
   try {
     const move = game.move(normalizeSan(firstMove))
@@ -240,6 +305,7 @@ export default function PuzzleTrainer({
   const [puzzleIndex, setPuzzleIndex] = useState(initialPuzzleIndex)
   const [position, setPosition] = useState<string | PositionDataType>(initialPositionForPuzzle(puzzles[initialPuzzleIndex]))
   const [attemptedMove, setAttemptedMove] = useState<string | null>(null)
+  const [notationAnswers, setNotationAnswers] = useState<string[]>([''])
   const [result, setResult] = useState<Result>(null)
   const [answerVisible, setAnswerVisible] = useState(false)
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
@@ -273,6 +339,25 @@ export default function PuzzleTrainer({
   const timer = usePuzzleTimer()
 
   const puzzle = puzzles[puzzleIndex]
+  const puzzleAnswerPosition = positionAfterGivenMoves(puzzle)
+  const notationLineParts = puzzle.type !== 'placement'
+    && puzzle.type !== 'composition'
+    && puzzle.givenLine
+    ? puzzle.givenLine.split('_____')
+    : ['', '']
+  const notationLineRows = notationLineParts[0].trimEnd().split('\n')
+  const notationAnswerPrefix = notationLineRows.at(-1) ?? ''
+  const notationGivenRows = puzzle.type !== 'placement'
+    && puzzle.type !== 'composition'
+    && puzzle.notationFields?.length
+    ? puzzle.givenLine?.split('\n').filter(Boolean) ?? []
+    : notationLineRows.slice(0, -1)
+  const notationAnswerSuffix = notationLineParts[1] ?? ''
+  const notationFields = puzzle.type !== 'placement'
+    && puzzle.type !== 'composition'
+    && puzzle.notationFields?.length
+    ? puzzle.notationFields
+    : [{ prefix: notationAnswerPrefix, suffix: notationAnswerSuffix, answers: puzzle.answers }]
   const puzzleAttempts = attemptHistory[puzzle.id] ?? []
   const retryMode = retryQueue !== null
   const retryNavigation = retryNeighbors(retryQueue ?? [], puzzle.id)
@@ -297,18 +382,21 @@ export default function PuzzleTrainer({
       && puzzle.solutionLines?.every((line) => line.at(-1)?.endsWith('#')) === true
   const sideToMove = puzzle.type === 'placement' || puzzle.type === 'composition'
     ? null
-    : puzzle.sideToMove
+    : puzzle.answerMode === 'notation'
+      ? new Chess(puzzle.fen).turn() === 'w' ? 'White' : 'Black'
+      : puzzle.sideToMove
       ? puzzle.sideToMove === 'white' ? 'White' : 'Black'
-      : new Chess(puzzle.fen).turn() === 'w' ? 'White' : 'Black'
+      : new Chess(puzzleAnswerPosition).turn() === 'w' ? 'White' : 'Black'
   const boardOrientation = alwaysWhiteOnBottom || sideToMove !== 'Black' ? 'white' : 'black'
   const isMultiMovePuzzle = puzzle.type !== 'placement'
     && puzzle.type !== 'composition'
     && (
       (puzzle.playThrough && puzzle.solutionLines?.some((line) => line.length > 1) === true)
-      || (puzzle.routeMoves?.length ?? 0) > 1
+      || Math.max(0, ...routeSolutions(puzzle).map((line) => line.length)) > 1
     )
   const boardArrows = useMemo(
     () => {
+      if (puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.answerMode === 'notation') return []
       if (answerVisible && puzzle.type !== 'placement' && puzzle.type !== 'composition') {
         return createAnswerArrows(puzzle)
       }
@@ -325,6 +413,7 @@ export default function PuzzleTrainer({
         )
       }
 
+      if (puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.choices) return []
       if (isMultiMovePuzzle) return []
       if (attemptedMove !== null && result !== 'correct') return []
       const correctAttempt = puzzleAttempts.findLast((attempt) => attempt.result === 'correct')
@@ -333,7 +422,11 @@ export default function PuzzleTrainer({
     [answerVisible, attemptedMove, isMultiMovePuzzle, puzzle, puzzleAttempts, result, routeMoveHistory],
   )
   const reviewArrows = useMemo(
-    () => isMultiMovePuzzle ? [] : puzzleAttempts.flatMap((attempt) => {
+    () => isMultiMovePuzzle || (
+      puzzle.type !== 'placement'
+      && puzzle.type !== 'composition'
+      && (puzzle.choices || puzzle.answerMode === 'notation')
+    ) ? [] : puzzleAttempts.flatMap((attempt) => {
       if (attempt.result === 'correct') return createAttemptArrow(puzzle, attempt.move)
       if (attempt.result === 'incorrect') {
         return createAttemptArrow(puzzle, attempt.move, 'rgba(190, 18, 60, 0.9)')
@@ -357,7 +450,7 @@ export default function PuzzleTrainer({
       })
     }
 
-    return nextPosition
+    return positionObjectToFen(nextPosition)
   }, [compositionPlacements, placedSquares, position, puzzle])
 
   useEffect(() => {
@@ -543,6 +636,7 @@ export default function PuzzleTrainer({
     setPuzzleIndex(nextIndex)
     setPosition(initialPositionForPuzzle(nextPuzzle))
     setAttemptedMove(null)
+    setNotationAnswers([''])
     setResult(null)
     setAnswerVisible(false)
     setSelectedSquare(null)
@@ -630,7 +724,7 @@ export default function PuzzleTrainer({
       window.clearTimeout(replyTimerRef.current)
       replyTimerRef.current = null
     }
-    setPosition(puzzle.fen)
+    setPosition(puzzleAnswerPosition)
     setSelectedSquare(null)
     setPlacementPieceSelected(false)
     setPlacedSquares(puzzle.type === 'placement' ? puzzle.answers : [])
@@ -710,6 +804,43 @@ export default function PuzzleTrainer({
     checkMoveAttempt('No')
   }
 
+  const answerChoice = (choice: string) => {
+    if (
+      puzzle.type === 'placement'
+      || puzzle.type === 'composition'
+      || !puzzle.choices
+      || attemptedMove
+      || answerVisible
+      || !timer.isRunning
+    ) return
+
+    setAttemptedMove(choice)
+    setSelectedSquare(null)
+    checkMoveAttempt(choice)
+  }
+
+  const submitNotationAnswer = (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (
+      puzzle.type === 'placement'
+      || puzzle.type === 'composition'
+      || puzzle.answerMode !== 'notation'
+      || attemptedMove
+      || answerVisible
+      || !timer.isRunning
+    ) return
+
+    const submittedAnswers = notationFields.map((_, index) => notationAnswers[index]?.trim() ?? '')
+    if (submittedAnswers.some((answer) => !answer)) return
+    const submittedAnswer = submittedAnswers.join(' ')
+    const isCorrect = notationFields.every((field, index) => (
+      new Set(field.answers.map(normalizeStrictSan)).has(normalizeStrictSan(submittedAnswers[index]))
+    ))
+    setAttemptedMove(submittedAnswer)
+    setSelectedSquare(null)
+    recordAttempt(submittedAnswer, isCorrect ? 'correct' : 'incorrect')
+  }
+
   const continueSolutionLine = (game: Chess, line: string[], replyPly: number) => {
     const replySan = line[replyPly]
     if (!replySan) return false
@@ -736,6 +867,7 @@ export default function PuzzleTrainer({
       || attemptedMove
       || isResponding
       || isShowingLastMove
+      || puzzle.answerMode === 'notation'
       || !timer.isRunning
     ) return false
 
@@ -957,12 +1089,14 @@ export default function PuzzleTrainer({
       return true
     }
 
+    if (compositionPlacements[targetSquare]) return false
+
+    const availablePieceCount = puzzle.pieces.filter((piece) => piece === pieceType).length
+    const placedPieceCount = Object.values(compositionPlacements).filter((piece) => piece === pieceType).length
+    if (placedPieceCount >= availablePieceCount) return false
+
     setCompositionPlacements((placements) => {
-      const next = Object.fromEntries(
-        Object.entries(placements).filter(([, placedPiece]) => placedPiece !== pieceType),
-      )
-      next[targetSquare] = pieceType
-      return next
+      return { ...placements, [targetSquare]: pieceType }
     })
     setSelectedCompositionPiece(null)
     return true
@@ -971,8 +1105,16 @@ export default function PuzzleTrainer({
   const checkComposition = () => {
     if (puzzle.type !== 'composition' || Object.keys(compositionPlacements).length === 0 || attemptedMove) return
 
-    const isCorrect = Object.keys(compositionPlacements).length === puzzle.placements.length
-      && puzzle.placements.every(({ piece, square }) => compositionPlacements[square] === piece)
+    const hasEveryPiece = Object.keys(compositionPlacements).length === puzzle.placements.length
+    const isCorrect = hasEveryPiece && (puzzle.validation === 'checkmate'
+      ? isComposedCheckmate([
+          ...Object.entries(fenStringToPositionObject(puzzle.fen, 8, 8)).map(([square, piece]) => ({
+            square,
+            piece: piece.pieceType,
+          })),
+          ...Object.entries(compositionPlacements).map(([square, piece]) => ({ square, piece })),
+        ])
+      : puzzle.placements.every(({ piece, square }) => compositionPlacements[square] === piece))
     const attemptLabel = Object.entries(compositionPlacements)
       .map(([square, piece]) => `${pieceLetters[piece]}${square}`)
       .join(', ')
@@ -1010,10 +1152,10 @@ export default function PuzzleTrainer({
       || !timer.isRunning
     ) return
 
-    const isCorrect = routeMoveHistory.length === puzzle.routeMoves.length
-      && puzzle.routeMoves.every(
-        (move, index) => move.toLowerCase() === routeMoveHistory[index]?.toLowerCase(),
-      )
+    const isCorrect = routeSolutions(puzzle).some((line) => (
+      routeMoveHistory.length === line.length
+      && line.every((move, index) => move.toLowerCase() === routeMoveHistory[index]?.toLowerCase())
+    ))
 
     if (!isCorrect) {
       setRouteCheckMessage('Not quite—adjust your route and check again.')
@@ -1049,6 +1191,8 @@ export default function PuzzleTrainer({
       return
     }
 
+    if (puzzle.choices || puzzle.answerMode === 'notation') return
+
 
     if (puzzle.answerMoves || puzzle.routeMoves) {
       const currentPosition = typeof position === 'string'
@@ -1063,9 +1207,12 @@ export default function PuzzleTrainer({
 
       const piece = currentPosition[clickedSquare]
       const expectedColor = puzzle.sideToMove === 'black' ? 'b' : 'w'
-      const routeSourceSquare = puzzle.routeMoves
-        ? routeMoveHistory.at(-1)?.slice(2, 4) ?? puzzle.routeMoves[0]?.slice(0, 2)
+      const matchingRoute = puzzle.routeMoves
+        ? routeSolutions(puzzle).find((line) => routeMoveHistory.every(
+          (move, index) => move.toLowerCase() === line[index]?.toLowerCase(),
+        ))
         : null
+      const routeSourceSquare = matchingRoute?.[routeMoveHistory.length]?.slice(0, 2) ?? null
       if (
         piece?.pieceType.startsWith(expectedColor)
         && (!routeSourceSquare || clickedSquare === routeSourceSquare)
@@ -1153,7 +1300,7 @@ export default function PuzzleTrainer({
             key={`review-${puzzle.id}-${boardTheme}`}
             options={{
               id: `review-puzzle-board-${puzzle.id}`,
-              position: puzzle.fen,
+              position: puzzleAnswerPosition,
               boardOrientation,
               showNotation: true,
               allowDragging: false,
@@ -1295,14 +1442,30 @@ export default function PuzzleTrainer({
         className={`relative flex w-full flex-col rounded-2xl border border-stone-300 bg-white p-2 shadow-sm sm:p-3 ${focusMode ? 'mx-auto' : ''}`}
         style={focusMode ? { maxWidth: 'min(calc(100vh - 9rem), calc(100vw - 2rem))' } : undefined}
       >
-        <div className="flex items-center justify-end px-1 pb-2">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-1 pb-2">
+          <span aria-hidden="true" />
+          <p className="flex min-w-0 items-center justify-center gap-2 text-center text-sm font-bold text-stone-800 sm:text-base">
+            {puzzle.type === 'placement' || puzzle.type === 'composition' ? (
+              puzzle.instruction ?? (puzzle.type === 'placement'
+                ? 'Place the piece on all squares that make a double attack.'
+                : 'Place both pieces so the king is checkmated.')
+            ) : (
+              <>
+                <span
+                  aria-hidden="true"
+                  className={`size-3.5 shrink-0 border border-stone-700 ${sideToMove === 'White' ? 'bg-white' : 'bg-stone-950'}`}
+                />
+                {sideToMove} to move
+              </>
+            )}
+          </p>
           <button
             ref={focusModeButtonRef}
             type="button"
             onClick={toggleFocusMode}
             aria-pressed={focusMode}
             aria-keyshortcuts="Escape"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-bold text-stone-700 shadow-sm transition hover:border-amber-700 hover:text-amber-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
+            className="inline-flex cursor-pointer items-center gap-2 justify-self-end rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-bold text-stone-700 shadow-sm transition hover:border-amber-700 hover:text-amber-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
           >
             {focusMode ? (
               <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2"><path d="M9 4v5H4m11-5v5h5M9 20v-5H4m11 5v-5h5" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -1312,6 +1475,51 @@ export default function PuzzleTrainer({
             {focusMode ? 'Exit focus' : 'Focus'}
           </button>
         </div>
+        {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.answerMode === 'notation' && (puzzle.givenLine || puzzle.notationFields?.length) ? (
+          <form onSubmit={submitNotationAnswer} className="mb-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
+            <label htmlFor={`notation-answer-${puzzle.id}-0`} className="text-sm font-bold text-stone-700">
+              {notationFields.length > 1 ? 'Complete the lines' : 'Complete the line'}
+            </label>
+            <div className="mt-2 font-mono text-base font-semibold text-stone-900">
+              <div aria-label="Move sequence" className="grid gap-1">
+                {notationGivenRows.map((line, index) => (
+                  <p key={`${line}-${index}`}>{line}</p>
+                ))}
+                {notationFields.map((field, index) => (
+                  <div key={`${field.prefix}-${index}`} className="flex flex-wrap items-center gap-2">
+                    <span>{field.prefix}</span>
+                    <input
+                      id={`notation-answer-${puzzle.id}-${index}`}
+                      value={notationAnswers[index] ?? ''}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value
+                        setNotationAnswers((answers) => {
+                          const nextAnswers = [...answers]
+                          nextAnswers[index] = value
+                          return nextAnswers
+                        })
+                      }}
+                      disabled={Boolean(attemptedMove) || answerVisible || !timer.isRunning}
+                      aria-label={`Missing move ${index + 1}`}
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="min-h-11 w-32 rounded-lg border border-stone-300 bg-white px-3 py-2 font-mono text-base font-bold text-stone-950 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200 disabled:cursor-not-allowed disabled:bg-stone-100"
+                    />
+                    {field.suffix ? <span>{field.suffix}</span> : null}
+                  </div>
+                ))}
+                <button
+                  type="submit"
+                  disabled={notationFields.some((_, index) => !notationAnswers[index]?.trim()) || Boolean(attemptedMove) || answerVisible || !timer.isRunning}
+                  className="mt-1 min-h-11 w-fit cursor-pointer rounded-lg bg-stone-950 px-4 py-2 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Check answer
+                </button>
+              </div>
+            </div>
+            <p className="mt-2 text-xs font-semibold text-stone-600">Enter full algebraic notation, including + or #.</p>
+          </form>
+        ) : null}
         <ChessboardProvider
           key={`${puzzle.id}-${boardRevision}-${boardTheme}`}
           options={{
@@ -1320,7 +1528,7 @@ export default function PuzzleTrainer({
               boardOrientation,
               showNotation: true,
               animationDurationInMs: 520,
-              allowDragging: attemptedMove === null && !isShowingLastMove && timer.isRunning,
+              allowDragging: attemptedMove === null && !isShowingLastMove && timer.isRunning && !(puzzle.type !== 'placement' && puzzle.type !== 'composition' && (puzzle.choices || puzzle.answerMode === 'notation')),
               allowDrawingArrows: false,
               arrows: boardArrows,
               clearArrowsOnClick: false,
@@ -1338,7 +1546,7 @@ export default function PuzzleTrainer({
                 if (puzzle.type === 'composition') {
                   return isSparePiece || (square !== null && Boolean(compositionPlacements[square]))
                 }
-                return !isSparePiece
+                return !isSparePiece && !puzzle.choices && puzzle.answerMode !== 'notation'
               },
               onPieceClick: ({ isSparePiece, piece }) => {
                 if (puzzle.type === 'placement' && isSparePiece && !attemptedMove && timer.isRunning) {
@@ -1364,6 +1572,38 @@ export default function PuzzleTrainer({
           <div className="overflow-hidden rounded-xl">
             <Chessboard />
           </div>
+
+          {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.choices ? (
+            <fieldset className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
+              <legend className="px-1 text-sm font-bold text-stone-700">Choose the correct move</legend>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {puzzle.choices.map((choice) => {
+                  const isSelected = attemptedMove === choice
+                  const isCorrectChoice = puzzle.answers.some((answer) => normalizeSan(answer) === normalizeSan(choice))
+                  const choiceClass = answerVisible && isCorrectChoice
+                    ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
+                    : isSelected && result === 'correct'
+                      ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
+                      : isSelected && result === 'incorrect'
+                        ? 'border-rose-700 bg-rose-50 text-rose-950'
+                        : 'border-stone-300 bg-white text-stone-900 hover:border-amber-700 hover:text-amber-950'
+
+                  return (
+                    <button
+                      key={choice}
+                      type="button"
+                      onClick={() => answerChoice(choice)}
+                      disabled={Boolean(attemptedMove) || answerVisible || !timer.isRunning}
+                      className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-bold transition disabled:cursor-not-allowed ${choiceClass}`}
+                    >
+                      <span aria-hidden="true" className={`size-4 shrink-0 rounded-full border-2 ${isSelected ? 'border-current bg-current shadow-[inset_0_0_0_3px_white]' : 'border-stone-500 bg-white'}`} />
+                      {choice}
+                    </button>
+                  )
+                })}
+              </div>
+            </fieldset>
+          ) : null}
 
           <div className={`${focusMode ? 'hidden' : 'flex'} flex-wrap items-center justify-between gap-3 px-1 pt-3`}>
             <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
@@ -1417,11 +1657,13 @@ export default function PuzzleTrainer({
                   : 'Drag a placed piece, or click it to reposition.'}
               </p>
               <div className="flex shrink-0 gap-2">
-                {puzzle.pieces.map((piece) => {
-                  const isPlaced = Object.values(compositionPlacements).includes(piece)
+                {puzzle.pieces.map((piece, index) => {
+                  const pieceOccurrence = puzzle.pieces.slice(0, index + 1).filter((candidate) => candidate === piece).length
+                  const placedCount = Object.values(compositionPlacements).filter((candidate) => candidate === piece).length
+                  const isPlaced = placedCount >= pieceOccurrence
                   return (
                     <div
-                      key={piece}
+                      key={`${piece}-${index}`}
                       className={`size-14 rounded-xl border bg-stone-50 p-1 transition sm:size-16 ${
                         selectedCompositionPiece === piece
                           ? 'border-amber-700 ring-4 ring-amber-200'
@@ -1576,13 +1818,9 @@ export default function PuzzleTrainer({
             </button>
 
             <div className="flex min-w-0 flex-col items-center justify-center gap-2 text-center sm:flex-row sm:flex-wrap">
-              <p className="text-sm font-bold text-stone-700">
-                {puzzle.type === 'placement'
-                  ? puzzle.instruction ?? 'Place the piece on all squares that make a double attack.'
-                  : puzzle.type === 'composition'
-                    ? puzzle.instruction ?? 'Place both pieces so the king is checkmated.'
-                    : puzzle.instruction ?? `${sideToMove} to move`}
-              </p>
+              {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.instruction ? (
+                <p className="text-sm font-bold text-stone-700">{puzzle.instruction}</p>
+              ) : null}
               {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.routeMoves && result === null ? (
                 <p className={routeCheckMessage ? 'text-sm font-bold text-rose-800' : 'text-sm font-semibold text-amber-900'} aria-live="polite">
                   {routeCheckMessage || `${routeMoveHistory.length} ${routeMoveHistory.length === 1 ? 'move' : 'moves'} played`}
@@ -1683,13 +1921,14 @@ export default function PuzzleTrainer({
         <h1 className="mt-3 text-2xl font-bold tracking-[-0.015em] text-stone-950 sm:text-3xl">
           {puzzle.title}
         </h1>
-        <p className="mt-3 text-lg font-semibold text-stone-700">
-          {puzzle.type === 'placement'
-            ? puzzle.instruction ?? 'Place the piece on all squares that make a double attack.'
-            : puzzle.type === 'composition'
-              ? puzzle.instruction ?? 'Place both pieces so the king is checkmated.'
-              : puzzle.instruction ?? `${sideToMove} to move`}
-        </p>
+        {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.instruction ? (
+          <p className="mt-3 text-lg font-semibold text-stone-700">{puzzle.instruction}</p>
+        ) : null}
+        {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.answerMode !== 'notation' && puzzle.givenMoves?.length ? (
+          <p className="mt-2 text-sm font-bold text-amber-900">
+            Given moves: {puzzle.givenMoves.join(' ')}. Play the missing move.
+          </p>
+        ) : null}
         {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.lastMove ? (
           <p className="mt-2 text-sm font-bold text-amber-900" aria-live="polite">
             Last move: {puzzle.lastMove.san}. Find the best response.
@@ -1753,15 +1992,11 @@ export default function PuzzleTrainer({
           </section>
         ) : null}
 
-        {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.playThrough && result === null ? (
+        {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.playThrough && result === null && (isResponding || opponentReply) ? (
           <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-950" aria-live="polite">
             {isResponding
               ? 'Opponent is replying…'
-              : opponentReply
-                ? `${sideToMove === 'White' ? 'Black' : 'White'} replied ${opponentReply}. ${activeSolutionLine && nextSolutionPly === activeSolutionLine.length - 1 && solutionEndsInMate ? 'Finish the mate.' : 'Continue the combination.'}`
-                : puzzle.solutionLines?.some((line) => line.length > 3)
-                  ? `Find the first move. Play the combination through${solutionEndsInMate ? ' to mate' : ''}.`
-                  : `Find the first move. After the reply, finish the ${solutionEndsInMate ? 'mate' : 'combination'}.`}
+              : `${sideToMove === 'White' ? 'Black' : 'White'} replied ${opponentReply}. ${activeSolutionLine && nextSolutionPly === activeSolutionLine.length - 1 && solutionEndsInMate ? 'Finish the mate.' : 'Continue the combination.'}`}
           </p>
         ) : null}
 

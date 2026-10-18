@@ -1,6 +1,8 @@
 type PuzzleBase = {
   id: string
   title: string
+  sourcePage?: number
+  pagePosition?: number
   workbookPuzzleNumber?: number
   fen: string
   answers: string[]
@@ -14,6 +16,7 @@ export type PuzzleLastMove = {
 }
 
 export type PlaceablePiece =
+  | 'wK' | 'bK'
   | 'wQ' | 'bQ'
   | 'wR' | 'bR'
   | 'wB' | 'bB'
@@ -23,12 +26,22 @@ export type PlaceablePiece =
 type MovePuzzle = PuzzleBase & {
   type?: 'move'
   instruction?: string
+  choices?: string[]
+  givenMoves?: string[]
+  givenLine?: string
+  notationFields?: Array<{
+    prefix: string
+    answers: string[]
+    suffix?: string
+  }>
+  answerMode?: 'notation'
   canAnswerNo?: boolean
   solutionLines?: string[][]
   solutionNote?: string
   playThrough?: boolean
   answerMoves?: string[]
   routeMoves?: string[]
+  routeLines?: string[][]
   sideToMove?: 'white' | 'black'
   lastMove?: PuzzleLastMove
 }
@@ -43,6 +56,7 @@ export type CompositionPuzzle = PuzzleBase & {
   type: 'composition'
   pieces: PlaceablePiece[]
   placements: Array<{ piece: PlaceablePiece; square: string }>
+  validation?: 'checkmate'
   instruction?: string
 }
 

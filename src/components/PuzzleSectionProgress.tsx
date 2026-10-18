@@ -11,6 +11,7 @@ import { retryPuzzleHref, retrySearch, saveRetryQueue, type RetryStatus } from '
 import PuzzleProgressBar from './PuzzleProgressBar'
 import ResetAttempts from './ResetAttempts'
 import StudentPuzzleResults from './StudentPuzzleResults'
+import type { Puzzle } from '../types/puzzles'
 
 type PuzzleSectionProgressProps = {
   collection: PuzzleCollection
@@ -18,6 +19,11 @@ type PuzzleSectionProgressProps = {
 }
 
 const RANGE_SIZE = 100
+
+const puzzleNumberLabel = (puzzle: Puzzle) => {
+  if (puzzle.sourcePage && puzzle.pagePosition) return `${puzzle.sourcePage}.${puzzle.pagePosition}`
+  return puzzle.title.replace(/^Puzzle\s+/, '').replace(/^Page (\d+), Puzzle (\d+)$/, '$1.$2')
+}
 
 const statusLabel: Record<PuzzleProgressStatus, string> = {
   clean: 'First try',
@@ -140,8 +146,8 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   )
   const rangeEnd = Math.min(rangeStart + RANGE_SIZE, section.puzzles.length)
   const visiblePuzzleIndices = Array.from({ length: rangeEnd - rangeStart }, (_, index) => rangeStart + index)
-  const firstBookProblem = Number(section.puzzles[0]?.title.match(/\d+$/)?.[0])
-  const jumpPlaceholder = Number.isFinite(firstBookProblem) ? `e.g. ${firstBookProblem}` : 'e.g. 1'
+  const firstPuzzleNumber = section.puzzles[0] ? puzzleNumberLabel(section.puzzles[0]) : '1'
+  const jumpPlaceholder = `e.g. ${firstPuzzleNumber}`
   const retryIndices = statuses.flatMap((status, index) => (
     (includeUnsolved && status === 'missed') || (includeRetried && status === 'retried') ? [index] : []
   ))
@@ -163,17 +169,18 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
 
   const handleJump = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const requested = Number(jumpValue)
-    if (!Number.isInteger(requested)) {
-      setJumpError('Enter a whole puzzle number.')
+    const requestedLabel = jumpValue.trim().replace(/^Puzzle\s+/i, '')
+    if (!requestedLabel) {
+      setJumpError(`Enter a puzzle number such as ${firstPuzzleNumber}.`)
       return
     }
 
-    const bookIndex = section.puzzles.findIndex((puzzle) => Number(puzzle.title.match(/\d+$/)?.[0]) === requested)
+    const bookIndex = section.puzzles.findIndex((puzzle) => puzzleNumberLabel(puzzle) === requestedLabel)
+    const requestedIndex = Number(requestedLabel)
     const puzzleIndex = bookIndex >= 0
       ? bookIndex
-      : requested >= 1 && requested <= section.puzzles.length
-        ? requested - 1
+      : Number.isInteger(requestedIndex) && requestedIndex >= 1 && requestedIndex <= section.puzzles.length
+        ? requestedIndex - 1
         : -1
 
     if (puzzleIndex < 0) {
@@ -237,14 +244,16 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
       <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <h2 className="text-xl font-bold tracking-[-0.015em] text-stone-950">Puzzles {rangeStart + 1}–{rangeEnd}</h2>
+            <h2 className="text-xl font-bold tracking-[-0.015em] text-stone-950">
+              Puzzles {puzzleNumberLabel(section.puzzles[rangeStart])}–{puzzleNumberLabel(section.puzzles[rangeEnd - 1])}
+            </h2>
             {rangeStarts.length > 1 ? (
               <div className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-1" aria-label="Browse puzzle ranges">
                 {rangeStarts.map((start) => {
                   const end = Math.min(start + RANGE_SIZE, section.puzzles.length)
                   return (
                     <button key={start} type="button" onClick={() => setRangeStart(start)} aria-pressed={rangeStart === start} className={`shrink-0 cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold transition ${rangeStart === start ? 'border-amber-800 bg-amber-800 text-white' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-500'}`}>
-                      {start + 1}–{end}
+                      {puzzleNumberLabel(section.puzzles[start])}–{puzzleNumberLabel(section.puzzles[end - 1])}
                     </button>
                   )
                 })}
@@ -254,7 +263,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
           <form onSubmit={handleJump} className="w-full sm:w-56">
             <label htmlFor="puzzle-jump" className="mb-2 block text-sm font-bold text-amber-900">Go to problem</label>
             <div className="flex gap-2">
-              <input id="puzzle-jump" inputMode="numeric" value={jumpValue} onChange={(event) => { setJumpValue(event.target.value); setJumpError('') }} placeholder={jumpPlaceholder} className="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-amber-700 focus:ring-2 focus:ring-amber-200" />
+              <input id="puzzle-jump" inputMode="decimal" value={jumpValue} onChange={(event) => { setJumpValue(event.target.value); setJumpError('') }} placeholder={jumpPlaceholder} className="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-amber-700 focus:ring-2 focus:ring-amber-200" />
               <button type="submit" className="cursor-pointer rounded-lg bg-amber-800 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700">Go</button>
             </div>
             {jumpError ? <p className="mt-1 text-xs font-semibold text-rose-800" role="alert">{jumpError}</p> : null}
@@ -302,12 +311,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
           return (
             <a key={puzzle.id} href={puzzleHref(index)} className={`grid min-h-11 place-items-center rounded-lg border px-2 py-2 text-center transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 ${style}`} aria-label={showSavedProgress ? `${puzzle.title}: ${statusLabel[status]}` : puzzle.title}>
               <span className="flex items-center justify-center gap-1.5">
-                <span className="group relative inline-flex">
-                  <strong className="text-sm font-bold">{index + 1}</strong>
-                  <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-stone-950 px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                    {puzzle.title}
-                  </span>
-                </span>
+                <strong className="text-sm font-bold">{puzzleNumberLabel(puzzle)}</strong>
                 <StatusIcon status={status} />
               </span>
             </a>
