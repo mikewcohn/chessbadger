@@ -70,10 +70,6 @@ type Attempt = {
   restartCount?: number
 }
 
-const BOARD_SQUARES = ['8', '7', '6', '5', '4', '3', '2', '1'].flatMap((rank) => (
-  ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((file) => `${file}${rank}` as Square)
-))
-
 const moveWithExpectedPromotion = (
   game: Chess,
   sourceSquare: string,
@@ -338,10 +334,6 @@ export default function PuzzleTrainer({
   const [alwaysWhiteOnBottom, setAlwaysWhiteOnBottom] = useState(true)
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
   const [pieceTheme, setPieceTheme] = useState<PieceTheme>('default')
-  const [keyboardFromSquare, setKeyboardFromSquare] = useState<Square | ''>('')
-  const [keyboardToSquare, setKeyboardToSquare] = useState<Square | ''>('')
-  const [keyboardPiece, setKeyboardPiece] = useState<PlaceablePiece | ''>('')
-  const [keyboardMoveMessage, setKeyboardMoveMessage] = useState('')
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
   const [reviewMode, setReviewMode] = useState(false)
@@ -689,10 +681,6 @@ export default function PuzzleTrainer({
     setPlacedSquares([])
     setSelectedCompositionPiece(null)
     setCompositionPlacements({})
-    setKeyboardFromSquare('')
-    setKeyboardToSquare('')
-    setKeyboardPiece('')
-    setKeyboardMoveMessage('')
     setActiveSolutionLine(null)
     setNextSolutionPly(0)
     setRouteMoveHistory([])
@@ -1349,44 +1337,6 @@ export default function PuzzleTrainer({
     if (piece?.color === game.turn()) setSelectedSquare(clickedSquare)
   }
 
-  const submitKeyboardMove = (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!keyboardFromSquare || !keyboardToSquare) return
-
-    const moved = tryMove(keyboardFromSquare, keyboardToSquare)
-    if (!moved) {
-      setKeyboardMoveMessage('That move is not available in this position. Choose another origin and destination.')
-      return
-    }
-
-    setKeyboardMoveMessage(`Moved from ${keyboardFromSquare} to ${keyboardToSquare}.`)
-    setKeyboardFromSquare('')
-    setKeyboardToSquare('')
-  }
-
-  const submitKeyboardPlacement = (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!keyboardToSquare) return
-
-    const placed = puzzle.type === 'placement'
-      ? tryPlacement(keyboardToSquare)
-      : puzzle.type === 'composition' && keyboardPiece
-        ? tryCompositionPlacement(keyboardToSquare, keyboardPiece)
-        : false
-
-    if (!placed) {
-      setKeyboardMoveMessage('That square is not available. Choose another square.')
-      return
-    }
-
-    setKeyboardMoveMessage(
-      puzzle.type === 'placement'
-        ? `${pieceNames[puzzle.piece]} ${placedSquares.includes(keyboardToSquare) ? 'removed from' : 'placed on'} ${keyboardToSquare}.`
-        : `${keyboardPiece ? pieceNames[keyboardPiece] : 'Piece'} placed on ${keyboardToSquare}.`,
-    )
-    setKeyboardToSquare('')
-  }
-
   const answerSquares = puzzle.type === 'placement'
     ? puzzle.answers
     : puzzle.type === 'composition'
@@ -1775,7 +1725,7 @@ export default function PuzzleTrainer({
         >
           <h2 id={`board-heading-${puzzle.id}`} className="sr-only">Interactive chessboard</h2>
           <p id={`board-help-${puzzle.id}`} className="sr-only">
-            Move pieces by dragging or selecting an origin and destination square. Keyboard users can use the keyboard controls below the board.
+            Move pieces by dragging or selecting an origin and destination square.
           </p>
           <div
             className="overflow-hidden rounded-xl"
@@ -1785,80 +1735,6 @@ export default function PuzzleTrainer({
           >
             <Chessboard />
           </div>
-
-          {puzzle.type === 'placement' || puzzle.type === 'composition' || (!puzzle.choices && puzzle.answerMode !== 'notation') ? (
-            <details className="group mt-3 rounded-xl border border-stone-200 bg-stone-50">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-stone-800 transition hover:bg-stone-100 [&::-webkit-details-marker]:hidden">
-                Keyboard controls
-                <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current transition group-open:rotate-180" strokeWidth="2.5"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </summary>
-              <form
-                onSubmit={puzzle.type === 'placement' || puzzle.type === 'composition' ? submitKeyboardPlacement : submitKeyboardMove}
-                className="grid gap-3 border-t border-stone-200 px-4 py-4"
-              >
-                <p className="text-sm text-stone-600">
-                  {puzzle.type === 'placement' || puzzle.type === 'composition'
-                    ? 'Drag pieces on the board, or choose a piece and square here.'
-                    : 'Drag pieces on the board, or choose the origin and destination squares here.'}
-                </p>
-                {puzzle.type === 'composition' ? (
-                  <label className="grid gap-1 text-sm font-bold text-stone-700">
-                    Piece
-                    <select
-                      value={keyboardPiece}
-                      onChange={(event) => setKeyboardPiece(event.currentTarget.value as PlaceablePiece | '')}
-                      disabled={Boolean(attemptedMove) || answerVisible || !timer.isRunning}
-                      className="min-h-11 rounded-lg border border-stone-300 bg-white px-3 py-2 text-base font-semibold text-stone-950"
-                    >
-                      <option value="">Choose a piece</option>
-                      {[...new Set(puzzle.pieces)].map((piece) => <option key={piece} value={piece}>{pieceNames[piece]}</option>)}
-                    </select>
-                  </label>
-                ) : null}
-                {puzzle.type !== 'placement' && puzzle.type !== 'composition' ? (
-                  <label className="grid gap-1 text-sm font-bold text-stone-700">
-                    From
-                    <select
-                      value={keyboardFromSquare}
-                      onChange={(event) => setKeyboardFromSquare(event.currentTarget.value as Square | '')}
-                      disabled={Boolean(attemptedMove) || answerVisible || !timer.isRunning}
-                      className="min-h-11 rounded-lg border border-stone-300 bg-white px-3 py-2 text-base font-semibold text-stone-950"
-                    >
-                      <option value="">Choose a square</option>
-                      {BOARD_SQUARES.map((square) => <option key={square} value={square}>{square}</option>)}
-                    </select>
-                  </label>
-                ) : null}
-                <label className="grid gap-1 text-sm font-bold text-stone-700">
-                  {puzzle.type === 'placement' || puzzle.type === 'composition' ? 'Square' : 'To'}
-                  <select
-                    value={keyboardToSquare}
-                    onChange={(event) => setKeyboardToSquare(event.currentTarget.value as Square | '')}
-                    disabled={Boolean(attemptedMove) || answerVisible || !timer.isRunning}
-                    className="min-h-11 rounded-lg border border-stone-300 bg-white px-3 py-2 text-base font-semibold text-stone-950"
-                  >
-                    <option value="">Choose a square</option>
-                    {BOARD_SQUARES.map((square) => <option key={square} value={square}>{square}</option>)}
-                  </select>
-                </label>
-                <button
-                  type="submit"
-                  disabled={
-                    Boolean(attemptedMove)
-                    || answerVisible
-                    || !timer.isRunning
-                    || !keyboardToSquare
-                    || (puzzle.type === 'composition' && !keyboardPiece)
-                    || (puzzle.type !== 'placement' && puzzle.type !== 'composition' && !keyboardFromSquare)
-                  }
-                  className="min-h-11 w-fit cursor-pointer rounded-lg bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {puzzle.type === 'placement' ? 'Toggle square' : puzzle.type === 'composition' ? 'Place piece' : 'Move piece'}
-                </button>
-                <p className="min-h-5 text-sm font-semibold text-stone-600" aria-live="polite">{keyboardMoveMessage}</p>
-              </form>
-            </details>
-          ) : null}
 
           {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.choices ? (
             <fieldset className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
