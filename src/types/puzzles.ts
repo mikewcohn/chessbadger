@@ -44,6 +44,9 @@ type MovePuzzle = PuzzleBase & {
   routeLines?: string[][]
   sideToMove?: 'white' | 'black'
   lastMove?: PuzzleLastMove
+  validation?: 'checkmate'
+  opponentMode?: 'automatic-king'
+  maxPlayerMoves?: number
 }
 
 export type PlacementPuzzle = PuzzleBase & {

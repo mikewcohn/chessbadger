@@ -11,6 +11,7 @@ import {
 import type { PlaceablePiece, Puzzle } from '../types/puzzles'
 import { formatDuration, usePuzzleTimer } from '../hooks/usePuzzleTimer'
 import { normalizeSan, normalizeStrictSan } from '../lib/chessNotation'
+import { chooseAutomaticKingMove, isInteractiveCheckmatePuzzle } from '../lib/checkmatePractice'
 import { isComposedCheckmate } from '../lib/compositionMate'
 import {
   cachePracticeAttempt,
@@ -127,6 +128,8 @@ const formatAnswer = (puzzle: Puzzle, answer: string) =>
   puzzle.type === 'placement' ? `${pieceLetters[puzzle.piece]}${answer}` : answer
 
 const formatAnswers = (puzzle: Puzzle) => {
+  if (isInteractiveCheckmatePuzzle(puzzle)) return 'Any legal checkmate'
+
   if (
     puzzle.type !== 'placement'
     && puzzle.type !== 'composition'
@@ -328,6 +331,7 @@ export default function PuzzleTrainer({
   const [routeMoveHistory, setRouteMoveHistory] = useState<string[]>([])
   const [routeCheckMessage, setRouteCheckMessage] = useState('')
   const [opponentReply, setOpponentReply] = useState('')
+  const [interactiveMoveHistory, setInteractiveMoveHistory] = useState<string[]>([])
   const [isResponding, setIsResponding] = useState(false)
   const [isShowingLastMove, setIsShowingLastMove] = useState(false)
   const [boardRevision, setBoardRevision] = useState(0)
@@ -355,6 +359,8 @@ export default function PuzzleTrainer({
   const timer = usePuzzleTimer()
 
   const puzzle = puzzles[puzzleIndex]
+  const isInteractiveCheckmate = isInteractiveCheckmatePuzzle(puzzle)
+  const canShowAnswer = !isInteractiveCheckmate
   const puzzleAnswerPosition = positionAfterGivenMoves(puzzle)
   const notationLineParts = puzzle.type !== 'placement'
     && puzzle.type !== 'composition'
@@ -380,6 +386,9 @@ export default function PuzzleTrainer({
   const retryPosition = retryNavigation.position
   const previousRetryEntry = retryNavigation.previous
   const nextRetryEntry = retryNavigation.next
+  const puzzleHeading = retryMode
+    ? puzzle.title
+    : `Puzzle ${puzzleIndex + 1} of ${puzzles.length}`
   const previousPuzzleIndex = !retryMode && puzzleIndex > 0 ? puzzleIndex - 1 : null
   const nextPuzzleIndex = !retryMode && puzzleIndex < puzzles.length - 1 ? puzzleIndex + 1 : null
   const hasPreviousPuzzle = retryMode ? previousRetryEntry !== null : previousPuzzleIndex !== null
@@ -408,6 +417,7 @@ export default function PuzzleTrainer({
     && puzzle.type !== 'composition'
     && (
       (puzzle.playThrough && puzzle.solutionLines?.some((line) => line.length > 1) === true)
+      || isInteractiveCheckmate
       || Math.max(0, ...routeSolutions(puzzle).map((line) => line.length)) > 1
     )
   const boardArrows = useMemo(
@@ -688,6 +698,7 @@ export default function PuzzleTrainer({
     setRouteMoveHistory([])
     setRouteCheckMessage('')
     setOpponentReply('')
+    setInteractiveMoveHistory([])
     setIsResponding(false)
     setHistoryExpanded(false)
     setBoardRevision((revision) => revision + 1)
@@ -759,6 +770,8 @@ export default function PuzzleTrainer({
   }, [hasNextPuzzle, hasPreviousPuzzle, nextPuzzleIndex, nextRetryEntry, previousPuzzleIndex, previousRetryEntry, retryMode, retryScope, retryStatuses])
 
   const showAnswer = () => {
+    if (!canShowAnswer) return
+
     if (replyTimerRef.current !== null) {
       window.clearTimeout(replyTimerRef.current)
       replyTimerRef.current = null
@@ -940,6 +953,70 @@ export default function PuzzleTrainer({
       moveContext,
     )
     const coordinateLabel = `${sourceSquare}–${targetSquare}`
+
+    if (isInteractiveCheckmate && typeof position === 'string') {
+      const game = new Chess(position)
+
+      try {
+        const move = game.move({ from: sourceSquare, to: targetSquare, promotion: 'q' })
+        const lineAfterPlayerMove = [...interactiveMoveHistory, move.san]
+        const attemptLabel = lineAfterPlayerMove.join(' ')
+        setPosition(game.fen())
+        setSelectedSquare(null)
+        setOpponentReply('')
+
+        if (game.isCheckmate()) {
+          setInteractiveMoveHistory(lineAfterPlayerMove)
+          setAttemptedMove(attemptLabel)
+          recordAttempt(attemptLabel, 'correct')
+          return true
+        }
+
+        const playerMoveCount = Math.ceil(lineAfterPlayerMove.length / 2)
+        if (puzzle.maxPlayerMoves && playerMoveCount >= puzzle.maxPlayerMoves) {
+          setInteractiveMoveHistory(lineAfterPlayerMove)
+          setAttemptedMove(attemptLabel)
+          recordAttempt(attemptLabel, 'incorrect')
+          return true
+        }
+
+        if (game.isDraw()) {
+          setInteractiveMoveHistory(lineAfterPlayerMove)
+          setAttemptedMove(attemptLabel)
+          recordAttempt(attemptLabel, 'incorrect')
+          return true
+        }
+
+        const reply = chooseAutomaticKingMove(game)
+        if (!reply) {
+          setInteractiveMoveHistory(lineAfterPlayerMove)
+          setAttemptedMove(attemptLabel)
+          recordAttempt(attemptLabel, 'incorrect')
+          return true
+        }
+
+        setInteractiveMoveHistory(lineAfterPlayerMove)
+        setIsResponding(true)
+        replyTimerRef.current = window.setTimeout(() => {
+          const playedReply = game.move(reply)
+          const lineAfterReply = [...lineAfterPlayerMove, playedReply.san]
+          setPosition(game.fen())
+          setInteractiveMoveHistory(lineAfterReply)
+          setOpponentReply(playedReply.san)
+          setIsResponding(false)
+          replyTimerRef.current = null
+
+          if (game.isDraw()) {
+            const completedLine = lineAfterReply.join(' ')
+            setAttemptedMove(completedLine)
+            recordAttempt(completedLine, 'incorrect')
+          }
+        }, 450)
+        return true
+      } catch {
+        return false
+      }
+    }
 
     if (puzzle.playThrough && puzzle.solutionLines && typeof position === 'string') {
       const game = new Chess(position)
@@ -1534,17 +1611,19 @@ export default function PuzzleTrainer({
               <a href={collectionHref} className="min-h-11 content-center underline decoration-amber-300 underline-offset-4">{collectionName}</a>
               <span aria-hidden="true">/</span>
               <a href={sectionHref} className="min-h-11 content-center underline decoration-amber-300 underline-offset-4">{sectionName}</a>
-              <span aria-hidden="true">·</span>
-              <span className="uppercase tracking-[0.1em] text-stone-500">
-                {retryMode && retryPosition >= 0
-                  ? `Retry ${retryPosition + 1} of ${retryQueue?.length ?? 0}`
-                  : `Puzzle ${puzzleIndex + 1} of ${puzzles.length}`}
-              </span>
+              {retryMode && retryPosition >= 0 ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="uppercase tracking-[0.1em] text-stone-500">
+                    Retry {retryPosition + 1} of {retryQueue?.length ?? 0}
+                  </span>
+                </>
+              ) : null}
               {retryMode ? (
                 <a href={retryReturnHref} className="min-h-11 content-center uppercase tracking-[0.1em] underline decoration-amber-300 underline-offset-4">Exit retry mode</a>
               ) : null}
             </div>
-            <h1 className="text-2xl font-bold tracking-[-0.015em] text-stone-950">{puzzle.title}</h1>
+            <h1 className="text-2xl font-bold tracking-[-0.015em] text-stone-950">{puzzleHeading}</h1>
             {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.instruction ? (
               <p className="mt-1 text-sm font-semibold text-stone-700">{puzzle.instruction}</p>
             ) : null}
@@ -1719,8 +1798,8 @@ export default function PuzzleTrainer({
               >
                 <p className="text-sm text-stone-600">
                   {puzzle.type === 'placement' || puzzle.type === 'composition'
-                    ? 'Choose a piece and square without dragging.'
-                    : 'Choose the origin and destination squares without dragging.'}
+                    ? 'Drag pieces on the board, or choose a piece and square here.'
+                    : 'Drag pieces on the board, or choose the origin and destination squares here.'}
                 </p>
                 {puzzle.type === 'composition' ? (
                   <label className="grid gap-1 text-sm font-bold text-stone-700">
@@ -1953,7 +2032,9 @@ export default function PuzzleTrainer({
                 {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.canAnswerNo ? (
                   <button type="button" onClick={answerNoDefense} disabled={!timer.isRunning} className="min-h-11 cursor-pointer rounded-lg bg-stone-950 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">No — mate cannot be prevented</button>
                 ) : null}
-                <button type="button" onClick={showAnswer} disabled={answerVisible || !timer.isRunning} className="col-span-2 min-h-11 cursor-pointer rounded-lg bg-amber-800 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Show answer</button>
+                {canShowAnswer ? (
+                  <button type="button" onClick={showAnswer} disabled={answerVisible || !timer.isRunning} className="col-span-2 min-h-11 cursor-pointer rounded-lg bg-amber-800 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Show answer</button>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -2047,14 +2128,16 @@ export default function PuzzleTrainer({
                   </div>
                 ) : null}
                 {!focusMode ? <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={showAnswer}
-                    disabled={answerVisible}
-                    className="cursor-pointer rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
-                  >
-                    Show answer
-                  </button>
+                  {canShowAnswer ? (
+                    <button
+                      type="button"
+                      onClick={showAnswer}
+                      disabled={answerVisible}
+                      className="cursor-pointer rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Show answer
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => resetPuzzle(puzzleIndex, true, true)}
@@ -2135,7 +2218,7 @@ export default function PuzzleTrainer({
                         No — mate cannot be prevented
                       </button>
                     ) : null}
-                    {result !== 'correct' ? (
+                    {result !== 'correct' && canShowAnswer ? (
                       <button
                         type="button"
                         onClick={showAnswer}
@@ -2181,14 +2264,12 @@ export default function PuzzleTrainer({
           <a href={sectionHref} className="underline decoration-amber-300 underline-offset-4 hover:text-amber-700">
             {sectionName}
           </a>
-          <span aria-hidden="true">·</span>
-          <span className="text-xs font-bold uppercase tracking-[0.12em] text-stone-500">
-            {retryMode && retryPosition >= 0
-              ? `Retry ${retryPosition + 1} of ${retryQueue?.length ?? 0}`
-              : `Puzzle ${puzzleIndex + 1} of ${puzzles.length}`}
-          </span>
-          {retryMode ? (
+          {retryMode && retryPosition >= 0 ? (
             <>
+              <span aria-hidden="true">·</span>
+              <span className="text-xs font-bold uppercase tracking-[0.12em] text-stone-500">
+                Retry {retryPosition + 1} of {retryQueue?.length ?? 0}
+              </span>
               <span aria-hidden="true">·</span>
               <a href={retryReturnHref} className="text-xs font-bold uppercase tracking-[0.12em] underline decoration-amber-300 underline-offset-4 hover:text-amber-700">
                 Exit retry mode
@@ -2197,7 +2278,7 @@ export default function PuzzleTrainer({
           ) : null}
         </div>
         <h1 className="mt-3 text-2xl font-bold tracking-[-0.015em] text-stone-950 sm:text-3xl">
-          {puzzle.title}
+          {puzzleHeading}
         </h1>
         {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.instruction ? (
           <p className="mt-3 text-lg font-semibold text-stone-700">{puzzle.instruction}</p>
@@ -2271,11 +2352,11 @@ export default function PuzzleTrainer({
           </section>
         ) : null}
 
-        {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.playThrough && result === null && (isResponding || opponentReply) ? (
+        {puzzle.type !== 'placement' && puzzle.type !== 'composition' && (puzzle.playThrough || isInteractiveCheckmate) && result === null && (isResponding || opponentReply) ? (
           <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-950" aria-live="polite">
             {isResponding
               ? 'Opponent is replying…'
-              : `${sideToMove === 'White' ? 'Black' : 'White'} replied ${opponentReply}. ${activeSolutionLine && nextSolutionPly === activeSolutionLine.length - 1 && solutionEndsInMate ? 'Finish the mate.' : 'Continue the combination.'}`}
+              : `${sideToMove === 'White' ? 'Black' : 'White'} replied ${opponentReply}. ${isInteractiveCheckmate ? 'Continue toward checkmate.' : activeSolutionLine && nextSolutionPly === activeSolutionLine.length - 1 && solutionEndsInMate ? 'Finish the mate.' : 'Continue the combination.'}`}
           </p>
         ) : null}
 
@@ -2356,14 +2437,16 @@ export default function PuzzleTrainer({
                 No — mate cannot be prevented
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={showAnswer}
-              disabled={answerVisible || !timer.isRunning}
-              className="cursor-pointer rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Show answer
-            </button>
+            {canShowAnswer ? (
+              <button
+                type="button"
+                onClick={showAnswer}
+                disabled={answerVisible || !timer.isRunning}
+                className="cursor-pointer rounded-lg bg-amber-800 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Show answer
+              </button>
+            ) : null}
           </div>
         ) : null}
 
