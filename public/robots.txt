@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /player-shell/
+Disallow: /puzzle-shell/
+
+Sitemap: https://chessbadger.com/sitemap-index.xml

@@ -17,7 +17,7 @@ export type PracticeRecord = {
   attempts: StoredAttempt[]
 }
 
-type D1Statement = {
+export type D1Statement = {
   bind(...values: (string | number | null)[]): D1Statement
   first<T>(): Promise<T | null>
   all<T>(): Promise<{ results: T[] }>
@@ -25,7 +25,10 @@ type D1Statement = {
 }
 
 export type PracticeEnv = {
-  DB: { prepare(query: string): D1Statement }
+  DB: {
+    prepare(query: string): D1Statement
+    batch(statements: D1Statement[]): Promise<Array<{ meta?: { changes?: number }; changes?: number }>>
+  }
 }
 
 export type FunctionContext = {

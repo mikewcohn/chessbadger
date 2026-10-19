@@ -69,6 +69,10 @@ type Attempt = {
   restartCount?: number
 }
 
+const BOARD_SQUARES = ['8', '7', '6', '5', '4', '3', '2', '1'].flatMap((rank) => (
+  ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((file) => `${file}${rank}` as Square)
+))
+
 const moveWithExpectedPromotion = (
   game: Chess,
   sourceSquare: string,
@@ -330,6 +334,11 @@ export default function PuzzleTrainer({
   const [alwaysWhiteOnBottom, setAlwaysWhiteOnBottom] = useState(true)
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
   const [pieceTheme, setPieceTheme] = useState<PieceTheme>('default')
+  const [keyboardFromSquare, setKeyboardFromSquare] = useState<Square | ''>('')
+  const [keyboardToSquare, setKeyboardToSquare] = useState<Square | ''>('')
+  const [keyboardPiece, setKeyboardPiece] = useState<PlaceablePiece | ''>('')
+  const [keyboardMoveMessage, setKeyboardMoveMessage] = useState('')
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
   const [reviewMode, setReviewMode] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
@@ -480,6 +489,14 @@ export default function PuzzleTrainer({
     } catch {
       // The setting still works for this page when browser storage is unavailable.
     }
+  }, [])
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches)
+    updatePreference()
+    mediaQuery.addEventListener('change', updatePreference)
+    return () => mediaQuery.removeEventListener('change', updatePreference)
   }, [])
 
   const updateBoardOrientationPreference = (checked: boolean) => {
@@ -662,6 +679,10 @@ export default function PuzzleTrainer({
     setPlacedSquares([])
     setSelectedCompositionPiece(null)
     setCompositionPlacements({})
+    setKeyboardFromSquare('')
+    setKeyboardToSquare('')
+    setKeyboardPiece('')
+    setKeyboardMoveMessage('')
     setActiveSolutionLine(null)
     setNextSolutionPly(0)
     setRouteMoveHistory([])
@@ -1251,6 +1272,44 @@ export default function PuzzleTrainer({
     if (piece?.color === game.turn()) setSelectedSquare(clickedSquare)
   }
 
+  const submitKeyboardMove = (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!keyboardFromSquare || !keyboardToSquare) return
+
+    const moved = tryMove(keyboardFromSquare, keyboardToSquare)
+    if (!moved) {
+      setKeyboardMoveMessage('That move is not available in this position. Choose another origin and destination.')
+      return
+    }
+
+    setKeyboardMoveMessage(`Moved from ${keyboardFromSquare} to ${keyboardToSquare}.`)
+    setKeyboardFromSquare('')
+    setKeyboardToSquare('')
+  }
+
+  const submitKeyboardPlacement = (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!keyboardToSquare) return
+
+    const placed = puzzle.type === 'placement'
+      ? tryPlacement(keyboardToSquare)
+      : puzzle.type === 'composition' && keyboardPiece
+        ? tryCompositionPlacement(keyboardToSquare, keyboardPiece)
+        : false
+
+    if (!placed) {
+      setKeyboardMoveMessage('That square is not available. Choose another square.')
+      return
+    }
+
+    setKeyboardMoveMessage(
+      puzzle.type === 'placement'
+        ? `${pieceNames[puzzle.piece]} ${placedSquares.includes(keyboardToSquare) ? 'removed from' : 'placed on'} ${keyboardToSquare}.`
+        : `${keyboardPiece ? pieceNames[keyboardPiece] : 'Piece'} placed on ${keyboardToSquare}.`,
+    )
+    setKeyboardToSquare('')
+  }
+
   const answerSquares = puzzle.type === 'placement'
     ? puzzle.answers
     : puzzle.type === 'composition'
@@ -1461,14 +1520,51 @@ export default function PuzzleTrainer({
   return (
     <div
       className={focusMode
-        ? 'fixed inset-0 z-[100] overflow-y-auto bg-[#eef6ff] p-3 sm:p-5'
-        : 'grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)] lg:items-start xl:gap-7'}
+        ? 'puzzle-trainer fixed inset-0 z-[100] overflow-y-auto bg-[#eef6ff] p-2 sm:p-5'
+        : 'puzzle-trainer grid gap-3 sm:gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)] lg:items-start xl:gap-7'}
       aria-label={focusMode ? 'Puzzle focus mode' : undefined}
     >
       <div
         className={`relative flex w-full flex-col rounded-2xl border border-stone-300 bg-white p-2 shadow-sm sm:p-3 ${focusMode ? 'mx-auto' : ''}`}
         style={focusMode ? { maxWidth: 'min(calc(100vh - 9rem), calc(100vw - 2rem))' } : undefined}
       >
+        {!focusMode ? (
+          <div className="px-2 pb-3 pt-1 lg:hidden">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-amber-800">
+              <a href={collectionHref} className="min-h-11 content-center underline decoration-amber-300 underline-offset-4">{collectionName}</a>
+              <span aria-hidden="true">/</span>
+              <a href={sectionHref} className="min-h-11 content-center underline decoration-amber-300 underline-offset-4">{sectionName}</a>
+              <span aria-hidden="true">·</span>
+              <span className="uppercase tracking-[0.1em] text-stone-500">
+                {retryMode && retryPosition >= 0
+                  ? `Retry ${retryPosition + 1} of ${retryQueue?.length ?? 0}`
+                  : `Puzzle ${puzzleIndex + 1} of ${puzzles.length}`}
+              </span>
+              {retryMode ? (
+                <a href={retryReturnHref} className="min-h-11 content-center uppercase tracking-[0.1em] underline decoration-amber-300 underline-offset-4">Exit retry mode</a>
+              ) : null}
+            </div>
+            <h1 className="text-2xl font-bold tracking-[-0.015em] text-stone-950">{puzzle.title}</h1>
+            {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.instruction ? (
+              <p className="mt-1 text-sm font-semibold text-stone-700">{puzzle.instruction}</p>
+            ) : null}
+            {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.answerMode !== 'notation' && puzzle.givenMoves?.length ? (
+              <p className="mt-1 text-sm font-bold text-amber-900">Given moves: {puzzle.givenMoves.join(' ')}. Play the missing move.</p>
+            ) : null}
+            {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.lastMove ? (
+              <p className="mt-1 text-sm font-bold text-amber-900" aria-live="polite">Last move: {puzzle.lastMove.san}. Find the best response.</p>
+            ) : null}
+            <section className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-600" aria-label="Puzzle timer">
+              <span>Active time <span className="font-mono font-semibold tabular-nums text-stone-800" aria-live="off">{formatDuration(timer.elapsedMs)}</span></span>
+              {result === null ? (
+                <button type="button" onClick={timer.isRunning ? timer.pause : timer.resume} className="min-h-11 cursor-pointer px-1 font-bold text-amber-900 underline decoration-amber-300 underline-offset-4">
+                  {timer.isRunning ? 'Pause' : 'Resume'}
+                </button>
+              ) : null}
+              <button type="button" onClick={() => resetPuzzle(puzzleIndex, true, true)} className="min-h-11 cursor-pointer px-1 font-bold text-stone-700 underline decoration-stone-300 underline-offset-4">Restart</button>
+            </section>
+          </div>
+        ) : null}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-1 pb-2">
           <span aria-hidden="true" />
           <p className="flex min-w-0 items-center justify-center gap-2 text-center text-sm font-bold text-stone-800 sm:text-base">
@@ -1491,8 +1587,9 @@ export default function PuzzleTrainer({
             type="button"
             onClick={toggleFocusMode}
             aria-pressed={focusMode}
+            aria-label={focusMode ? 'Exit puzzle focus mode' : 'Enter puzzle focus mode'}
             aria-keyshortcuts="Escape"
-            className="inline-flex cursor-pointer items-center gap-2 justify-self-end rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-bold text-stone-700 shadow-sm transition hover:border-amber-700 hover:text-amber-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
+            className="inline-flex min-h-11 cursor-pointer items-center gap-2 justify-self-end rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-bold text-stone-700 shadow-sm transition hover:border-amber-700 hover:text-amber-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
           >
             {focusMode ? (
               <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2"><path d="M9 4v5H4m11-5v5h5M9 20v-5H4m11 5v-5h5" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -1554,7 +1651,7 @@ export default function PuzzleTrainer({
               position: boardPosition,
               boardOrientation,
               showNotation: true,
-              animationDurationInMs: 520,
+              animationDurationInMs: prefersReducedMotion ? 0 : 520,
               allowDragging: attemptedMove === null && !isShowingLastMove && timer.isRunning && !(puzzle.type !== 'placement' && puzzle.type !== 'composition' && (puzzle.choices || puzzle.answerMode === 'notation')),
               allowDrawingArrows: false,
               arrows: boardArrows,
@@ -1597,9 +1694,92 @@ export default function PuzzleTrainer({
               onSquareClick: ({ square }) => handleSquareClick(square),
           }}
         >
-          <div className="overflow-hidden rounded-xl">
+          <h2 id={`board-heading-${puzzle.id}`} className="sr-only">Interactive chessboard</h2>
+          <p id={`board-help-${puzzle.id}`} className="sr-only">
+            Move pieces by dragging or selecting an origin and destination square. Keyboard users can use the keyboard controls below the board.
+          </p>
+          <div
+            className="overflow-hidden rounded-xl"
+            role="group"
+            aria-labelledby={`board-heading-${puzzle.id}`}
+            aria-describedby={`board-help-${puzzle.id}`}
+          >
             <Chessboard />
           </div>
+
+          {puzzle.type === 'placement' || puzzle.type === 'composition' || (!puzzle.choices && puzzle.answerMode !== 'notation') ? (
+            <details className="group mt-3 rounded-xl border border-stone-200 bg-stone-50">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-stone-800 transition hover:bg-stone-100 [&::-webkit-details-marker]:hidden">
+                Keyboard controls
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current transition group-open:rotate-180" strokeWidth="2.5"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </summary>
+              <form
+                onSubmit={puzzle.type === 'placement' || puzzle.type === 'composition' ? submitKeyboardPlacement : submitKeyboardMove}
+                className="grid gap-3 border-t border-stone-200 px-4 py-4"
+              >
+                <p className="text-sm text-stone-600">
+                  {puzzle.type === 'placement' || puzzle.type === 'composition'
+                    ? 'Choose a piece and square without dragging.'
+                    : 'Choose the origin and destination squares without dragging.'}
+                </p>
+                {puzzle.type === 'composition' ? (
+                  <label className="grid gap-1 text-sm font-bold text-stone-700">
+                    Piece
+                    <select
+                      value={keyboardPiece}
+                      onChange={(event) => setKeyboardPiece(event.currentTarget.value as PlaceablePiece | '')}
+                      disabled={Boolean(attemptedMove) || answerVisible || !timer.isRunning}
+                      className="min-h-11 rounded-lg border border-stone-300 bg-white px-3 py-2 text-base font-semibold text-stone-950"
+                    >
+                      <option value="">Choose a piece</option>
+                      {[...new Set(puzzle.pieces)].map((piece) => <option key={piece} value={piece}>{pieceNames[piece]}</option>)}
+                    </select>
+                  </label>
+                ) : null}
+                {puzzle.type !== 'placement' && puzzle.type !== 'composition' ? (
+                  <label className="grid gap-1 text-sm font-bold text-stone-700">
+                    From
+                    <select
+                      value={keyboardFromSquare}
+                      onChange={(event) => setKeyboardFromSquare(event.currentTarget.value as Square | '')}
+                      disabled={Boolean(attemptedMove) || answerVisible || !timer.isRunning}
+                      className="min-h-11 rounded-lg border border-stone-300 bg-white px-3 py-2 text-base font-semibold text-stone-950"
+                    >
+                      <option value="">Choose a square</option>
+                      {BOARD_SQUARES.map((square) => <option key={square} value={square}>{square}</option>)}
+                    </select>
+                  </label>
+                ) : null}
+                <label className="grid gap-1 text-sm font-bold text-stone-700">
+                  {puzzle.type === 'placement' || puzzle.type === 'composition' ? 'Square' : 'To'}
+                  <select
+                    value={keyboardToSquare}
+                    onChange={(event) => setKeyboardToSquare(event.currentTarget.value as Square | '')}
+                    disabled={Boolean(attemptedMove) || answerVisible || !timer.isRunning}
+                    className="min-h-11 rounded-lg border border-stone-300 bg-white px-3 py-2 text-base font-semibold text-stone-950"
+                  >
+                    <option value="">Choose a square</option>
+                    {BOARD_SQUARES.map((square) => <option key={square} value={square}>{square}</option>)}
+                  </select>
+                </label>
+                <button
+                  type="submit"
+                  disabled={
+                    Boolean(attemptedMove)
+                    || answerVisible
+                    || !timer.isRunning
+                    || !keyboardToSquare
+                    || (puzzle.type === 'composition' && !keyboardPiece)
+                    || (puzzle.type !== 'placement' && puzzle.type !== 'composition' && !keyboardFromSquare)
+                  }
+                  className="min-h-11 w-fit cursor-pointer rounded-lg bg-stone-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {puzzle.type === 'placement' ? 'Toggle square' : puzzle.type === 'composition' ? 'Place piece' : 'Move piece'}
+                </button>
+                <p className="min-h-5 text-sm font-semibold text-stone-600" aria-live="polite">{keyboardMoveMessage}</p>
+              </form>
+            </details>
+          ) : null}
 
           {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.choices ? (
             <fieldset className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
@@ -1633,7 +1813,34 @@ export default function PuzzleTrainer({
             </fieldset>
           ) : null}
 
-          <div className={`${focusMode ? 'hidden' : 'flex'} flex-wrap items-center justify-between gap-3 px-1 pt-3`}>
+          {!focusMode ? (
+            <details className="group mt-3 rounded-xl border border-stone-200 lg:hidden">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-50 [&::-webkit-details-marker]:hidden">
+                Board settings
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current transition group-open:rotate-180" strokeWidth="2.5"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </summary>
+              <div className="grid gap-3 border-t border-stone-200 px-4 py-4">
+                <label className="grid gap-1 text-sm font-bold text-stone-700">
+                  Board style
+                  <select value={boardTheme} onChange={(event) => updateBoardTheme(event.currentTarget.value as BoardTheme)} className="min-h-11 rounded-lg border border-stone-300 bg-white px-3 py-2 text-base font-semibold text-stone-900">
+                    {(Object.entries(BOARD_THEMES) as Array<[BoardTheme, (typeof BOARD_THEMES)[BoardTheme]]>).map(([value, theme]) => <option key={value} value={value}>{theme.label}</option>)}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-bold text-stone-700">
+                  Piece style
+                  <select value={pieceTheme} onChange={(event) => updatePieceTheme(event.currentTarget.value as PieceTheme)} className="min-h-11 rounded-lg border border-stone-300 bg-white px-3 py-2 text-base font-semibold text-stone-900">
+                    {(Object.entries(PIECE_THEMES) as Array<[PieceTheme, (typeof PIECE_THEMES)[PieceTheme]]>).map(([value, theme]) => <option key={value} value={value}>{theme.label}</option>)}
+                  </select>
+                </label>
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-bold text-stone-700">
+                  <input type="checkbox" checked={alwaysWhiteOnBottom} onChange={(event) => updateBoardOrientationPreference(event.currentTarget.checked)} className="size-5 cursor-pointer accent-amber-800" />
+                  Always show White on bottom
+                </label>
+              </div>
+            </details>
+          ) : null}
+
+          <div className={`${focusMode ? 'hidden' : 'hidden lg:flex'} flex-wrap items-center justify-between gap-3 px-1 pt-3`}>
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm font-bold text-stone-700">
                 Board style
@@ -1660,7 +1867,7 @@ export default function PuzzleTrainer({
                 </select>
               </label>
             </div>
-            <label className="flex cursor-pointer items-center gap-2 text-sm font-bold text-stone-700">
+            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-bold text-stone-700">
               <input
                 type="checkbox"
                 checked={alwaysWhiteOnBottom}
@@ -1719,6 +1926,34 @@ export default function PuzzleTrainer({
                     </div>
                   )
                 })}
+              </div>
+            </div>
+          ) : null}
+
+          {!focusMode && result === null ? (
+            <div className="mt-3 lg:hidden">
+              {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.routeMoves ? (
+                <p className={routeCheckMessage ? 'mb-2 text-sm font-bold text-rose-800' : 'mb-2 text-sm font-semibold text-stone-600'} aria-live="polite">
+                  {routeCheckMessage || `${routeMoveHistory.length} ${routeMoveHistory.length === 1 ? 'move' : 'moves'} played`}
+                </p>
+              ) : null}
+              <div className="grid grid-cols-2 gap-2">
+                {puzzle.type === 'placement' ? (
+                  <button type="button" onClick={checkPlacements} disabled={placedSquares.length === 0 || !timer.isRunning} className="min-h-11 cursor-pointer rounded-lg bg-stone-950 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Check answer</button>
+                ) : null}
+                {puzzle.type === 'composition' ? (
+                  <button type="button" onClick={checkComposition} disabled={Object.keys(compositionPlacements).length !== puzzle.placements.length || !timer.isRunning} className="min-h-11 cursor-pointer rounded-lg bg-stone-950 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Check answer</button>
+                ) : null}
+                {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.routeMoves ? (
+                  <>
+                    <button type="button" onClick={undoRouteMove} disabled={routeMoveHistory.length === 0 || !timer.isRunning} className="min-h-11 cursor-pointer rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-bold text-stone-800 disabled:cursor-not-allowed disabled:opacity-40">Undo move</button>
+                    <button type="button" onClick={checkRoute} disabled={routeMoveHistory.length === 0 || !timer.isRunning} className="min-h-11 cursor-pointer rounded-lg bg-stone-950 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Check answer</button>
+                  </>
+                ) : null}
+                {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.canAnswerNo ? (
+                  <button type="button" onClick={answerNoDefense} disabled={!timer.isRunning} className="min-h-11 cursor-pointer rounded-lg bg-stone-950 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">No — mate cannot be prevented</button>
+                ) : null}
+                <button type="button" onClick={showAnswer} disabled={answerVisible || !timer.isRunning} className="col-span-2 min-h-11 cursor-pointer rounded-lg bg-amber-800 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Show answer</button>
               </div>
             </div>
           ) : null}
@@ -1936,7 +2171,8 @@ export default function PuzzleTrainer({
         ) : null}
       </div>
 
-      {!focusMode ? <div className="flex flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      {!focusMode ? <div className="flex flex-col rounded-2xl border border-stone-200 bg-white p-3 shadow-sm sm:p-6">
+        <div className="hidden lg:block">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-amber-800">
           <a href={collectionHref} className="underline decoration-amber-300 underline-offset-4 hover:text-amber-700">
             {collectionName}
@@ -2018,9 +2254,10 @@ export default function PuzzleTrainer({
             </p>
           ) : null}
         </section>
+        </div>
 
         {timer.showInactivityPrompt ? (
-          <section className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4" role="alertdialog" aria-labelledby="still-working-heading">
+          <section className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4" role="alert" aria-labelledby="still-working-heading">
             <h2 id="still-working-heading" className="font-bold text-amber-950">Still working on this puzzle?</h2>
             <p className="mt-1 text-sm text-amber-900">The timer paused after five minutes without activity.</p>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -2068,7 +2305,7 @@ export default function PuzzleTrainer({
         ) : null}
 
         {result === null ? (
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-5 hidden flex-wrap gap-3 lg:flex">
             {puzzle.type === 'placement' ? (
               <button
                 type="button"
@@ -2179,14 +2416,14 @@ export default function PuzzleTrainer({
           </details>
         ) : null}
 
-        <div className={`${focusMode ? 'mt-auto' : 'mt-8'} flex items-center justify-between gap-4 border-t border-stone-200 pt-6`}>
+        <div className={`${focusMode ? 'mt-auto' : 'mt-2 lg:mt-8'} flex items-center justify-between gap-4 border-t border-stone-200 pt-3 lg:pt-6`}>
           <button
             type="button"
             onClick={goToPreviousPuzzle}
             disabled={!hasPreviousPuzzle}
             aria-keyshortcuts="ArrowLeft"
             title="Previous puzzle (←)"
-            className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
+            className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M18 12H6m5 5-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             Previous puzzle
@@ -2197,7 +2434,7 @@ export default function PuzzleTrainer({
             disabled={!hasNextPuzzle}
             aria-keyshortcuts="ArrowRight"
             title="Next puzzle (→)"
-            className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
+            className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm font-bold text-amber-900 hover:text-amber-700 disabled:cursor-not-allowed disabled:text-stone-400"
           >
             Next puzzle
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2.5"><path d="M6 12h12m-5-5 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>

@@ -1,17 +1,25 @@
 ---
 import '../styles/global.css'
+import type {ImageMetadata} from 'astro'
+import BaseHead from '../components/BaseHead.astro'
 import PlayerNav from '../components/PlayerNav'
 
 type Props = {
   title?: string
   description?: string
   robots?: string
+  image?: ImageMetadata | string
+  metaType?: 'website' | 'article'
+  publishedTime?: string
 }
 
 const {
   title = 'ChessBadger',
   description = 'Chess improvement, games, openings, and practical lessons.',
   robots,
+  image,
+  metaType,
+  publishedTime,
 } = Astro.props
 
 const navItems = [
@@ -28,14 +36,14 @@ const isCurrent = (href: string) => Astro.url.pathname === href || Astro.url.pat
 <!doctype html>
 <html lang="en" class="bg-[#eef6ff] text-stone-950">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="description" content={description} />
-    {robots ? <meta name="robots" content={robots} /> : null}
-    <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-badger-32.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/favicon-badger.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <title>{title}</title>
+    <BaseHead
+      title={title}
+      description={description}
+      robots={robots}
+      image={image}
+      metaType={metaType}
+      publishedTime={publishedTime}
+    />
   </head>
 
   <body class="min-h-screen antialiased">
@@ -95,7 +103,7 @@ const isCurrent = (href: string) => Astro.url.pathname === href || Astro.url.pat
     <footer class="mt-20 border-t border-stone-200 bg-white">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-8 text-sm text-stone-500">
         <span>© {new Date().getFullYear()} ChessBadger</span>
-        <a href="/admin" class="hover:text-stone-800">Admin</a>
+        <a href="/admin" rel="nofollow" class="hover:text-stone-800">Admin</a>
       </div>
     </footer>
   </body>

@@ -2,4 +2,4 @@
 // You can import this data from anywhere in your site by using the `import` keyword.
 
 export const SITE_TITLE = 'ChessBadger';
-export const SITE_DESCRIPTION = 'Welcome to ChessBadger!';
+export const SITE_DESCRIPTION = 'Practice chess tactics, work through structured puzzle collections, and track your progress.';

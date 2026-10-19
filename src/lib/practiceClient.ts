@@ -9,7 +9,7 @@ export type PracticeAttemptSummary = {
   restartCount?: number
 }
 
-type CachedPracticeAttempt = PracticeAttemptSummary & {
+export type CachedPracticeAttempt = PracticeAttemptSummary & {
   id: string
 }
 
@@ -42,6 +42,12 @@ const readCachedAttempts = (): CachedPracticeAttempt[] => {
 export const getCachedPracticeAttempts = (): PracticeAttemptSummary[] =>
   readCachedAttempts()
 
+export const getTransferablePracticeAttempts = (): CachedPracticeAttempt[] =>
+  readCachedAttempts().filter((attempt) => (
+    typeof attempt.move === 'string'
+    && typeof attempt.checkedAt === 'string'
+  ))
+
 export const cachePracticeAttempt = (attempt: PracticeAttemptSummary) => {
   const id = crypto.randomUUID()
 
@@ -61,6 +67,42 @@ export const removeCachedPracticeAttempt = (attemptId: string) => {
     window.sessionStorage.setItem(ATTEMPTS_STORAGE_KEY, JSON.stringify(attempts))
   } catch {
     // Nothing else needs to happen when browser storage is unavailable.
+  }
+}
+
+const removeCachedPracticeAttemptIds = (attemptIds: string[]) => {
+  const acceptedIds = new Set(attemptIds)
+  try {
+    const attempts = readCachedAttempts().filter((attempt) => !acceptedIds.has(attempt.id))
+    window.sessionStorage.setItem(ATTEMPTS_STORAGE_KEY, JSON.stringify(attempts))
+  } catch {
+    // Successful server imports remain saved even when browser storage is unavailable.
+  }
+}
+
+export const transferCachedPracticeAttempts = async () => {
+  const attempts = getTransferablePracticeAttempts()
+  if (attempts.length === 0) return {imported: 0, alreadySaved: 0}
+
+  const response = await fetch('/api/practice/import', {
+    method: 'POST',
+    headers: {'content-type': 'application/json'},
+    body: JSON.stringify({attempts}),
+  })
+  const data = await response.json() as {
+    imported?: number
+    alreadySaved?: number
+    acceptedIds?: string[]
+    error?: string
+  }
+  if (!response.ok || !data.acceptedIds) {
+    throw new Error(data.error ?? 'Could not save browser progress.')
+  }
+
+  removeCachedPracticeAttemptIds(data.acceptedIds)
+  return {
+    imported: data.imported ?? 0,
+    alreadySaved: data.alreadySaved ?? 0,
   }
 }
 

@@ -13,7 +13,14 @@ export default defineConfig({
 
   integrations: [
     mdx(),
-    sitemap({ filter: (page) => !page.includes('/player-shell') }),
+    sitemap({
+      filter: (page) => ![
+        '/admin/',
+        '/player-shell/',
+        '/puzzle-shell/',
+        '/track-progress/',
+      ].some((path) => page.endsWith(path)),
+    }),
     sanity({
       projectId: '5759b7nb',
       dataset: 'production',
