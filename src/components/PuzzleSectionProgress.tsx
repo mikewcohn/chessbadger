@@ -22,7 +22,7 @@ const RANGE_SIZE = 100
 
 const puzzleNumberLabel = (puzzle: Puzzle) => {
   if (puzzle.sourcePage && puzzle.pagePosition) return `${puzzle.sourcePage}.${puzzle.pagePosition}`
-  return puzzle.title.replace(/^Puzzle\s+/, '').replace(/^Page (\d+), Puzzle (\d+)$/, '$1.$2')
+  return puzzle.title.replace(/^(?:Puzzle|Problem)\s+/, '').replace(/^Page (\d+), Puzzle (\d+)$/, '$1.$2')
 }
 
 const statusLabel: Record<PuzzleProgressStatus, string> = {
