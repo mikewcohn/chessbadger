@@ -13,6 +13,7 @@ type StudentPuzzleResultsProps = {
   sectionSlug: string
   puzzles: Puzzle[]
   attempts: PracticeAttempt[]
+  notes: Record<string, string>
 }
 
 type AttemptedStatus = Exclude<PuzzleProgressStatus, 'not-attempted'>
@@ -52,6 +53,7 @@ export default function StudentPuzzleResults({
   sectionSlug,
   puzzles,
   attempts,
+  notes,
 }: StudentPuzzleResultsProps) {
   const [expanded, setExpanded] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -113,7 +115,7 @@ export default function StudentPuzzleResults({
   const canExportWorkbookAttempts = puzzles.some((puzzle) => workbookPuzzleReference(puzzle) !== null)
 
   const exportAttempts = () => {
-    const csv = createWorkbookAttemptsCsv(puzzles, attempts)
+    const csv = createWorkbookAttemptsCsv(puzzles, attempts, notes)
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const link = document.createElement('a')
     link.href = url

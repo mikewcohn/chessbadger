@@ -12,6 +12,7 @@ import PuzzleProgressBar from './PuzzleProgressBar'
 import ResetAttempts from './ResetAttempts'
 import StudentPuzzleResults from './StudentPuzzleResults'
 import type { Puzzle } from '../types/puzzles'
+import { getCachedPuzzleNotes, type PuzzleNotes } from '../lib/puzzleNotes'
 
 type PuzzleSectionProgressProps = {
   collection: PuzzleCollection
@@ -72,6 +73,7 @@ function LegendItem({ status, children }: { status: PuzzleProgressStatus; childr
 
 export default function PuzzleSectionProgress({ collection, section }: PuzzleSectionProgressProps) {
   const [attempts, setAttempts] = useState<PracticeAttempt[]>([])
+  const [notes, setNotes] = useState<PuzzleNotes>({})
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -85,16 +87,20 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
     const controller = new AbortController()
     void Promise.all([
       fetch('/api/practice/attempts', { signal: controller.signal }),
+      fetch('/api/practice/notes', { signal: controller.signal }),
       fetch('/api/players/me', { signal: controller.signal }),
     ])
-      .then(async ([attemptsResponse, playerResponse]) => {
+      .then(async ([attemptsResponse, notesResponse, playerResponse]) => {
         const data = await attemptsResponse.json() as {
           attempts?: PracticeAttempt[]
           error?: string
         }
         const playerData = await playerResponse.json() as { player: { handle: string } | null }
+        const notesData = await notesResponse.json() as { notes?: PuzzleNotes; error?: string }
         if (!attemptsResponse.ok || !data.attempts) throw new Error(data.error ?? 'Could not load puzzle progress.')
+        if (!notesResponse.ok || !notesData.notes) throw new Error(notesData.error ?? 'Could not load puzzle notes.')
         setAttempts([...data.attempts, ...getCachedPracticeAttempts()])
+        setNotes({ ...notesData.notes, ...getCachedPuzzleNotes() })
         setSignedIn(Boolean(playerData.player))
       })
       .catch((caught: unknown) => {
@@ -332,6 +338,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
         sectionSlug={section.slug}
         puzzles={section.puzzles}
         attempts={attempts}
+        notes={notes}
       /> : null}
     </section>
   )

@@ -48,6 +48,8 @@ import {
   type PieceTheme,
 } from '../lib/pieceThemes'
 import ResetAttempts from './ResetAttempts'
+import PuzzleNoteField from './PuzzleNoteField'
+import { getCachedPuzzleNotes, type PuzzleNotes } from '../lib/puzzleNotes'
 
 type PuzzleTrainerProps = {
   puzzles: Puzzle[]
@@ -336,6 +338,7 @@ export default function PuzzleTrainer({
   const [pieceTheme, setPieceTheme] = useState<PieceTheme>('default')
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const [attemptHistory, setAttemptHistory] = useState<Record<string, Attempt[]>>({})
+  const [puzzleNotes, setPuzzleNotes] = useState<PuzzleNotes>({})
   const [reviewMode, setReviewMode] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
   const [historyExpanded, setHistoryExpanded] = useState(false)
@@ -555,14 +558,17 @@ export default function PuzzleTrainer({
 
     void Promise.all([
       fetch('/api/practice/attempts', { signal: controller.signal }),
+      fetch('/api/practice/notes', { signal: controller.signal }),
       fetch('/api/players/me', { signal: controller.signal }),
-    ]).then(async ([attemptsResponse, playerResponse]) => {
+    ]).then(async ([attemptsResponse, notesResponse, playerResponse]) => {
         const data = await attemptsResponse.json() as {
           attempts?: Array<Attempt & { puzzleId: string }>
           error?: string
         }
+        const notesData = await notesResponse.json() as { notes?: PuzzleNotes; error?: string }
         const playerData = await playerResponse.json() as { player: { handle: string } | null }
         if (!attemptsResponse.ok || !data.attempts) throw new Error(data.error ?? 'Could not load practice history.')
+        if (!notesResponse.ok || !notesData.notes) throw new Error(notesData.error ?? 'Could not load puzzle notes.')
 
         const history = data.attempts.reduce<Record<string, Attempt[]>>(
           (grouped, attempt) => {
@@ -584,6 +590,7 @@ export default function PuzzleTrainer({
         )
 
         setAttemptHistory(history)
+        setPuzzleNotes({ ...notesData.notes, ...getCachedPuzzleNotes() })
         setSignedIn(Boolean(playerData.player))
         if (nextRetryStatuses.length > 0 && !savedRetryQueue) {
           const statusAttempts = [...data.attempts, ...getCachedPracticeAttempts()]
@@ -1467,6 +1474,14 @@ export default function PuzzleTrainer({
             </div>
           </div>
 
+          <PuzzleNoteField
+            key={`review-note-${puzzle.id}`}
+            puzzleId={puzzle.id}
+            note={puzzleNotes[puzzle.id] ?? ''}
+            signedIn={signedIn}
+            onChange={(note) => setPuzzleNotes((current) => ({ ...current, [puzzle.id]: note }))}
+          />
+
           <section className="mt-6 border-t border-stone-200 pt-5" aria-labelledby="review-attempt-history-heading">
             <h2 id="review-attempt-history-heading" className="text-lg font-bold text-stone-950">Your attempts</h2>
             {saveStatus === 'loading' ? <p className="mt-3 text-sm text-stone-500">Loading attempts…</p> : puzzleAttempts.length === 0 ? (
@@ -2325,6 +2340,14 @@ export default function PuzzleTrainer({
             ) : null}
           </div>
         ) : null}
+
+        <PuzzleNoteField
+          key={`practice-note-${puzzle.id}`}
+          puzzleId={puzzle.id}
+          note={puzzleNotes[puzzle.id] ?? ''}
+          signedIn={signedIn}
+          onChange={(note) => setPuzzleNotes((current) => ({ ...current, [puzzle.id]: note }))}
+        />
 
         {puzzleAttempts.length > 0 ? (
           <details

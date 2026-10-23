@@ -71,7 +71,11 @@ const escapeCsvCell = (value: string | number) => {
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 
-export const createWorkbookAttemptsCsv = (puzzles: Puzzle[], attempts: PracticeAttempt[]) => {
+export const createWorkbookAttemptsCsv = (
+  puzzles: Puzzle[],
+  attempts: PracticeAttempt[],
+  notes: Record<string, string> = {},
+) => {
   const workbookPuzzles = puzzles.flatMap((puzzle) => {
     const reference = workbookPuzzleReference(puzzle)
     if (!reference) return []
@@ -105,15 +109,16 @@ export const createWorkbookAttemptsCsv = (puzzles: Puzzle[], attempts: PracticeA
             pageNumber,
             puzzleNumber,
             formatAttemptData(entry.puzzle, attempts),
+            notes[entry.puzzle.id] ?? '',
             Math.round(entry.timeMs / 1000),
             puzzleNumber === 1 ? formatPageTotalTime(pageTotals.get(pageNumber) ?? 0) : '',
           ]
-        : [pageNumber, puzzleNumber, '', '', ''])
+        : [pageNumber, puzzleNumber, '', '', '', ''])
     }
   }
 
   return [
-    ['Page #', 'Puzzle #', 'Attempt Data', 'Puzzle Time (seconds)', 'Page Total Time'],
+    ['Page #', 'Puzzle #', 'Attempt Data', 'Note', 'Puzzle Time (seconds)', 'Page Total Time'],
     ...rows,
   ].map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')
 }

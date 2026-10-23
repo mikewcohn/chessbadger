@@ -51,12 +51,15 @@ test('numbers every White move in a multi-ply attempt', () => {
   }]), '1...Qe1+ 2. Kh2 Qxc3')
 })
 
-test('exports puzzle time and a page total on the first row of each page', () => {
-  assert.equal(createWorkbookAttemptsCsv(puzzles, attempts), [
-    'Page #,Puzzle #,Attempt Data,Puzzle Time (seconds),Page Total Time',
-    '12,1,1...Qxc5+,31,1m 28s',
-    '12,2,1. Qxc6 (wrong); 1. Qh3+,57,',
-    '12,3,,0,',
+test('exports puzzle notes, puzzle time, and a page total on the first row of each page', () => {
+  assert.equal(createWorkbookAttemptsCsv(puzzles, attempts, {
+    'page-12-puzzle-01': '+3 1. Bxc5 Nf3 0',
+    'page-12-puzzle-02': 'Review forks, pins, and "loose pieces"',
+  }), [
+    'Page #,Puzzle #,Attempt Data,Note,Puzzle Time (seconds),Page Total Time',
+    '12,1,1...Qxc5+,+3 1. Bxc5 Nf3 0,31,1m 28s',
+    '12,2,1. Qxc6 (wrong); 1. Qh3+,"Review forks, pins, and ""loose pieces""",57,',
+    '12,3,,,0,',
   ].join('\r\n'))
 })
 
@@ -75,11 +78,11 @@ test('starts a new page total when the page number changes', () => {
   }
 
   assert.equal(createWorkbookAttemptsCsv([...puzzles, nextPagePuzzle], [...attempts, nextPageAttempt]), [
-    'Page #,Puzzle #,Attempt Data,Puzzle Time (seconds),Page Total Time',
-    '12,1,1...Qxc5+,31,1m 28s',
-    '12,2,1. Qxc6 (wrong); 1. Qh3+,57,',
-    '12,3,,0,',
-    '13,1,1. Qa4,3661,1h 1m 1s',
+    'Page #,Puzzle #,Attempt Data,Note,Puzzle Time (seconds),Page Total Time',
+    '12,1,1...Qxc5+,,31,1m 28s',
+    '12,2,1. Qxc6 (wrong); 1. Qh3+,,57,',
+    '12,3,,,0,',
+    '13,1,1. Qa4,,3661,1h 1m 1s',
   ].join('\r\n'))
 })
 
@@ -92,11 +95,11 @@ test('uses workbook positions and exports blank rows for drawings', () => {
 
   const rows = createWorkbookAttemptsCsv(page22Puzzles, []).split('\r\n')
   assert.equal(rows.length, 13)
-  assert.equal(rows[1], '22,1,,0,0s')
-  assert.equal(rows[6], '22,6,,0,')
-  assert.equal(rows[7], '22,7,,,')
-  assert.equal(rows[8], '22,8,,,')
-  assert.equal(rows[9], '22,9,,0,')
+  assert.equal(rows[1], '22,1,,,0,0s')
+  assert.equal(rows[6], '22,6,,,0,')
+  assert.equal(rows[7], '22,7,,,,')
+  assert.equal(rows[8], '22,8,,,,')
+  assert.equal(rows[9], '22,9,,,0,')
 })
 
 test('uses a section-specific CSV filename', () => {
