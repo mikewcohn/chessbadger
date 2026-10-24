@@ -85,7 +85,7 @@ const PuzzleNoteField = forwardRef<PuzzleNoteFieldHandle, PuzzleNoteFieldProps>(
         ? 'Could not save this note. It remains in this browser session.'
         : signedIn === false
           ? 'This note will stay in this browser session.'
-          : 'Include anything useful for reviewing this puzzle later.'
+          : null
 
   return (
     <section className="mt-6 border-t border-stone-200 pt-5" aria-labelledby={`puzzle-note-heading-${puzzleId}`}>
@@ -101,12 +101,14 @@ const PuzzleNoteField = forwardRef<PuzzleNoteFieldHandle, PuzzleNoteFieldProps>(
         className="mt-3 w-full resize-y rounded-xl border border-stone-300 bg-white px-3.5 py-3 text-sm text-stone-950 outline-none placeholder:text-stone-400 focus:border-amber-700 focus:ring-2 focus:ring-amber-200 disabled:cursor-wait disabled:bg-stone-50"
       />
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-        <p className={`text-xs ${saveStatus === 'error' ? 'font-bold text-rose-800' : 'text-stone-500'}`} aria-live="polite">{statusCopy}</p>
+        {statusCopy ? (
+          <p className={`text-xs ${saveStatus === 'error' ? 'font-bold text-rose-800' : 'text-stone-500'}`} aria-live="polite">{statusCopy}</p>
+        ) : null}
         <button
           type="button"
           onClick={() => void saveNote()}
           disabled={!hasUnsavedChanges || saveStatus === 'saving'}
-          className="cursor-pointer rounded-lg border border-amber-800 bg-white px-3.5 py-2 text-sm font-bold text-amber-900 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+          className="ml-auto cursor-pointer rounded-lg border border-amber-800 bg-white px-3.5 py-2 text-sm font-bold text-amber-900 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Save note
         </button>
