@@ -48,7 +48,7 @@ import {
   type PieceTheme,
 } from '../lib/pieceThemes'
 import ResetAttempts from './ResetAttempts'
-import PuzzleNoteField from './PuzzleNoteField'
+import PuzzleNoteField, { type PuzzleNoteFieldHandle } from './PuzzleNoteField'
 import { getCachedPuzzleNotes, type PuzzleNotes } from '../lib/puzzleNotes'
 
 type PuzzleTrainerProps = {
@@ -351,7 +351,19 @@ export default function PuzzleTrainer({
   const lastMoveTimerRefs = useRef<number[]>([])
   const focusModeButtonRef = useRef<HTMLButtonElement | null>(null)
   const practiceSessionIdRef = useRef('')
+  const puzzleNoteFieldRef = useRef<PuzzleNoteFieldHandle | null>(null)
+  const noteNavigationPendingRef = useRef(false)
   const timer = usePuzzleTimer()
+
+  const saveNoteBeforeNavigation = async () => {
+    if (noteNavigationPendingRef.current) return false
+    noteNavigationPendingRef.current = true
+    try {
+      return await (puzzleNoteFieldRef.current?.saveIfNeeded() ?? true)
+    } finally {
+      noteNavigationPendingRef.current = false
+    }
+  }
 
   const puzzle = puzzles[puzzleIndex]
   const isInteractiveCheckmate = isInteractiveCheckmatePuzzle(puzzle)
@@ -651,7 +663,8 @@ export default function PuzzleTrainer({
     }
   }, [focusMode])
 
-  const toggleFocusMode = () => {
+  const toggleFocusMode = async () => {
+    if (!focusMode && !await saveNoteBeforeNavigation()) return
     if (!focusMode && result === null && !timer.isRunning) timer.resume()
     setFocusMode((active) => !active)
   }
@@ -709,24 +722,32 @@ export default function PuzzleTrainer({
     ? `/puzzles/${collectionSlug}`
     : `/puzzles/${collectionSlug}/${sectionSlug}`
   const activeRetrySearch = retrySearch(retryStatuses, retryScope)
-  const navigateToRetryEntry = (entry: RetryQueueEntry) => {
+  const navigateToPuzzleIndex = async (index: number) => {
+    if (!await saveNoteBeforeNavigation()) return
+    resetPuzzle(index)
+  }
+  const navigateToRetryEntry = async (entry: RetryQueueEntry) => {
+    if (!await saveNoteBeforeNavigation()) return
     window.location.assign(retryPuzzleHref(collectionSlug, entry, activeRetrySearch))
   }
-  const goToPreviousPuzzle = () => {
+  const goToPreviousPuzzle = async () => {
     if (retryMode) {
-      if (previousRetryEntry) navigateToRetryEntry(previousRetryEntry)
+      if (previousRetryEntry) await navigateToRetryEntry(previousRetryEntry)
       return
     }
-    if (previousPuzzleIndex !== null) resetPuzzle(previousPuzzleIndex)
+    if (previousPuzzleIndex !== null) await navigateToPuzzleIndex(previousPuzzleIndex)
   }
-  const goToNextPuzzle = () => {
+  const goToNextPuzzle = async () => {
     if (retryMode) {
-      if (nextRetryEntry) navigateToRetryEntry(nextRetryEntry)
+      if (nextRetryEntry) await navigateToRetryEntry(nextRetryEntry)
       return
     }
-    if (nextPuzzleIndex !== null) resetPuzzle(nextPuzzleIndex)
+    if (nextPuzzleIndex !== null) await navigateToPuzzleIndex(nextPuzzleIndex)
   }
-  const finishRetries = () => window.location.assign(retryReturnHref)
+  const finishRetries = async () => {
+    if (!await saveNoteBeforeNavigation()) return
+    window.location.assign(retryReturnHref)
+  }
 
   useEffect(() => {
     const syncPuzzleToUrl = () => {
@@ -754,8 +775,8 @@ export default function PuzzleTrainer({
       if (!canNavigate) return
 
       event.preventDefault()
-      if (event.key === 'ArrowLeft') goToPreviousPuzzle()
-      else goToNextPuzzle()
+      if (event.key === 'ArrowLeft') void goToPreviousPuzzle()
+      else void goToNextPuzzle()
     }
 
     window.addEventListener('keydown', handlePuzzleArrowKey)
@@ -1473,6 +1494,7 @@ export default function PuzzleTrainer({
           </div>
 
           <PuzzleNoteField
+            ref={puzzleNoteFieldRef}
             key={`review-note-${puzzle.id}`}
             puzzleId={puzzle.id}
             note={puzzleNotes[puzzle.id] ?? ''}
@@ -1513,7 +1535,7 @@ export default function PuzzleTrainer({
             <div className="flex items-center justify-between gap-4">
               <button
                 type="button"
-                onClick={() => resetPuzzle(puzzleIndex - 1)}
+                onClick={() => void navigateToPuzzleIndex(puzzleIndex - 1)}
                 disabled={puzzleIndex === 0}
                 aria-keyshortcuts="ArrowLeft"
                 title="Previous puzzle (←)"
@@ -1523,7 +1545,7 @@ export default function PuzzleTrainer({
               </button>
               <button
                 type="button"
-                onClick={() => resetPuzzle(puzzleIndex + 1)}
+                onClick={() => void navigateToPuzzleIndex(puzzleIndex + 1)}
                 disabled={puzzleIndex === puzzles.length - 1}
                 aria-keyshortcuts="ArrowRight"
                 title="Next puzzle (→)"
@@ -1535,7 +1557,7 @@ export default function PuzzleTrainer({
             <div className="mt-3 flex items-center justify-between gap-4">
               <button
                 type="button"
-                onClick={() => previousReviewIndex !== null && resetPuzzle(previousReviewIndex)}
+                onClick={() => { if (previousReviewIndex !== null) void navigateToPuzzleIndex(previousReviewIndex) }}
                 disabled={previousReviewIndex === null}
                 className="cursor-pointer rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-bold text-stone-700 hover:border-amber-700 hover:text-amber-900 disabled:cursor-not-allowed disabled:text-stone-400"
               >
@@ -1543,7 +1565,7 @@ export default function PuzzleTrainer({
               </button>
               <button
                 type="button"
-                onClick={() => nextReviewIndex !== null && resetPuzzle(nextReviewIndex)}
+                onClick={() => { if (nextReviewIndex !== null) void navigateToPuzzleIndex(nextReviewIndex) }}
                 disabled={nextReviewIndex === null}
                 className="cursor-pointer rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-bold text-stone-700 hover:border-amber-700 hover:text-amber-900 disabled:cursor-not-allowed disabled:text-stone-400"
               >
@@ -1627,7 +1649,7 @@ export default function PuzzleTrainer({
           <button
             ref={focusModeButtonRef}
             type="button"
-            onClick={toggleFocusMode}
+            onClick={() => void toggleFocusMode()}
             aria-pressed={focusMode}
             aria-label={focusMode ? 'Exit puzzle focus mode' : 'Enter puzzle focus mode'}
             aria-keyshortcuts="Escape"
@@ -1951,7 +1973,7 @@ export default function PuzzleTrainer({
                 {!focusMode && hasNextPuzzle ? (
                   <button
                     type="button"
-                    onClick={goToNextPuzzle}
+                    onClick={() => void goToNextPuzzle()}
                     className="grid size-12 shrink-0 cursor-pointer place-items-center rounded-full bg-white text-emerald-950 shadow-lg transition hover:scale-105 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:size-14"
                     aria-label="Next puzzle"
                     title="Next puzzle"
@@ -1987,7 +2009,7 @@ export default function PuzzleTrainer({
                   </button>
                   <button
                     type="button"
-                    onClick={hasNextPuzzle ? goToNextPuzzle : finishRetries}
+                    onClick={() => { void (hasNextPuzzle ? goToNextPuzzle() : finishRetries()) }}
                     disabled={!hasNextPuzzle && !retryMode}
                     className="cursor-pointer rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
                   >
@@ -2036,7 +2058,7 @@ export default function PuzzleTrainer({
                   </button>
                   <button
                     type="button"
-                    onClick={hasNextPuzzle ? goToNextPuzzle : finishRetries}
+                    onClick={() => { void (hasNextPuzzle ? goToNextPuzzle() : finishRetries()) }}
                     disabled={!hasNextPuzzle && !retryMode}
                     className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/35 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
                   >
@@ -2055,7 +2077,7 @@ export default function PuzzleTrainer({
           <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 p-2 sm:gap-4 sm:p-3">
             <button
               type="button"
-              onClick={goToPreviousPuzzle}
+              onClick={() => void goToPreviousPuzzle()}
               disabled={!hasPreviousPuzzle}
               aria-label="Previous puzzle"
               aria-keyshortcuts="ArrowLeft"
@@ -2129,7 +2151,7 @@ export default function PuzzleTrainer({
 
             <button
               type="button"
-              onClick={goToNextPuzzle}
+              onClick={() => void goToNextPuzzle()}
               disabled={!hasNextPuzzle}
               aria-label="Next puzzle"
               aria-keyshortcuts="ArrowRight"
@@ -2340,6 +2362,7 @@ export default function PuzzleTrainer({
         ) : null}
 
         <PuzzleNoteField
+          ref={puzzleNoteFieldRef}
           key={`practice-note-${puzzle.id}`}
           puzzleId={puzzle.id}
           note={puzzleNotes[puzzle.id] ?? ''}
@@ -2399,7 +2422,7 @@ export default function PuzzleTrainer({
         <div className={`${focusMode ? 'mt-auto' : 'mt-2 lg:mt-8'} flex items-center justify-between gap-4 border-t border-stone-200 pt-3 lg:pt-6`}>
           <button
             type="button"
-            onClick={goToPreviousPuzzle}
+            onClick={() => void goToPreviousPuzzle()}
             disabled={!hasPreviousPuzzle}
             aria-keyshortcuts="ArrowLeft"
             title="Previous puzzle (←)"
@@ -2410,7 +2433,7 @@ export default function PuzzleTrainer({
           </button>
           <button
             type="button"
-            onClick={goToNextPuzzle}
+            onClick={() => void goToNextPuzzle()}
             disabled={!hasNextPuzzle}
             aria-keyshortcuts="ArrowRight"
             title="Next puzzle (→)"
