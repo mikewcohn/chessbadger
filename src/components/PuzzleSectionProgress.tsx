@@ -52,6 +52,14 @@ function StatusIcon({ status }: { status: PuzzleProgressStatus }) {
   )
 }
 
+function NoteIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={`size-3.5 fill-none stroke-current ${className}`} strokeWidth="2" aria-hidden="true">
+      <path d="M15.5 5.5 18.5 8.5M4 20l3.75-.75L19 8a2.12 2.12 0 0 0-3-3L4.75 16.25 4 20Z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function LegendItem({ status, children }: { status: PuzzleProgressStatus; children: ReactNode }) {
   const color = status === 'clean'
     ? 'bg-emerald-800 text-emerald-800'
@@ -164,6 +172,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
   const retryHref = retryEntries.length > 0
     ? retryPuzzleHref(collection.slug, retryEntries[0], retryQuery)
     : null
+  const hasAnyNotes = section.puzzles.some((puzzle) => Boolean(notes[puzzle.id]?.trim()))
 
   const beginRetry = () => saveRetryQueue({
     collectionSlug: collection.slug,
@@ -306,6 +315,7 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
           {visiblePuzzleIndices.map((index) => {
           const puzzle = section.puzzles[index]
           const status = showSavedProgress ? statuses[index] : 'not-attempted'
+          const hasNote = Boolean(notes[puzzle.id]?.trim())
           const style = status === 'clean'
             ? 'border-emerald-800 bg-emerald-800 text-white hover:bg-emerald-700'
             : status === 'retried'
@@ -315,21 +325,36 @@ export default function PuzzleSectionProgress({ collection, section }: PuzzleSec
                 : 'border-stone-300 bg-stone-100 text-stone-700 hover:border-stone-500 hover:bg-white'
 
           return (
-            <a key={puzzle.id} href={puzzleHref(index)} className={`grid min-h-11 place-items-center rounded-lg border px-2 py-2 text-center transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 ${style}`} aria-label={showSavedProgress ? `${puzzle.title}: ${statusLabel[status]}` : puzzle.title}>
+            <a key={puzzle.id} href={puzzleHref(index)} className={`relative grid min-h-11 place-items-center rounded-lg border px-2 py-2 text-center transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 ${style}`} aria-label={`${showSavedProgress ? `${puzzle.title}: ${statusLabel[status]}` : puzzle.title}${hasNote ? ', has note' : ''}`}>
               <span className="flex items-center justify-center gap-1.5">
                 <strong className="text-sm font-bold">{puzzleNumberLabel(puzzle)}</strong>
                 <StatusIcon status={status} />
               </span>
+              {hasNote ? (
+                <span className={`absolute right-1.5 top-1.5 ${status === 'clean' || status === 'missed' ? 'text-white/90' : 'text-amber-800'}`} title="Has note">
+                  <NoteIcon />
+                </span>
+              ) : null}
             </a>
           )
           })}
         </div>
 
-        {showSavedProgress ? <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-stone-200 pt-4">
-          <LegendItem status="clean">First try</LegendItem>
-          <LegendItem status="retried">After retry</LegendItem>
-          <LegendItem status="missed">Not solved</LegendItem>
-          <LegendItem status="not-attempted">Not attempted</LegendItem>
+        {showSavedProgress || hasAnyNotes ? <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-stone-200 pt-4">
+          {showSavedProgress ? (
+            <>
+              <LegendItem status="clean">First try</LegendItem>
+              <LegendItem status="retried">After retry</LegendItem>
+              <LegendItem status="missed">Not solved</LegendItem>
+              <LegendItem status="not-attempted">Not attempted</LegendItem>
+            </>
+          ) : null}
+          <span className="inline-flex items-center gap-2 text-sm font-bold text-stone-600">
+            <span className="grid size-7 place-items-center rounded-full bg-amber-50 text-amber-800 ring-1 ring-amber-200">
+              <NoteIcon />
+            </span>
+            Has note
+          </span>
         </div> : null}
       </div>
 
