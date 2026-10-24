@@ -381,9 +381,7 @@ export default function PuzzleTrainer({
   const retryPosition = retryNavigation.position
   const previousRetryEntry = retryNavigation.previous
   const nextRetryEntry = retryNavigation.next
-  const puzzleHeading = retryMode
-    ? puzzle.title
-    : `Puzzle ${puzzleIndex + 1} of ${puzzles.length}`
+  const puzzleHeading = puzzle.title
   const previousPuzzleIndex = !retryMode && puzzleIndex > 0 ? puzzleIndex - 1 : null
   const nextPuzzleIndex = !retryMode && puzzleIndex < puzzles.length - 1 ? puzzleIndex + 1 : null
   const hasPreviousPuzzle = retryMode ? previousRetryEntry !== null : previousPuzzleIndex !== null
