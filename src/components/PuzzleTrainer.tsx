@@ -50,6 +50,7 @@ import {
 import ResetAttempts from './ResetAttempts'
 import PuzzleNoteField, { type PuzzleNoteFieldHandle } from './PuzzleNoteField'
 import { getCachedPuzzleNotes, type PuzzleNotes } from '../lib/puzzleNotes'
+import { copyTextToClipboard } from '../lib/clipboard'
 
 type PuzzleTrainerProps = {
   puzzles: Puzzle[]
@@ -346,6 +347,7 @@ export default function PuzzleTrainer({
   const [retryStatuses, setRetryStatuses] = useState<RetryStatus[]>([])
   const [retryScope, setRetryScope] = useState<RetryScope>('section')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'signed-out' | 'error'>('idle')
+  const [fenCopyStatus, setFenCopyStatus] = useState<'idle' | 'copying' | 'copied' | 'error'>('idle')
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const replyTimerRef = useRef<number | null>(null)
   const lastMoveTimerRefs = useRef<number[]>([])
@@ -366,6 +368,24 @@ export default function PuzzleTrainer({
   }
 
   const puzzle = puzzles[puzzleIndex]
+
+  useEffect(() => {
+    setFenCopyStatus('idle')
+  }, [puzzle.id])
+
+  const copyPuzzleFen = async () => {
+    setFenCopyStatus('copying')
+    const copied = await copyTextToClipboard(puzzle.fen)
+    setFenCopyStatus(copied ? 'copied' : 'error')
+  }
+
+  const fenCopyLabel = fenCopyStatus === 'copying'
+    ? 'Copying…'
+    : fenCopyStatus === 'copied'
+      ? 'FEN copied'
+      : fenCopyStatus === 'error'
+        ? 'Copy failed'
+        : 'Copy FEN'
   const isInteractiveCheckmate = isInteractiveCheckmatePuzzle(puzzle)
   const canShowAnswer = !isInteractiveCheckmate
   const puzzleAnswerPosition = positionAfterGivenMoves(puzzle)
@@ -1626,6 +1646,14 @@ export default function PuzzleTrainer({
                 </button>
               ) : null}
               <button type="button" onClick={() => resetPuzzle(puzzleIndex, true, true)} className="min-h-11 cursor-pointer px-1 font-bold text-stone-700 underline decoration-stone-300 underline-offset-4">Restart</button>
+              <button
+                type="button"
+                onClick={() => void copyPuzzleFen()}
+                disabled={fenCopyStatus === 'copying'}
+                className={`min-h-11 cursor-pointer px-1 font-bold underline underline-offset-4 disabled:cursor-wait ${fenCopyStatus === 'copied' ? 'text-emerald-800 decoration-emerald-300' : fenCopyStatus === 'error' ? 'text-rose-800 decoration-rose-300' : 'text-stone-700 decoration-stone-300'}`}
+              >
+                {fenCopyLabel}
+              </button>
             </section>
           </div>
         ) : null}
@@ -2235,6 +2263,15 @@ export default function PuzzleTrainer({
             className="cursor-pointer font-semibold text-stone-600 underline decoration-stone-300 underline-offset-4 hover:text-stone-900"
           >
             Restart
+          </button>
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
+            onClick={() => void copyPuzzleFen()}
+            disabled={fenCopyStatus === 'copying'}
+            className={`cursor-pointer font-semibold underline underline-offset-4 disabled:cursor-wait ${fenCopyStatus === 'copied' ? 'text-emerald-800 decoration-emerald-300' : fenCopyStatus === 'error' ? 'text-rose-800 decoration-rose-300' : 'text-stone-600 decoration-stone-300 hover:text-stone-900'}`}
+          >
+            {fenCopyLabel}
           </button>
           {!timer.isRunning && result === null ? (
             <p className="basis-full text-xs font-semibold text-amber-900">
