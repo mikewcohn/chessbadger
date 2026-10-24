@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { cachePuzzleNote, removeCachedPuzzleNote } from '../lib/puzzleNotes'
 
 type PuzzleNoteFieldProps = {
@@ -12,16 +12,29 @@ type NoteSaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 export default function PuzzleNoteField({ puzzleId, note, signedIn, onChange }: PuzzleNoteFieldProps) {
   const [saveStatus, setSaveStatus] = useState<NoteSaveStatus>('idle')
+  const [savedNote, setSavedNote] = useState(note)
+  const lastEditedNote = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (lastEditedNote.current === note) return
+    setSavedNote(note)
+  }, [note])
+
+  const hasUnsavedChanges = lastEditedNote.current === note && note !== savedNote
 
   const updateNote = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const nextNote = event.currentTarget.value
+    lastEditedNote.current = nextNote
     onChange(nextNote)
     cachePuzzleNote(puzzleId, nextNote)
     setSaveStatus('idle')
   }
 
   const saveNote = async () => {
+    if (!hasUnsavedChanges) return
+
     if (!signedIn) {
+      setSavedNote(note)
       setSaveStatus('saved')
       return
     }
@@ -38,6 +51,7 @@ export default function PuzzleNoteField({ puzzleId, note, signedIn, onChange }: 
         throw new Error(data.error ?? 'Could not save note.')
       }
       removeCachedPuzzleNote(puzzleId)
+      setSavedNote(note)
       setSaveStatus('saved')
     } catch {
       setSaveStatus('error')
@@ -56,10 +70,7 @@ export default function PuzzleNoteField({ puzzleId, note, signedIn, onChange }: 
 
   return (
     <section className="mt-6 border-t border-stone-200 pt-5" aria-labelledby={`puzzle-note-heading-${puzzleId}`}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id={`puzzle-note-heading-${puzzleId}`} className="text-lg font-bold text-stone-950">Puzzle note</h2>
-        <span className="text-xs font-semibold text-stone-500">Exported with this puzzle</span>
-      </div>
+      <h2 id={`puzzle-note-heading-${puzzleId}`} className="text-lg font-bold text-stone-950">Puzzle note</h2>
       <textarea
         value={note}
         onChange={updateNote}
@@ -74,8 +85,8 @@ export default function PuzzleNoteField({ puzzleId, note, signedIn, onChange }: 
         <button
           type="button"
           onClick={() => void saveNote()}
-          disabled={saveStatus === 'saving'}
-          className="cursor-pointer rounded-lg border border-amber-800 bg-white px-3.5 py-2 text-sm font-bold text-amber-900 hover:bg-amber-50 disabled:cursor-wait disabled:opacity-60"
+          disabled={!hasUnsavedChanges || saveStatus === 'saving'}
+          className="cursor-pointer rounded-lg border border-amber-800 bg-white px-3.5 py-2 text-sm font-bold text-amber-900 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Save note
         </button>
