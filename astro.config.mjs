@@ -17,6 +17,7 @@ export default defineConfig({
       filter: (page) => ![
         '/admin/',
         '/player-shell/',
+        '/insights-shell/',
         '/puzzle-shell/',
         '/track-progress/',
       ].some((path) => page.endsWith(path)),

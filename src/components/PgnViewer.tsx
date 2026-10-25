@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Chess } from 'chess.js'
 import { Chessboard, ChessboardProvider, type Arrow } from 'react-chessboard'
 import {
   BOARD_THEMES,
@@ -13,162 +12,19 @@ import {
   PIECE_THEME_STORAGE_KEY,
   type PieceTheme,
 } from '../lib/pieceThemes'
+import { parsePgn, type ParsedLine, type ParsedMove } from '../lib/pgn'
 
-type PgnViewerProps = { pgn: string }
-type PgnToken = { type: 'word' | 'comment' | 'open' | 'close'; value: string }
-
-type ParsedMove = {
-  id: string
-  lineId: string
-  index: number
-  san: string
-  color: 'w' | 'b'
-  moveNumber: number
-  before: string
-  after: string
-  from: string
-  to: string
-  commentsBefore: string[]
-  commentsAfter: string[]
-  nags: string[]
-  variations: ParsedLine[]
+type PgnViewerProps = {
+  pgn: string
+  initialPly?: number
+  initialOrientation?: 'white' | 'black'
+  onMainlinePlyChange?: (ply: number, fen: string) => void
+  onExplore?: (fen: string) => void
 }
-
-type ParsedLine = { id: string; startFen: string; moves: ParsedMove[] }
-type ParsedPgn = { mainline: ParsedLine; lines: Map<string, ParsedLine>; error: string | null }
-
-const START_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
 const NAG_LABELS: Record<string, string> = {
   '$1': '!', '$2': '?', '$3': '!!', '$4': '??', '$5': '!?', '$6': '?!',
   '$10': '=', '$13': '∞', '$14': '+=', '$15': '=+', '$16': '+−', '$17': '−+',
-}
-
-function tokenizePgn(pgn: string): PgnToken[] {
-  const movetext = pgn.replace(/^\s*\[[^\r\n]*\]\s*$/gm, '')
-  const tokens: PgnToken[] = []
-
-  for (let index = 0; index < movetext.length;) {
-    const character = movetext[index]
-    if (/\s/.test(character)) { index += 1; continue }
-
-    if (character === '{') {
-      const end = movetext.indexOf('}', index + 1)
-      const commentEnd = end === -1 ? movetext.length : end
-      tokens.push({ type: 'comment', value: movetext.slice(index + 1, commentEnd).trim() })
-      index = end === -1 ? movetext.length : end + 1
-      continue
-    }
-
-    if (character === ';') {
-      const end = movetext.indexOf('\n', index + 1)
-      const commentEnd = end === -1 ? movetext.length : end
-      tokens.push({ type: 'comment', value: movetext.slice(index + 1, commentEnd).trim() })
-      index = commentEnd
-      continue
-    }
-
-    if (character === '(' || character === ')') {
-      tokens.push({ type: character === '(' ? 'open' : 'close', value: character })
-      index += 1
-      continue
-    }
-
-    let end = index + 1
-    while (end < movetext.length && !/[\s{}();]/.test(movetext[end])) end += 1
-    tokens.push({ type: 'word', value: movetext.slice(index, end) })
-    index = end
-  }
-
-  return tokens
-}
-
-const cleanMoveToken = (value: string) => value
-  .replace(/^\d+\.(?:\.\.)?/, '')
-  .replace(/[!?]+$/g, '')
-  .trim()
-
-function parsePgn(pgn: string): ParsedPgn {
-  try {
-    const tokens = tokenizePgn(pgn)
-    const lines = new Map<string, ParsedLine>()
-    const fenHeader = pgn.match(/^\[FEN "([^"]+)"\]/m)?.[1]
-    let cursor = 0
-    let moveId = 0
-
-    const parseLine = (startFen: string, lineId: string): ParsedLine => {
-      const game = new Chess(startFen)
-      const line: ParsedLine = { id: lineId, startFen, moves: [] }
-      const pendingComments: string[] = []
-      lines.set(lineId, line)
-
-      while (cursor < tokens.length) {
-        const token = tokens[cursor]
-        if (token.type === 'close') { cursor += 1; break }
-
-        if (token.type === 'comment') {
-          const previousMove = line.moves.at(-1)
-          if (previousMove) previousMove.commentsAfter.push(token.value)
-          else pendingComments.push(token.value)
-          cursor += 1
-          continue
-        }
-
-        if (token.type === 'open') {
-          cursor += 1
-          const previousMove = line.moves.at(-1)
-          const variationStart = previousMove?.before ?? game.fen()
-          const variationNumber = (previousMove?.variations.length ?? 0) + 1
-          const variation = parseLine(variationStart, `${lineId}.${line.moves.length}v${variationNumber}`)
-          if (previousMove) previousMove.variations.push(variation)
-          continue
-        }
-
-        cursor += 1
-        const rawValue = token.value
-        if (/^(?:\d+\.{1,3}|\*|1-0|0-1|1\/2-1\/2)$/.test(rawValue)) continue
-        if (/^\$\d+$/.test(rawValue) || /^[!?]{1,2}$/.test(rawValue)) {
-          line.moves.at(-1)?.nags.push(rawValue)
-          continue
-        }
-
-        const annotation = rawValue.match(/([!?]{1,2})$/)?.[1]
-        const san = cleanMoveToken(rawValue)
-        if (!san || /^(?:\*|1-0|0-1|1\/2-1\/2)$/.test(san)) continue
-
-        const before = game.fen()
-        const beforeParts = before.split(' ')
-        const move = game.move(san)
-        line.moves.push({
-          id: `move-${moveId++}`,
-          lineId,
-          index: line.moves.length,
-          san: move.san,
-          color: move.color,
-          moveNumber: Number(beforeParts[5]),
-          before,
-          after: game.fen(),
-          from: move.from,
-          to: move.to,
-          commentsBefore: pendingComments.splice(0),
-          commentsAfter: [],
-          nags: annotation ? [annotation] : [],
-          variations: [],
-        })
-      }
-
-      return line
-    }
-
-    const mainline = parseLine(fenHeader ?? START_POSITION, 'main')
-    return { mainline, lines, error: null }
-  } catch (error) {
-    return {
-      mainline: { id: 'main', startFen: START_POSITION, moves: [] },
-      lines: new Map(),
-      error: error instanceof Error ? error.message : 'Invalid PGN',
-    }
-  }
 }
 
 function MoveButton({ move, activeMoveId, onSelect }: {
@@ -268,13 +124,19 @@ function MoveLine({ line, activeMoveId, onSelect, depth = 0 }: {
   )
 }
 
-export default function PgnViewer({ pgn }: PgnViewerProps) {
+export default function PgnViewer({
+  pgn,
+  initialPly = 0,
+  initialOrientation = 'white',
+  onMainlinePlyChange,
+  onExplore,
+}: PgnViewerProps) {
   const parsed = useMemo(() => parsePgn(pgn), [pgn])
   const [activeLineId, setActiveLineId] = useState('main')
-  const [activeIndex, setActiveIndex] = useState(-1)
+  const [activeIndex, setActiveIndex] = useState(() => Math.max(-1, initialPly - 1))
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('green')
   const [pieceTheme, setPieceTheme] = useState<PieceTheme>('default')
-  const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white')
+  const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>(initialOrientation)
 
   const activeLine = parsed.lines.get(activeLineId) ?? parsed.mainline
   const activeMove = activeIndex >= 0 ? activeLine.moves[activeIndex] : null
@@ -301,6 +163,15 @@ export default function PgnViewer({ pgn }: PgnViewerProps) {
     }
   }, [])
 
+  useEffect(() => {
+    setActiveLineId('main')
+    setActiveIndex(Math.min(parsed.mainline.moves.length - 1, Math.max(-1, initialPly - 1)))
+  }, [initialPly, parsed])
+
+  useEffect(() => {
+    setBoardOrientation(initialOrientation)
+  }, [initialOrientation])
+
   const updateBoardTheme = (theme: BoardTheme) => {
     setBoardTheme(theme)
     try { window.localStorage.setItem(BOARD_THEME_STORAGE_KEY, theme) } catch {
@@ -318,21 +189,42 @@ export default function PgnViewer({ pgn }: PgnViewerProps) {
   const selectMove = (move: ParsedMove) => {
     setActiveLineId(move.lineId)
     setActiveIndex(move.index)
+    if (move.lineId === 'main') onMainlinePlyChange?.(move.index + 1, move.after)
   }
 
-  const goFirst = () => { setActiveLineId('main'); setActiveIndex(-1) }
-  const goLast = () => { setActiveLineId('main'); setActiveIndex(parsed.mainline.moves.length - 1) }
+  const goFirst = () => {
+    setActiveLineId('main')
+    setActiveIndex(-1)
+    onMainlinePlyChange?.(0, parsed.mainline.startFen)
+  }
+  const goLast = () => {
+    const index = parsed.mainline.moves.length - 1
+    setActiveLineId('main')
+    setActiveIndex(index)
+    onMainlinePlyChange?.(index + 1, parsed.mainline.moves[index]?.after ?? parsed.mainline.startFen)
+  }
+
+  const changeIndex = (nextIndex: number) => {
+    const boundedIndex = Math.max(-1, Math.min(activeLine.moves.length - 1, nextIndex))
+    setActiveIndex(boundedIndex)
+    if (activeLineId === 'main') {
+      onMainlinePlyChange?.(
+        boundedIndex + 1,
+        boundedIndex >= 0 ? parsed.mainline.moves[boundedIndex].after : parsed.mainline.startFen,
+      )
+    }
+  }
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       if (target?.matches('input, select, textarea, button, a')) return
-      if (event.key === 'ArrowLeft' && canGoPrevious) setActiveIndex((index) => index - 1)
-      if (event.key === 'ArrowRight' && canGoNext) setActiveIndex((index) => index + 1)
+      if (event.key === 'ArrowLeft' && canGoPrevious) changeIndex(activeIndex - 1)
+      if (event.key === 'ArrowRight' && canGoNext) changeIndex(activeIndex + 1)
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [canGoNext, canGoPrevious])
+  }, [activeIndex, activeLineId, canGoNext, canGoPrevious, onMainlinePlyChange, parsed])
 
   if (parsed.error) return <div className="pgn-error"><strong>PGN error:</strong> {parsed.error}</div>
 
@@ -382,11 +274,17 @@ export default function PgnViewer({ pgn }: PgnViewerProps) {
       <div className="pgn-score-card">
         <div className="pgn-controls">
           <button type="button" onClick={goFirst} disabled={activeLineId === 'main' && activeIndex === -1}>First</button>
-          <button type="button" onClick={() => setActiveIndex((index) => index - 1)} disabled={!canGoPrevious}>Previous</button>
+          <button type="button" onClick={() => changeIndex(activeIndex - 1)} disabled={!canGoPrevious}>Previous</button>
           <span className="pgn-status" aria-live="polite">{status}{activeMove ? ` · ${activeMove.san}` : ''}</span>
-          <button type="button" onClick={() => setActiveIndex((index) => index + 1)} disabled={!canGoNext}>Next</button>
+          <button type="button" onClick={() => changeIndex(activeIndex + 1)} disabled={!canGoNext}>Next</button>
           <button type="button" onClick={goLast} disabled={activeLineId === 'main' && activeIndex === parsed.mainline.moves.length - 1}>Last</button>
         </div>
+
+        {onExplore ? (
+          <button type="button" className="pgn-explore-button" onClick={() => onExplore(position)}>
+            Explore from here
+          </button>
+        ) : null}
 
         <div className="pgn-score" aria-label="Annotated game score">
           <MoveLine line={parsed.mainline} activeMoveId={activeMove?.id ?? null} onSelect={selectMove} />

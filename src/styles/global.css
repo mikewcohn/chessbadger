@@ -424,6 +424,26 @@ h3 {
   border-radius: 0.5rem;
 }
 
+.pgn-explore-button {
+  cursor: pointer;
+  border: 0;
+  border-radius: 0.65rem;
+  background: #92400e;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+}
+
+.pgn-explore-button:hover {
+  background: #b45309;
+}
+
+.pgn-explore-button:focus-visible {
+  outline: 3px solid #fcd34d;
+  outline-offset: 2px;
+}
+
 @media (min-width: 900px) {
   .pgn-viewer {
     grid-template-columns: minmax(0, 540px) minmax(320px, 1fr);

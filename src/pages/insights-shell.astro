@@ -1,0 +1,14 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import InsightApp from '../components/InsightApp'
+---
+
+<BaseLayout title="My Insights | ChessBadger" description="Private chess lessons saved with their games and positions." robots="noindex, nofollow">
+  <section class="min-h-[70vh] bg-[#eef6ff]">
+    <div class="mx-auto max-w-[96rem] px-3 py-5 sm:px-6 sm:py-8">
+      <InsightApp client:only="react">
+        <div slot="fallback" class="min-h-96 animate-pulse rounded-2xl border border-stone-200 bg-white shadow-sm" aria-label="Loading insights"></div>
+      </InsightApp>
+    </div>
+  </section>
+</BaseLayout>

@@ -74,7 +74,11 @@ function AccountForm() {
         }
       }
       const query = params.toString()
-      window.location.assign(`/players/${data.player.slug}${query ? `?${query}` : ''}`)
+      const requestedReturn = new URLSearchParams(window.location.search).get('return')
+      const safeReturn = requestedReturn?.startsWith('/') && !requestedReturn.startsWith('//')
+        ? requestedReturn
+        : null
+      window.location.assign(safeReturn ?? `/players/${data.player.slug}${query ? `?${query}` : ''}`)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Something went wrong.')
       setSubmitting(false)

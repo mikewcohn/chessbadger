@@ -11,6 +11,12 @@ type AnalysisMove = {
   san: string
 }
 
+type AnalysisMoveRow = {
+  moveNumber: number
+  white?: AnalysisMove
+  black?: AnalysisMove
+}
+
 type AnalysisStatus = 'loading' | 'ready' | 'thinking' | 'ended' | 'error'
 
 type PuzzleAnalysisProps = {
@@ -23,6 +29,8 @@ type PuzzleAnalysisProps = {
   boardOrientation: 'white' | 'black'
   prefersReducedMotion: boolean
   onExit: () => void
+  sourceLabel?: string
+  analysisDescription?: string
 }
 
 const finishedPositionCopy = (game: Chess) => {
@@ -44,6 +52,8 @@ export default function PuzzleAnalysis({
   boardOrientation,
   prefersReducedMotion,
   onExit,
+  sourceLabel,
+  analysisDescription,
 }: PuzzleAnalysisProps) {
   const [fen, setFen] = useState(initialFen)
   const [moves, setMoves] = useState<AnalysisMove[]>([])
@@ -80,6 +90,31 @@ export default function PuzzleAnalysis({
   }, [engineRevision])
 
   const game = useMemo(() => new Chess(fen), [fen])
+  const moveRows = useMemo(() => {
+    const fenFields = initialFen.split(' ')
+    let activeColor = fenFields[1] === 'b' ? 'b' : 'w'
+    let moveNumber = Number.parseInt(fenFields[5] ?? '1', 10)
+    if (!Number.isFinite(moveNumber) || moveNumber < 1) moveNumber = 1
+
+    return moves.reduce<AnalysisMoveRow[]>((rows, move) => {
+      let row = rows.at(-1)
+      if (!row || row.moveNumber !== moveNumber) {
+        row = { moveNumber }
+        rows.push(row)
+      }
+
+      if (activeColor === 'w') {
+        row.white = move
+        activeColor = 'b'
+      } else {
+        row.black = move
+        activeColor = 'w'
+        moveNumber += 1
+      }
+
+      return rows
+    }, [])
+  }, [initialFen, moves])
   const canMove = status === 'ready' && !game.isGameOver()
   const sideToMove = game.turn() === 'w' ? 'White' : 'Black'
 
@@ -252,9 +287,9 @@ export default function PuzzleAnalysis({
       <aside className="flex flex-col rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-800">Analysis mode</p>
         <h1 className="mt-2 text-2xl font-bold tracking-[-0.015em] text-stone-950 sm:text-3xl">{puzzleTitle}</h1>
-        <p className="mt-2 text-sm font-semibold text-stone-600">{collectionName} · {sectionName}</p>
+        <p className="mt-2 text-sm font-semibold text-stone-600">{sourceLabel ?? `${collectionName} · ${sectionName}`}</p>
         <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          Explore from the puzzle position. Analysis moves do not affect your attempts, score, notes, or timer.
+          {analysisDescription ?? 'Explore from the puzzle position. Analysis moves do not affect your attempts, score, notes, or timer.'}
         </p>
 
         <section className="mt-5" aria-labelledby="analysis-status-heading">
@@ -292,11 +327,16 @@ export default function PuzzleAnalysis({
           {moves.length === 0 ? (
             <p className="mt-2 text-sm text-stone-600">Make any legal move. Stockfish will reply.</p>
           ) : (
-            <ol className="mt-3 grid gap-2">
-              {moves.map((move, index) => (
-                <li key={`${index}-${move.san}`} className="flex items-center justify-between gap-4 rounded-lg bg-stone-50 px-3 py-2 text-sm">
-                  <span className="font-semibold text-stone-600">{index + 1}. {move.actor === 'you' ? 'You' : 'Stockfish'}</span>
-                  <span className="font-mono font-bold text-stone-950">{move.san}</span>
+            <ol className="mt-3 overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
+              {moveRows.map((row) => (
+                <li key={row.moveNumber} className="grid min-h-10 grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] items-center border-t border-stone-200 px-2 text-sm first:border-t-0">
+                  <span className="pr-2 text-right font-semibold text-stone-500">{row.white ? `${row.moveNumber}.` : `${row.moveNumber}...`}</span>
+                  <span className="px-2 font-mono font-bold text-stone-950" aria-label={row.white ? `White ${row.white.san}` : undefined}>
+                    {row.white?.san ?? ''}
+                  </span>
+                  <span className="px-2 font-mono font-bold text-stone-950" aria-label={row.black ? `Black ${row.black.san}` : undefined}>
+                    {row.black?.san ?? ''}
+                  </span>
                 </li>
               ))}
             </ol>
