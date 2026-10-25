@@ -7,9 +7,10 @@
     "node": "22.23.1"
   },
   "scripts": {
-    "dev": "astro dev",
+    "prepare:stockfish": "node scripts/copy-stockfish.mjs",
+    "dev": "npm run prepare:stockfish && astro dev",
     "check": "astro check",
-    "build": "astro build",
+    "build": "npm run prepare:stockfish && astro build",
     "verify": "npm run check && npm run build",
     "preview": "astro preview",
     "preview:pages": "npm run build && wrangler pages dev dist",
@@ -36,6 +37,7 @@
     "react-is": "^19.2.6",
     "sanity": "^5.25.1",
     "sharp": "^0.35.4",
+    "stockfish": "19.0.1",
     "styled-components": "^6.4.1",
     "tailwindcss": "^4.3.0"
   },

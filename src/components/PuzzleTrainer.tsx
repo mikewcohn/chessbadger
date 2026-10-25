@@ -51,6 +51,7 @@ import ResetAttempts from './ResetAttempts'
 import PuzzleNoteField, { type PuzzleNoteFieldHandle } from './PuzzleNoteField'
 import { getCachedPuzzleNotes, type PuzzleNotes } from '../lib/puzzleNotes'
 import { copyTextToClipboard } from '../lib/clipboard'
+import PuzzleAnalysis from './PuzzleAnalysis'
 
 type PuzzleTrainerProps = {
   puzzles: Puzzle[]
@@ -342,6 +343,7 @@ export default function PuzzleTrainer({
   const [puzzleNotes, setPuzzleNotes] = useState<PuzzleNotes>({})
   const [reviewMode, setReviewMode] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
+  const [analysisMode, setAnalysisMode] = useState(false)
   const [historyExpanded, setHistoryExpanded] = useState(false)
   const [retryQueue, setRetryQueue] = useState<RetryQueueEntry[] | null>(null)
   const [retryStatuses, setRetryStatuses] = useState<RetryStatus[]>([])
@@ -355,6 +357,7 @@ export default function PuzzleTrainer({
   const practiceSessionIdRef = useRef('')
   const puzzleNoteFieldRef = useRef<PuzzleNoteFieldHandle | null>(null)
   const noteNavigationPendingRef = useRef(false)
+  const resumeTimerAfterAnalysisRef = useRef(false)
   const timer = usePuzzleTimer()
 
   const saveNoteBeforeNavigation = async () => {
@@ -438,6 +441,36 @@ export default function PuzzleTrainer({
       ? puzzle.sideToMove === 'white' ? 'White' : 'Black'
       : new Chess(puzzleAnswerPosition).turn() === 'w' ? 'White' : 'Black'
   const boardOrientation = alwaysWhiteOnBottom || sideToMove !== 'Black' ? 'white' : 'black'
+  const analysisEligible = useMemo(() => {
+    if (
+      puzzle.type === 'placement'
+      || puzzle.type === 'composition'
+      || puzzle.answerMode === 'notation'
+      || puzzle.choices
+      || puzzle.routeMoves
+      || puzzle.answerMoves
+    ) return false
+
+    try {
+      return !new Chess(puzzleAnswerPosition).isGameOver()
+    } catch {
+      return false
+    }
+  }, [puzzle, puzzleAnswerPosition])
+
+  const enterAnalysisMode = async () => {
+    if (!analysisEligible || !await saveNoteBeforeNavigation()) return
+    resumeTimerAfterAnalysisRef.current = result === null && timer.isRunning
+    if (timer.isRunning) timer.suspend()
+    setFocusMode(false)
+    setAnalysisMode(true)
+  }
+
+  const exitAnalysisMode = () => {
+    setAnalysisMode(false)
+    if (resumeTimerAfterAnalysisRef.current && result === null) timer.resume()
+    resumeTimerAfterAnalysisRef.current = false
+  }
   const isMultiMovePuzzle = puzzle.type !== 'placement'
     && puzzle.type !== 'composition'
     && (
@@ -727,6 +760,8 @@ export default function PuzzleTrainer({
     setInteractiveMoveHistory([])
     setIsResponding(false)
     setHistoryExpanded(false)
+    setAnalysisMode(false)
+    resumeTimerAfterAnalysisRef.current = false
     setBoardRevision((revision) => revision + 1)
     if (reviewMode) timer.pause()
     else timer.reset(isRestart)
@@ -1599,6 +1634,22 @@ export default function PuzzleTrainer({
     )
   }
 
+  if (analysisMode && analysisEligible) {
+    return (
+      <PuzzleAnalysis
+        initialFen={puzzleAnswerPosition}
+        puzzleTitle={puzzleHeading}
+        collectionName={collectionName}
+        sectionName={sectionName}
+        boardTheme={boardTheme}
+        pieceTheme={pieceTheme}
+        boardOrientation={boardOrientation}
+        prefersReducedMotion={prefersReducedMotion}
+        onExit={exitAnalysisMode}
+      />
+    )
+  }
+
   return (
     <div
       className={focusMode
@@ -1655,6 +1706,16 @@ export default function PuzzleTrainer({
                 {fenCopyLabel}
               </button>
             </section>
+            {analysisEligible ? (
+              <button
+                type="button"
+                onClick={() => void enterAnalysisMode()}
+                className="mt-1 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-amber-700 bg-white px-3 py-2 text-sm font-bold text-amber-900 hover:bg-amber-50"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2"><path d="M9 3h6v3H9zM5 8h14v11H5zM8 12h8M8 15h5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                Analyze position
+              </button>
+            ) : null}
           </div>
         ) : null}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-1 pb-2">
@@ -2283,6 +2344,16 @@ export default function PuzzleTrainer({
             </p>
           ) : null}
         </section>
+        {analysisEligible ? (
+          <button
+            type="button"
+            onClick={() => void enterAnalysisMode()}
+            className="mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-lg border border-amber-700 bg-white px-4 py-2 text-sm font-bold text-amber-900 hover:bg-amber-50"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current" strokeWidth="2"><path d="M9 3h6v3H9zM5 8h14v11H5zM8 12h8M8 15h5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            Analyze position
+          </button>
+        ) : null}
         </div>
 
         {timer.showInactivityPrompt ? (

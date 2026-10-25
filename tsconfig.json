@@ -5,7 +5,8 @@
     "**/*"
   ],
   "exclude": [
-    "dist"
+    "dist",
+    "public/vendor/stockfish"
   ],
   "compilerOptions": {
     "strictNullChecks": true,

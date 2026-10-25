@@ -51,6 +51,11 @@ export const usePuzzleTimer = () => {
     stopTimer('manual', true)
   }, [stopTimer])
 
+  const suspend = useCallback(() => {
+    setShowInactivityPrompt(false)
+    stopTimer(null, false)
+  }, [stopTimer])
+
   const resume = useCallback(() => {
     if (isRunningRef.current) return
 
@@ -140,5 +145,6 @@ export const usePuzzleTimer = () => {
     reset,
     resume,
     showInactivityPrompt,
+    suspend,
   }
 }
