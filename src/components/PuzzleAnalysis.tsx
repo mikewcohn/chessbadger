@@ -5,6 +5,8 @@ import { BOARD_SQUARE_STYLES, BOARD_THEMES, type BoardTheme } from '../lib/board
 import { PIECE_THEMES, type PieceTheme } from '../lib/pieceThemes'
 import { StockfishEngine } from '../lib/stockfishEngine'
 
+const ANALYSIS_MOVE_TIME_MS = 2_000
+
 type AnalysisMove = {
   actor: 'you' | 'stockfish'
   fen: string
@@ -134,7 +136,7 @@ export default function PuzzleAnalysis({
     setStatus('thinking')
     setStatusMessage('Stockfish is thinking…')
 
-    void engine.findBestMove(positionAfterPlayerMove.fen()).then((bestMove) => {
+    void engine.findBestMove(positionAfterPlayerMove.fen(), ANALYSIS_MOVE_TIME_MS).then((bestMove) => {
       if (searchRevision !== searchRevisionRef.current) return
       if (!bestMove) {
         setStatus('ended')
