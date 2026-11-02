@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { Chess, type Square } from 'chess.js'
 import { Chessboard, ChessboardProvider } from 'react-chessboard'
 import { BOARD_SQUARE_STYLES, BOARD_THEMES, type BoardTheme } from '../lib/boardThemes'
@@ -6,11 +6,25 @@ import { PIECE_THEMES, type PieceTheme } from '../lib/pieceThemes'
 import { StockfishEngine } from '../lib/stockfishEngine'
 
 const ANALYSIS_MOVE_TIME_MS = 2_000
+const LAST_MOVE_OVERLAY = 'linear-gradient(rgba(217, 119, 6, 0.3), rgba(217, 119, 6, 0.3))'
+
+const withLastMoveOverlay = (squareStyle: CSSProperties = {}): CSSProperties => ({
+  ...squareStyle,
+  backgroundImage: [LAST_MOVE_OVERLAY, squareStyle.backgroundImage].filter(Boolean).join(', '),
+  ...(squareStyle.backgroundPosition
+    ? { backgroundPosition: `0 0, ${squareStyle.backgroundPosition}` }
+    : {}),
+  ...(squareStyle.backgroundSize
+    ? { backgroundSize: `100% 100%, ${squareStyle.backgroundSize}` }
+    : {}),
+})
 
 type AnalysisMove = {
   actor: 'you' | 'stockfish'
   fen: string
+  from: Square
   san: string
+  to: Square
 }
 
 type AnalysisMoveRow = {
@@ -152,7 +166,13 @@ export default function PuzzleAnalysis({
       })
 
       setFen(replyGame.fen())
-      setMoves((current) => [...current, { actor: 'stockfish', fen: replyGame.fen(), san: reply.san }])
+      setMoves((current) => [...current, {
+        actor: 'stockfish',
+        fen: replyGame.fen(),
+        from: reply.from,
+        san: reply.san,
+        to: reply.to,
+      }])
       setSelectedSquare(null)
       if (!finishIfNeeded(replyGame)) {
         setStatus('ready')
@@ -177,7 +197,13 @@ export default function PuzzleAnalysis({
       })
       const nextFen = nextGame.fen()
       setFen(nextFen)
-      setMoves((current) => [...current, { actor: 'you', fen: nextFen, san: move.san }])
+      setMoves((current) => [...current, {
+        actor: 'you',
+        fen: nextFen,
+        from: move.from,
+        san: move.san,
+        to: move.to,
+      }])
       setSelectedSquare(null)
       if (!finishIfNeeded(nextGame)) requestStockfishReply(nextGame)
       return true
@@ -234,14 +260,27 @@ export default function PuzzleAnalysis({
     setEngineRevision((revision) => revision + 1)
   }
 
-  const squareStyles = {
-    ...BOARD_SQUARE_STYLES[boardTheme],
+  const themeSquareStyles = BOARD_SQUARE_STYLES[boardTheme]
+  const lastMove = moves.at(-1)
+  const lastMoveSquareStyles = lastMove ? {
+    [lastMove.from]: withLastMoveOverlay(themeSquareStyles[lastMove.from]),
+    [lastMove.to]: withLastMoveOverlay(themeSquareStyles[lastMove.to]),
+  } : {}
+  const interactionSquareStyles = {
+    ...lastMoveSquareStyles,
     ...(selectedSquare ? {
       [selectedSquare]: {
-        ...BOARD_SQUARE_STYLES[boardTheme][selectedSquare],
+        ...lastMoveSquareStyles[selectedSquare],
         boxShadow: 'inset 0 0 0 4px rgba(120, 53, 15, 0.7)',
       },
     } : {}),
+  }
+  const squareStyles = {
+    ...themeSquareStyles,
+    ...Object.fromEntries(Object.entries(interactionSquareStyles).map(([square, style]) => [
+      square,
+      { ...themeSquareStyles[square], ...style },
+    ])),
   }
 
   return (
