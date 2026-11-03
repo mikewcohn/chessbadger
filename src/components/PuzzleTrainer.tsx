@@ -371,6 +371,9 @@ export default function PuzzleTrainer({
   }
 
   const puzzle = puzzles[puzzleIndex]
+  const puzzleChoices = puzzle.type !== 'placement' && puzzle.type !== 'composition'
+    ? puzzle.choices
+    : undefined
 
   useEffect(() => {
     setFenCopyStatus('idle')
@@ -1654,11 +1657,11 @@ export default function PuzzleTrainer({
     <div
       className={focusMode
         ? 'puzzle-trainer fixed inset-0 z-[100] overflow-y-auto bg-[#eef6ff] p-2 sm:p-5'
-        : 'puzzle-trainer grid gap-3 sm:gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)] lg:items-start xl:gap-7'}
+        : 'puzzle-trainer grid grid-cols-[minmax(0,1fr)] gap-3 sm:gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)] lg:items-start xl:gap-7'}
       aria-label={focusMode ? 'Puzzle focus mode' : undefined}
     >
       <div
-        className={`relative flex w-full flex-col rounded-2xl border border-stone-300 bg-white p-2 shadow-sm sm:p-3 ${focusMode ? 'mx-auto' : ''}`}
+        className={`relative flex min-w-0 w-full flex-col rounded-2xl border border-stone-300 bg-white p-2 shadow-sm sm:p-3 ${focusMode ? 'mx-auto' : ''}`}
         style={focusMode ? { maxWidth: 'min(calc(100vh - 9rem), calc(100vw - 2rem))' } : undefined}
       >
         {!focusMode ? (
@@ -1752,6 +1755,38 @@ export default function PuzzleTrainer({
             {focusMode ? 'Exit focus' : 'Focus'}
           </button>
         </div>
+        {puzzleChoices ? (
+          <fieldset className="mb-3 min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-3">
+            <legend className="px-1 text-sm font-bold text-stone-700">Choose the correct move</legend>
+            <p className="mb-2 text-xs font-semibold text-stone-600">Choose a move below—the board is for reference.</p>
+            <div className="grid grid-cols-3 gap-2">
+              {puzzleChoices.map((choice) => {
+                const isSelected = attemptedMove === choice
+                const isCorrectChoice = puzzle.answers.some((answer) => normalizeSan(answer) === normalizeSan(choice))
+                const choiceClass = answerVisible && isCorrectChoice
+                  ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
+                  : isSelected && result === 'correct'
+                    ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
+                    : isSelected && result === 'incorrect'
+                      ? 'border-rose-700 bg-rose-50 text-rose-950'
+                      : 'border-stone-300 bg-white text-stone-900 hover:border-amber-700 hover:text-amber-950'
+
+                return (
+                  <button
+                    key={choice}
+                    type="button"
+                    onClick={() => answerChoice(choice)}
+                    disabled={Boolean(attemptedMove) || answerVisible || !timer.isRunning}
+                    className={`flex min-h-11 min-w-0 cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-2 text-left text-sm font-bold transition disabled:cursor-not-allowed sm:gap-2 sm:px-3 ${choiceClass}`}
+                  >
+                    <span aria-hidden="true" className={`size-4 shrink-0 rounded-full border-2 ${isSelected ? 'border-current bg-current shadow-[inset_0_0_0_3px_white]' : 'border-stone-500 bg-white'}`} />
+                    {choice}
+                  </button>
+                )
+              })}
+            </div>
+          </fieldset>
+        ) : null}
         {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.answerMode === 'notation' && (puzzle.givenLine || puzzle.notationFields?.length) ? (
           <form onSubmit={submitNotationAnswer} className="mb-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
             <label htmlFor={`notation-answer-${puzzle.id}-0`} className="text-sm font-bold text-stone-700">
@@ -1847,9 +1882,11 @@ export default function PuzzleTrainer({
               onSquareClick: ({ square }) => handleSquareClick(square),
           }}
         >
-          <h2 id={`board-heading-${puzzle.id}`} className="sr-only">Interactive chessboard</h2>
+          <h2 id={`board-heading-${puzzle.id}`} className="sr-only">{puzzleChoices ? 'Reference chessboard' : 'Interactive chessboard'}</h2>
           <p id={`board-help-${puzzle.id}`} className="sr-only">
-            Move pieces by dragging or selecting an origin and destination square.
+            {puzzleChoices
+              ? 'Choose a move above. The board is for reference.'
+              : 'Move pieces by dragging or selecting an origin and destination square.'}
           </p>
           <div
             className="overflow-hidden rounded-xl"
@@ -1859,38 +1896,6 @@ export default function PuzzleTrainer({
           >
             <Chessboard />
           </div>
-
-          {puzzle.type !== 'placement' && puzzle.type !== 'composition' && puzzle.choices ? (
-            <fieldset className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
-              <legend className="px-1 text-sm font-bold text-stone-700">Choose the correct move</legend>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {puzzle.choices.map((choice) => {
-                  const isSelected = attemptedMove === choice
-                  const isCorrectChoice = puzzle.answers.some((answer) => normalizeSan(answer) === normalizeSan(choice))
-                  const choiceClass = answerVisible && isCorrectChoice
-                    ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
-                    : isSelected && result === 'correct'
-                      ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
-                      : isSelected && result === 'incorrect'
-                        ? 'border-rose-700 bg-rose-50 text-rose-950'
-                        : 'border-stone-300 bg-white text-stone-900 hover:border-amber-700 hover:text-amber-950'
-
-                  return (
-                    <button
-                      key={choice}
-                      type="button"
-                      onClick={() => answerChoice(choice)}
-                      disabled={Boolean(attemptedMove) || answerVisible || !timer.isRunning}
-                      className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-bold transition disabled:cursor-not-allowed ${choiceClass}`}
-                    >
-                      <span aria-hidden="true" className={`size-4 shrink-0 rounded-full border-2 ${isSelected ? 'border-current bg-current shadow-[inset_0_0_0_3px_white]' : 'border-stone-500 bg-white'}`} />
-                      {choice}
-                    </button>
-                  )
-                })}
-              </div>
-            </fieldset>
-          ) : null}
 
           {!focusMode ? (
             <details className="group mt-3 rounded-xl border border-stone-200 lg:hidden">
