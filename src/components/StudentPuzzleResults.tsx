@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Puzzle } from '../types/puzzles'
 import { formatDuration } from '../hooks/usePuzzleTimer'
 import {
-  createWorkbookAttemptsCsv,
-  workbookAttemptsFilename,
-  workbookPuzzleReference,
+  attemptsFilename,
+  createAttemptsCsv,
 } from '../lib/attemptExport'
 import { getPuzzleStatuses, type PracticeAttempt, type PuzzleProgressStatus } from '../lib/puzzleProgress'
 
@@ -112,14 +111,12 @@ export default function StudentPuzzleResults({
       ? new Date(right.latestAttempt.checkedAt ?? 0).getTime() - new Date(left.latestAttempt.checkedAt ?? 0).getTime()
       : left.puzzleIndex - right.puzzleIndex), [results, sortOrder, statusFilter])
 
-  const canExportWorkbookAttempts = puzzles.some((puzzle) => workbookPuzzleReference(puzzle) !== null)
-
   const exportAttempts = () => {
-    const csv = createWorkbookAttemptsCsv(puzzles, attempts, notes)
+    const csv = createAttemptsCsv(puzzles, attempts, notes)
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const link = document.createElement('a')
     link.href = url
-    link.download = workbookAttemptsFilename(sectionSlug)
+    link.download = attemptsFilename(collectionSlug, sectionSlug)
     document.body.append(link)
     link.click()
     link.remove()
@@ -139,14 +136,12 @@ export default function StudentPuzzleResults({
             <svg viewBox="0 0 24 24" className={`size-4 fill-none stroke-current transition ${expanded ? 'rotate-180' : ''}`} strokeWidth="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </span>
         </button>
-        {canExportWorkbookAttempts ? (
-          <div className="flex items-center border-t border-stone-200 px-5 py-4 sm:border-l sm:border-t-0 sm:px-7">
-            <button type="button" onClick={exportAttempts} className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-amber-800 bg-white px-4 py-2.5 text-sm font-bold text-amber-900 transition hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 sm:w-auto">
-              <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current" strokeWidth="2.25" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              Export attempts CSV
-            </button>
-          </div>
-        ) : null}
+        <div className="flex items-center border-t border-stone-200 px-5 py-4 sm:border-l sm:border-t-0 sm:px-7">
+          <button type="button" onClick={exportAttempts} className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-amber-800 bg-white px-4 py-2.5 text-sm font-bold text-amber-900 transition hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800 sm:w-auto">
+            <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current" strokeWidth="2.25" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            Export attempts CSV
+          </button>
+        </div>
       </div>
 
       {expanded ? (

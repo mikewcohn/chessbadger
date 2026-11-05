@@ -6,9 +6,16 @@ type WorkbookPuzzleReference = {
   puzzleNumber: number
 }
 
-const workbookPuzzlePattern = /^page-(\d+)-puzzle-(\d+)$/
+const workbookPuzzlePattern = /(?:^|-)page-(\d+)-puzzle-(\d+)$/
 
 export const workbookPuzzleReference = (puzzle: Puzzle): WorkbookPuzzleReference | null => {
+  if (puzzle.sourcePage !== undefined && puzzle.pagePosition !== undefined) {
+    return {
+      pageNumber: puzzle.sourcePage,
+      puzzleNumber: puzzle.workbookPuzzleNumber ?? puzzle.pagePosition,
+    }
+  }
+
   const match = puzzle.id.match(workbookPuzzlePattern)
   if (!match) return null
 
@@ -123,5 +130,32 @@ export const createWorkbookAttemptsCsv = (
   ].map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')
 }
 
+const createGenericAttemptsCsv = (
+  puzzles: Puzzle[],
+  attempts: PracticeAttempt[],
+  notes: Record<string, string>,
+) => [
+  ['Puzzle', 'Attempt Data', 'Note', 'Puzzle Time (seconds)'],
+  ...puzzles.map((puzzle) => [
+    puzzle.title,
+    formatAttemptData(puzzle, attempts),
+    notes[puzzle.id] ?? '',
+    Math.round(puzzleTimeMs(puzzle, attempts) / 1000),
+  ]),
+].map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')
+
+export const createAttemptsCsv = (
+  puzzles: Puzzle[],
+  attempts: PracticeAttempt[],
+  notes: Record<string, string> = {},
+) => puzzles.length > 0 && puzzles.every((puzzle) => workbookPuzzleReference(puzzle) !== null)
+  ? createWorkbookAttemptsCsv(puzzles, attempts, notes)
+  : createGenericAttemptsCsv(puzzles, attempts, notes)
+
+export const attemptsFilename = (collectionSlug: string, sectionSlug: string) => {
+  const bookSlug = collectionSlug === 'steps-2-workbook' ? 'steps-2' : collectionSlug
+  return `${bookSlug}-${sectionSlug}-attempts.csv`
+}
+
 export const workbookAttemptsFilename = (sectionSlug: string) =>
-  `steps-2-${sectionSlug}-attempts.csv`
+  attemptsFilename('steps-2-workbook', sectionSlug)

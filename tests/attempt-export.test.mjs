@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  attemptsFilename,
+  createAttemptsCsv,
   createWorkbookAttemptsCsv,
   formatAttemptData,
   workbookAttemptsFilename,
@@ -104,4 +106,43 @@ test('uses workbook positions and exports blank rows for drawings', () => {
 
 test('uses a section-specific CSV filename', () => {
   assert.equal(workbookAttemptsFilename('double-attack-queen'), 'steps-2-double-attack-queen-attempts.csv')
+  assert.equal(attemptsFilename('chess-steps-2-mix', 'workbook-puzzles'), 'chess-steps-2-mix-workbook-puzzles-attempts.csv')
+})
+
+test('recognizes collection-prefixed workbook puzzle ids', () => {
+  const mixPuzzle = {
+    id: 'chess-steps-2-mix-page-4-puzzle-01',
+    title: 'Puzzle 4.1',
+    sourcePage: 4,
+    pagePosition: 1,
+    workbookPuzzleNumber: 1,
+    fen: '8/8/8/8/8/8/8/8 w - - 0 1',
+    answers: ['Qa4'],
+  }
+
+  assert.equal(createAttemptsCsv([mixPuzzle], [{
+    puzzleId: mixPuzzle.id,
+    move: 'Qa4',
+    result: 'correct',
+    durationMs: 2_000,
+  }]).split('\r\n')[1], '4,1,1. Qa4,,2,2s')
+})
+
+test('exports sections whose puzzles do not use workbook page numbering', () => {
+  const puzzle = {
+    id: 'polgar-puzzle-0001',
+    title: 'Problem 1',
+    fen: '8/8/8/8/8/8/8/8 w - - 0 1',
+    answers: ['Qa4'],
+  }
+
+  assert.equal(createAttemptsCsv([puzzle], [{
+    puzzleId: puzzle.id,
+    move: 'Qa4',
+    result: 'correct',
+    durationMs: 2_000,
+  }]), [
+    'Puzzle,Attempt Data,Note,Puzzle Time (seconds)',
+    'Problem 1,1. Qa4,,2',
+  ].join('\r\n'))
 })
